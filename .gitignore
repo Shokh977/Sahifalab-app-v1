@@ -18,11 +18,8 @@ play-store-key.json
 .expo/
 dist/
 
-# Android build artifacts
-android/app/build/
-android/build/
-android/.gradle/
-android/app/.cxx/
+# Android — let EAS regenerate via expo prebuild
+android/
 
 # IDE
 .idea/
