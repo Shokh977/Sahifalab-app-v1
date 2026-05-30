@@ -7,7 +7,10 @@
     },
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://sahifalabhubbot-production-c7e2.up.railway.app"
+      }
     },
     "production": {
       "android": {
@@ -15,7 +18,7 @@
         "gradleCommand": ":app:bundleRelease"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://sahifalab-hub-bot-production.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://sahifalabhubbot-production-c7e2.up.railway.app"
       }
     }
   },
