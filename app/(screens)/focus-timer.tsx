@@ -17,28 +17,28 @@ try { Notifications = require('expo-notifications') } catch {}
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
 
-let AVModule: any = null
-try { AVModule = require('expo-av') } catch {}
+let AudioModule: any = null
+try { AudioModule = require('expo-audio') } catch {}
 
-// Module-level ambient sound instances — survive renders
+// Module-level ambient player instances — survive renders
 const soundInstances: Record<string, any> = {}
 
 async function loadSoundInstance(track: SoundTrack) {
-  if (!AVModule?.Audio || !track.uri) return
+  if (!AudioModule?.createAudioPlayer || !track.uri) return
   try {
-    await AVModule.Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
-    const { sound } = await AVModule.Audio.Sound.createAsync(
-      { uri: track.uri },
-      { shouldPlay: true, isLooping: true, volume: track.volume },
-    )
-    soundInstances[track.id] = sound
+    await AudioModule.setAudioModeAsync({ playsInSilentModeIOS: true })
+    const player = AudioModule.createAudioPlayer({ uri: track.uri })
+    player.loop   = true
+    player.volume = track.volume
+    player.play()
+    soundInstances[track.id] = player
   } catch {}
 }
 
 async function unloadSoundInstance(id: string) {
-  const s = soundInstances[id]
-  if (!s) return
-  try { await s.stopAsync(); await s.unloadAsync() } catch {}
+  const p = soundInstances[id]
+  if (!p) return
+  try { p.pause(); p.remove() } catch {}
   delete soundInstances[id]
 }
 

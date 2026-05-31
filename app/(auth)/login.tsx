@@ -125,7 +125,7 @@ export default function WelcomeScreen() {
 
         <Animated.View style={[styles.textWrap, textStyle]}>
           <Text style={[styles.tagline, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-            Kitob bilan o's. Har kuni.
+            Sahifalab birgalikda rivojlanamiz!
           </Text>
           <Text style={[styles.subtitle, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
             Kurslar, testlar, sertifikatlar — barchasi bir joyda

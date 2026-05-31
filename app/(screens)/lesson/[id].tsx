@@ -689,7 +689,17 @@ export default function LessonPlayerScreen() {
 
   if (!lesson) return null
 
-  const videoUri = lesson.hls_url || lesson.video_url || null
+  // "finished" (status 4) = ready; anything else = still encoding
+  const encodingReady = !lesson.encoding_status || lesson.encoding_status === 'finished'
+  const videoUri = encodingReady ? (lesson.hls_url || lesson.video_url || null) : null
+
+  // If teacher stored a YouTube watch URL in video_url instead of an embed URL,
+  // synthesise the embed URL so EmbedWebPlayer can handle it.
+  const ytWatchMatch = (!lesson.embed_url && lesson.video_url)
+    ? (lesson.video_url.match(/(?:youtube\.com\/watch\?.*v=|youtu\.be\/)([^?&\s]+)/))
+    : null
+  const embedUrl = lesson.embed_url
+    || (ytWatchMatch ? `https://www.youtube.com/embed/${ytWatchMatch[1]}` : null)
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -707,10 +717,12 @@ export default function LessonPlayerScreen() {
         lesson.content_html
           ? <ReadingBlock html={lesson.content_html} c={c} onRead={() => setReadingDone(true)} />
           : <PlaceholderBlock icon="book" label="Matnli dars" c={c} />
+      ) : !encodingReady && !embedUrl ? (
+        <PlaceholderBlock icon="video" label="Video tayyorlanmoqda..." c={c} />
       ) : (
         <VideoPlayer
           uri={videoUri}
-          embedUrl={lesson.embed_url}
+          embedUrl={embedUrl}
           title={lesson.title}
           initialPosition={resumePos}
           onComplete={handleComplete}

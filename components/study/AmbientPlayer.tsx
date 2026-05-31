@@ -17,40 +17,38 @@ import { ambientSounds, type AmbientSound } from '../../lib/api'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 
-// ── Safe expo-av import (not available in Expo Go) ────────────────────────────
-let _Audio: typeof import('expo-av').Audio | null = null
-try {
-  _Audio = require('expo-av').Audio
-} catch {}
+// ── Safe expo-audio import ─────────────────────────────────────────────────────
+let AudioModule: any = null
+try { AudioModule = require('expo-audio') } catch {}
 
-const AV_AVAILABLE = _Audio !== null
+const AV_AVAILABLE = AudioModule !== null
 
-// ── Singleton sound object ─────────────────────────────────────────────────────
-let _sound: any = null
+// ── Singleton player ───────────────────────────────────────────────────────────
+let _player: any = null
 
 async function _stopCurrent() {
-  if (_sound) {
-    try { await _sound.stopAsync(); await _sound.unloadAsync() } catch {}
-    _sound = null
+  if (_player) {
+    try { _player.pause(); _player.remove() } catch {}
+    _player = null
   }
 }
 
 async function _play(url: string): Promise<any> {
-  if (!_Audio) return null
+  if (!AudioModule?.createAudioPlayer) return null
   await _stopCurrent()
   try {
-    await _Audio.setAudioModeAsync({
+    await AudioModule.setAudioModeAsync({
       playsInSilentModeIOS:       true,
       staysActiveInBackground:    true,
       shouldDuckAndroid:          false,
       playThroughEarpieceAndroid: false,
     })
-    const { sound } = await _Audio.Sound.createAsync(
-      { uri: url },
-      { isLooping: true, volume: 0.4, shouldPlay: true },
-    )
-    _sound = sound
-    return sound
+    const player = AudioModule.createAudioPlayer({ uri: url })
+    player.loop   = true
+    player.volume = 0.4
+    player.play()
+    _player = player
+    return player
   } catch {
     return null
   }
@@ -83,7 +81,7 @@ export function AmbientPlayer({ visible = true }: Props) {
   // Sync volume to currently playing sound
   useEffect(() => {
     volumeRef.current = volume
-    if (_sound) _sound.setVolumeAsync(volume).catch(() => {})
+    if (_player) { try { _player.volume = volume } catch {} }
   }, [volume])
 
   // Stop playback when component unmounts
@@ -99,9 +97,9 @@ export function AmbientPlayer({ visible = true }: Props) {
     }
     setActiveId(s.id)
     setIsPlaying(false)
-    const sound = await _play(s.url)
-    if (sound) {
-      await sound.setVolumeAsync(volumeRef.current)
+    const player = await _play(s.url)
+    if (player) {
+      try { player.volume = volumeRef.current } catch {}
       setIsPlaying(true)
     }
   }, [activeId, isPlaying])

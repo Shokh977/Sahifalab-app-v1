@@ -37,17 +37,19 @@ interface Props {
 
 // ── Native expo-video player ───────────────────────────────────────────────────
 function ExpoVideoPlayer({
-  uri, initialPosition, onComplete, onPlayingChange, onPositionUpdate,
+  uri, embedUrl, initialPosition, onComplete, onPlayingChange, onPositionUpdate,
 }: {
   uri: string
+  embedUrl?: string | null
   initialPosition?: number
   onComplete?: () => void
   onPlayingChange?: (playing: boolean) => void
   onPositionUpdate?: (seconds: number) => void
 }) {
-  const [isPlaying,   setIsPlaying]   = useState(true)
-  const [isBuffering, setIsBuffering] = useState(true)
-  const [hasError,    setHasError]    = useState(false)
+  const [isPlaying,       setIsPlaying]       = useState(true)
+  const [isBuffering,     setIsBuffering]      = useState(true)
+  const [hasError,        setHasError]         = useState(false)
+  const [fallbackToEmbed, setFallbackToEmbed] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration,    setDuration]    = useState(0)
   const [speed,       setSpeed]       = useState<Speed>(1)
@@ -67,7 +69,10 @@ function ExpoVideoPlayer({
       }),
       player.addListener('statusChange', ({ status }: any) => {
         setIsBuffering(status === 'loading')
-        if (status === 'error') setHasError(true)
+        if (status === 'error') {
+          if (embedUrl && WebView) setFallbackToEmbed(true)
+          else setHasError(true)
+        }
         if (status === 'readyToPlay') {
           setIsBuffering(false)
           if (!seekedRef.current && initialPosition && initialPosition > 5) {
@@ -114,6 +119,17 @@ function ExpoVideoPlayer({
     const s = Math.floor(sec), m = Math.floor(s / 60), h = Math.floor(m / 60)
     if (h > 0) return `${h}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
     return `${m}:${String(s % 60).padStart(2, '0')}`
+  }
+
+  if (fallbackToEmbed && embedUrl) {
+    return (
+      <EmbedWebPlayer
+        embedUrl={embedUrl}
+        initialPosition={initialPosition}
+        onComplete={onComplete}
+        onPositionUpdate={onPositionUpdate}
+      />
+    )
   }
 
   if (hasError) {
@@ -178,6 +194,27 @@ function ExpoVideoPlayer({
   )
 }
 
+// ── Detect YouTube ────────────────────────────────────────────────────────────
+
+function isYouTubeUrl(url: string) {
+  return /youtube\.com|youtu\.be/i.test(url)
+}
+
+function toYouTubeEmbedUrl(url: string): string {
+  // Already an embed URL
+  if (url.includes('youtube.com/embed/')) return url
+  // youtu.be/ID
+  const shortMatch = url.match(/youtu\.be\/([^?&\s]+)/)
+  if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`
+  // youtube.com/watch?v=ID
+  const watchMatch = url.match(/[?&]v=([^&\s]+)/)
+  if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`
+  return url
+}
+
+const BROWSER_UA =
+  'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+
 // ── Bunny / embed WebView player ───────────────────────────────────────────────
 function EmbedWebPlayer({
   embedUrl, initialPosition, onComplete, onPositionUpdate,
@@ -188,11 +225,18 @@ function EmbedWebPlayer({
   onPositionUpdate?: (seconds: number) => void
 }) {
   const lastReportedRef = useRef(0)
-  const separator = embedUrl.includes('?') ? '&' : '?'
-  const src = `${embedUrl}${separator}autoplay=true&responsive=true&preload=true`
+  const isYT = isYouTubeUrl(embedUrl)
 
-  // Injected JS: waits for <video>, seeks to saved position, reports timeupdate every 10s
-  const injectedJS = `
+  // Build final src
+  const baseUrl  = isYT ? toYouTubeEmbedUrl(embedUrl) : embedUrl
+  const sep      = baseUrl.includes('?') ? '&' : '?'
+  const src = isYT
+    ? `${baseUrl}${sep}autoplay=1&playsinline=1&rel=0&modestbranding=1`
+    : `${baseUrl}${sep}autoplay=true&responsive=true&preload=true`
+
+  // JS injection: Bunny has a direct <video> we can access; YouTube's <video> is
+  // cross-origin inside a nested iframe — skip injection to avoid CSP errors.
+  const injectedJS = isYT ? 'true;' : `
     (function() {
       var _lastReported = 0;
       var _seekPos = ${Math.floor(initialPosition ?? 0)};
@@ -252,11 +296,16 @@ function EmbedWebPlayer({
       <WebView
         source={{ uri: src }}
         style={styles.webview}
+        // YouTube requires a real browser UA — without it the player shows
+        // "Watch on YouTube" instead of playing inline.
+        userAgent={isYT ? BROWSER_UA : undefined}
         allowsFullscreenVideo
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback
         javaScriptEnabled
         domStorageEnabled
+        originWhitelist={['*']}
+        mixedContentMode="always"
         scrollEnabled={false}
         injectedJavaScript={injectedJS}
         onMessage={handleMessage}
@@ -298,6 +347,7 @@ export function VideoPlayer({
     return (
       <ExpoVideoPlayer
         uri={uri}
+        embedUrl={embedUrl}
         initialPosition={initialPosition}
         onComplete={onComplete}
         onPlayingChange={onPlayingChange}

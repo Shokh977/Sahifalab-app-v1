@@ -8,8 +8,8 @@
 let FileSystem: any = null
 try { FileSystem = require('expo-file-system') } catch {}
 
-let AVModule: any = null
-try { AVModule = require('expo-av') } catch {}
+let AudioModule: any = null
+try { AudioModule = require('expo-audio') } catch {}
 
 // Standard base64 encoder — btoa not reliably available in all Hermes builds
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
@@ -122,15 +122,13 @@ async function ensureWavUri(key: string, bytes: Uint8Array): Promise<string | nu
 }
 
 async function playUri(uri: string): Promise<void> {
-  if (!AVModule?.Audio) return
+  if (!AudioModule?.createAudioPlayer) return
   try {
-    await AVModule.Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
-    const { sound } = await AVModule.Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: true, volume: 1.0 },
-    )
-    sound.setOnPlaybackStatusUpdate((s: any) => {
-      if (s.didJustFinish) sound.unloadAsync().catch(() => {})
+    await AudioModule.setAudioModeAsync({ playsInSilentModeIOS: true })
+    const player = AudioModule.createAudioPlayer({ uri })
+    player.play()
+    player.addListener('playbackStatusUpdate', (s: any) => {
+      if (s.didJustFinish) player.remove()
     })
   } catch {}
 }
