@@ -1,7 +1,3 @@
-/**
- * Onboarding Step 1: Pick Interests
- * Uses course categories as interest options. Min 3 required.
- */
 import React, { useEffect, useState } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, BackHandler,
@@ -9,13 +5,25 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring,
-} from 'react-native-reanimated'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated'
 
 import { courses as coursesApi, onboarding, type Category } from '../../lib/api'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing } from '../../lib/constants'
+
+export const INTERESTS_STORAGE_KEY = 'sahifalab_user_interests'
+
+function OnboardingProgress({ step, total }: { step: number; total: number }) {
+  const { c } = useTheme()
+  return (
+    <View style={{ flexDirection: 'row', gap: 6, marginBottom: spacing.lg }}>
+      {Array.from({ length: total }).map((_, i) => (
+        <View key={i} style={{ width: 28, height: 4, borderRadius: 2, backgroundColor: i < step ? c.accentPrimary : c.bgTertiary }} />
+      ))}
+    </View>
+  )
+}
 
 const MIN_SELECTED = 3
 
@@ -111,9 +119,13 @@ export default function InterestsScreen() {
   const handleContinue = async () => {
     if (!canContinue || saving) return
     setSaving(true)
-    await onboarding.saveInterests([...selected])
+    const ids = [...selected]
+    await Promise.all([
+      onboarding.saveInterests(ids),
+      AsyncStorage.setItem(INTERESTS_STORAGE_KEY, JSON.stringify(ids)),
+    ])
     setSaving(false)
-    router.push('/(onboarding)/daily-goal' as any)
+    router.push('/(onboarding)/experience' as any)
   }
 
   const counterText = `${selected.size} ta tanlandi`
@@ -122,6 +134,7 @@ export default function InterestsScreen() {
     <View style={[styles.container, { backgroundColor: c.bgPrimary }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.xl }]}>
+        <OnboardingProgress step={1} total={5} />
         <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
           Nimalarni o'rganmoqchisiz?
         </Text>

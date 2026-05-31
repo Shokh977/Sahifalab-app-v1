@@ -82,11 +82,22 @@ async function saveCache(data: DashboardData) {
   try { await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
 }
 
+const INTERESTS_KEY = 'sahifalab_user_interests'
+const EXPERIENCE_KEY = 'sahifalab_user_experience'
+
 async function fetchAll(): Promise<DashboardData> {
+  // Load personalization data in parallel with API calls
+  const [savedInterestsRaw, savedLevel] = await Promise.all([
+    AsyncStorage.getItem(INTERESTS_KEY).catch(() => null),
+    AsyncStorage.getItem(EXPERIENCE_KEY).catch(() => null),
+  ])
+  const savedInterests: number[] = savedInterestsRaw ? JSON.parse(savedInterestsRaw) : []
+
   const [meRes, enrollRes, coursesRes, leaderRes, statsRes, flashRes, streakRes] = await Promise.allSettled([
     auth.me(),
     enrollments.mine(),
-    courses.list({ limit: 6, ordering: '-created_at' }),
+    // Fetch more courses so we have a real pool to personalize from
+    courses.list({ limit: 20, ordering: '-created_at', ...(savedLevel ? { level: savedLevel } : {}) }),
     leaderboard.weekly(),
     focusStats.get(),
     flashcardsApi.getStats(),
@@ -141,11 +152,18 @@ async function fetchAll(): Promise<DashboardData> {
     return { ...e, progress }
   })
 
-  // Recommended = published courses not already enrolled
+  // Recommended = courses not already enrolled, sorted by interest match then recency
   const enrolledIds = new Set(validEnrolled.map(e => e.course_id))
-  const recommended = recCourses
-    .filter(c => !enrolledIds.has(c.id))
-    .slice(0, 3)
+  const available   = recCourses.filter(c => !enrolledIds.has(c.id))
+
+  let recommended: Course[]
+  if (savedInterests.length > 0) {
+    const matching = available.filter(c => c.category_id !== null && savedInterests.includes(c.category_id))
+    const rest     = available.filter(c => c.category_id === null || !savedInterests.includes(c.category_id))
+    recommended    = [...matching, ...rest].slice(0, 4)
+  } else {
+    recommended = available.slice(0, 4)
+  }
 
   return {
     user,

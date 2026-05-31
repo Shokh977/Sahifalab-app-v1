@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router'
 import { Menu, Search, Bell } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useAuthStore } from '../../stores/authStore'
+import { useProfileStore } from '../../stores/profileStore'
 import { useMessagingStore } from '../../stores/messagingStore'
 import { useUIStore } from '../../stores/uiStore'
 import { DrawerMenu } from './DrawerMenu'
@@ -21,9 +22,13 @@ export function NavHeader({ translateY, onHeightMeasured }: NavHeaderProps = {})
   const { c }    = useTheme()
   const router   = useRouter()
   const insets   = useSafeAreaInsets()
-  const { user } = useAuthStore()
-  const unread   = useMessagingStore(s => s.unreadTotal)
-  const setNavBarH = useUIStore(s => s.setNavBarH)
+  const { user }      = useAuthStore()
+  const ownProfile    = useProfileStore(s => s.ownProfile)
+  const unread        = useMessagingStore(s => s.unreadTotal)
+  const setNavBarH    = useUIStore(s => s.setNavBarH)
+
+  // Profile store has the freshest photo (from /api/profile/me); auth store is the fallback
+  const photoUrl = ownProfile?.photo_url ?? user?.photo_url ?? null
 
   const [drawerOpen,  setDrawerOpen]  = useState(false)
   const [avatarOpen,  setAvatarOpen]  = useState(false)
@@ -93,8 +98,8 @@ export function NavHeader({ translateY, onHeightMeasured }: NavHeaderProps = {})
       </Pressable>
 
       <Pressable onPress={openAvatarMenu} hitSlop={8}>
-        {user?.photo_url ? (
-          <Image source={{ uri: user.photo_url }} style={styles.avatar} />
+        {photoUrl ? (
+          <Image source={{ uri: photoUrl }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, { backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }]}>
             <Text style={{ color: c.brand, fontSize: 13, fontFamily: typography.fontFamily.bold }}>

@@ -963,6 +963,22 @@ export const onboarding = {
       auth:   true,
     }).catch(() => ({ ok: true })),
 
+  /** Save user's self-reported experience level (beginner / intermediate / advanced). */
+  saveExperience: (level: 'beginner' | 'intermediate' | 'advanced') =>
+    request<{ ok: boolean }>('/api/auth/me', {
+      method: 'PATCH',
+      body:   JSON.stringify({ experience_level: level }),
+      auth:   true,
+    }).catch(() => ({ ok: true })),
+
+  /** Save user's primary learning motivation for segmentation. */
+  saveMotivation: (motivation: 'career' | 'skill' | 'self' | 'exam') =>
+    request<{ ok: boolean }>('/api/auth/me', {
+      method: 'PATCH',
+      body:   JSON.stringify({ learning_motivation: motivation }),
+      auth:   true,
+    }).catch(() => ({ ok: true })),
+
   /** Register FCM / APNs device token for push notifications. */
   savePushToken: (token: string) =>
     request<{ ok: boolean }>('/api/auth/push-token', {

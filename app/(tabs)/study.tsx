@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   View, Text, StyleSheet, Pressable, ScrollView,
   AppState, Modal, TextInput, ActivityIndicator,
+  Animated as RNAnimated, Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -36,24 +37,45 @@ import type { WeeklyStudyDay, HeatmapDay } from '../../lib/api'
 import { GoalCompleteModal } from '../../components/streak/GoalCompleteModal'
 import { MilestoneModal } from '../../components/streak/MilestoneModal'
 import { FileBarChart2, ChevronRight } from 'lucide-react-native'
+import {
+  setupTimerNotifications, saveTimerState, clearTimerState, loadTimerState,
+  scheduleTimerEndNotification, cancelTimerEndNotification,
+} from '../../lib/timerBackground'
 
 // ── Sub-tab bar ───────────────────────────────────────────────────────────────
 
 type SubTab = 'timer' | 'stats' | 'flashcards'
 
-function SubTabBar({ active, onChange }: { active: SubTab; onChange: (t: SubTab) => void }) {
-  const { c } = useTheme()
-  const tabs: { id: SubTab; label: string }[] = [
-    { id: 'timer',      label: '⏱ Taymer' },
-    { id: 'flashcards', label: 'Kartalar' },
-    { id: 'stats',      label: 'Statistika' },
-  ]
+const SCREEN_W = Dimensions.get('window').width
+const SUBTABS: { id: SubTab; label: string }[] = [
+  { id: 'timer',      label: '⏱ Taymer' },
+  { id: 'flashcards', label: 'Kartalar' },
+  { id: 'stats',      label: 'Statistika' },
+]
+
+function SubTabBar({
+  scrollX, activeIndex, onTabPress,
+}: {
+  scrollX:     RNAnimated.Value
+  activeIndex: number
+  onTabPress:  (i: number) => void
+}) {
+  const { c }  = useTheme()
+  const tabW   = SCREEN_W / SUBTABS.length
+  const indW   = tabW * 0.55
+
+  const indicatorX = scrollX.interpolate({
+    inputRange:  SUBTABS.map((_, i) => i * SCREEN_W),
+    outputRange: SUBTABS.map((_, i) => i * tabW + (tabW - indW) / 2),
+    extrapolate: 'clamp',
+  })
+
   return (
     <View style={[styles.subTabBar, { borderBottomColor: c.borderSubtle }]}>
-      {tabs.map(tab => {
-        const on = active === tab.id
+      {SUBTABS.map((tab, i) => {
+        const on = activeIndex === i
         return (
-          <Pressable key={tab.id} onPress={() => onChange(tab.id)} style={styles.subTab}>
+          <Pressable key={tab.id} onPress={() => onTabPress(i)} style={styles.subTab}>
             <Text style={[
               styles.subTabText,
               {
@@ -63,10 +85,16 @@ function SubTabBar({ active, onChange }: { active: SubTab; onChange: (t: SubTab)
             ]}>
               {tab.label}
             </Text>
-            {on && <View style={[styles.subTabLine, { backgroundColor: c.accentPrimary }]} />}
           </Pressable>
         )
       })}
+      {/* Sliding indicator — moves in real time with the finger */}
+      <RNAnimated.View
+        style={[
+          styles.subTabIndicator,
+          { backgroundColor: c.accentPrimary, width: indW, transform: [{ translateX: indicatorX }] },
+        ]}
+      />
     </View>
   )
 }
@@ -231,6 +259,50 @@ function TimerScreen() {
   // Keep a ref to the current phase so tick-loop closures always see the latest value
   const phaseRef = useRef(phase)
   useEffect(() => { phaseRef.current = phase }, [phase])
+
+  // ── Background timer: permissions + restore on mount ─────────────────────
+  useEffect(() => {
+    setupTimerNotifications()
+
+    // If the app was restarted while a timer was running, restore it
+    loadTimerState().then(saved => {
+      if (!saved) return
+      if (saved.targetEnd > Date.now()) {
+        // Timer still has time left — restore live state
+        useTimerStore.setState({
+          status:         'active',
+          phase:          saved.phase,
+          plannedMinutes: saved.plannedMinutes,
+          secondsLeft:    Math.ceil((saved.targetEnd - Date.now()) / 1000),
+          _targetEnd:     saved.targetEnd,
+          _pauseLeft:     0,
+        })
+        setRemainingMs(saved.targetEnd - Date.now())
+      } else {
+        // Timer ended while app was closed — clear stale state
+        clearTimerState()
+      }
+    })
+  }, [])
+
+  // ── Persist & notify whenever the running timer changes ───────────────────
+  useEffect(() => {
+    const store = useTimerStore.getState()
+    if (status === 'active' && store._targetEnd) {
+      saveTimerState({
+        targetEnd:      store._targetEnd,
+        plannedMinutes: store.plannedMinutes,
+        phase:          store.phase,
+      })
+      scheduleTimerEndNotification(store._targetEnd, store.phase)
+    } else if (status === 'paused') {
+      // Cancel the scheduled notification (timer paused, won't end at targetEnd)
+      cancelTimerEndNotification()
+    } else if (status === 'idle') {
+      clearTimerState()
+      cancelTimerEndNotification()
+    }
+  }, [status, phase])
 
   // Today's cumulative stats
   const [todayMinutes,  setTodayMinutes]  = useState(0)
@@ -1145,8 +1217,17 @@ function StatsScreen() {
 export default function StudyTab() {
   const { c }    = useTheme()
   const insets   = useSafeAreaInsets()
-  const [sub, setSub]           = useState<SubTab>('timer')
+
+  const scrollRef   = useRef<any>(null)
+  const scrollX     = useRef(new RNAnimated.Value(0)).current
+  const [activeIndex,   setActiveIndex]   = useState(0)
+  const [pagerH,        setPagerH]        = useState(0)
   const [showTimerInfo, setShowTimerInfo] = useState(false)
+
+  function goToTab(i: number) {
+    scrollRef.current?.scrollTo({ x: i * SCREEN_W, animated: true })
+    setActiveIndex(i)
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
@@ -1154,7 +1235,7 @@ export default function StudyTab() {
         <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
           O'qish vaqti
         </Text>
-        {sub === 'timer' && (
+        {activeIndex === 0 && (
           <Pressable
             onPress={() => setShowTimerInfo(true)}
             hitSlop={10}
@@ -1171,9 +1252,37 @@ export default function StudyTab() {
         )}
       </View>
 
-      <SubTabBar active={sub} onChange={setSub} />
+      <SubTabBar scrollX={scrollX} activeIndex={activeIndex} onTabPress={goToTab} />
 
-      {sub === 'timer' ? <TimerScreen /> : sub === 'flashcards' ? <FlashcardsView /> : <StatsScreen />}
+      {/* ── Pager: all 3 pages live side-by-side ─────────────────────────── */}
+      <View style={{ flex: 1 }} onLayout={e => setPagerH(e.nativeEvent.layout.height)}>
+        {pagerH > 0 && (
+          <RNAnimated.ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            decelerationRate="fast"
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            style={{ width: SCREEN_W, height: pagerH }}
+            contentContainerStyle={{ height: pagerH }}
+            onScroll={RNAnimated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: true }
+            )}
+            onMomentumScrollEnd={e => {
+              const i = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W)
+              setActiveIndex(i)
+            }}
+          >
+            <View style={{ width: SCREEN_W, height: pagerH }}><TimerScreen /></View>
+            <View style={{ width: SCREEN_W, height: pagerH }}><FlashcardsView /></View>
+            <View style={{ width: SCREEN_W, height: pagerH }}><StatsScreen /></View>
+          </RNAnimated.ScrollView>
+        )}
+      </View>
 
       {/* ── Timer info modal ───────────────────────────────────────────────── */}
       <Modal transparent animationType="slide" visible={showTimerInfo} statusBarTranslucent onRequestClose={() => setShowTimerInfo(false)}>
@@ -1290,12 +1399,10 @@ const styles = StyleSheet.create({
     right:    spacing.screenMargin,
   },
 
-  subTabBar: { flexDirection: 'row', borderBottomWidth: 1 },
-  subTab: {
-    flex: 1, alignItems: 'center', paddingVertical: spacing.sm + 4, position: 'relative',
-  },
-  subTabText: { fontSize: typography.size.base },
-  subTabLine: { position: 'absolute', bottom: 0, left: '20%', right: '20%', height: 2, borderRadius: 1 },
+  subTabBar:       { flexDirection: 'row', borderBottomWidth: 1, position: 'relative' },
+  subTab:          { flex: 1, alignItems: 'center', paddingVertical: spacing.sm + 4 },
+  subTabText:      { fontSize: typography.size.base },
+  subTabIndicator: { position: 'absolute', bottom: 0, left: 0, height: 2, borderRadius: 1 },
 
   // Active badge
   activeBadge: {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  View, Text, Pressable, StyleSheet, ScrollView, Animated, Easing,
+  View, Text, Pressable, StyleSheet, ScrollView, Animated, Easing, Modal,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useShallow } from 'zustand/shallow'
@@ -50,6 +50,7 @@ function fmtTime(seconds: number) {
 
 // ── Focus durations (minutes) ─────────────────────────────────────────────────
 const DURATIONS = [15, 25, 45, 60]
+const SESSION_OPTIONS = [1, 2, 3, 4]
 
 // ── Colors ────────────────────────────────────────────────────────────────────
 const FOCUS_COLOR = '#f97316'  // orange
@@ -72,6 +73,28 @@ function DurationChip({
         { color: selected ? '#fff' : c.textMuted, fontFamily: typography.fontFamily.medium },
       ]}>
         {minutes} daq
+      </Text>
+    </Pressable>
+  )
+}
+
+function SessionChip({
+  count, selected, onPress,
+}: { count: number; selected: boolean; onPress: () => void }) {
+  const { c } = useTheme()
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.durationChip,
+        { backgroundColor: selected ? FOCUS_COLOR : c.bgTertiary },
+      ]}
+    >
+      <Text style={[
+        styles.durationChipText,
+        { color: selected ? '#fff' : c.textMuted, fontFamily: typography.fontFamily.medium },
+      ]}>
+        {count}x
       </Text>
     </Pressable>
   )
@@ -122,13 +145,14 @@ export default function FocusTimerScreen() {
   const { c } = useTheme()
 
   const {
-    plannedMinutes, phase, status, secondsLeft,
+    plannedMinutes, totalSessions, phase, status, secondsLeft,
     sessionCount, sounds, lastXP,
     start, pause, resume, reset, tick,
     startBreak, completeBreak, onSessionComplete,
-    selectMinutes,
+    selectMinutes, selectSessions,
   } = useTimerStore(useShallow(s => ({
     plannedMinutes:    s.plannedMinutes,
+    totalSessions:     s.totalSessions,
     phase:             s.phase,
     status:            s.status,
     secondsLeft:       s.secondsLeft,
@@ -144,27 +168,35 @@ export default function FocusTimerScreen() {
     completeBreak:     s.completeBreak,
     onSessionComplete: s.onSessionComplete,
     selectMinutes:     s.selectMinutes,
+    selectSessions:    s.selectSessions,
   })))
 
   const { soundEnabled, vibrateEnabled } = useSettingsStore()
 
   const isRunning = status === 'active'
 
-  const [showXP, setShowXP]         = useState(false)
-  const [levelUp, setLevelUp]       = useState(false)
-  const [soundsOpen, setSoundsOpen] = useState(false)
+  const [showXP, setShowXP]                   = useState(false)
+  const [levelUp, setLevelUp]                 = useState(false)
+  const [soundsOpen, setSoundsOpen]           = useState(false)
+  const [showCompletion, setShowCompletion]   = useState(false)
+  const [completedSessions, setCompletedSessions] = useState(0)
+  const [totalXpEarned, setTotalXpEarned]     = useState(0)
 
-  const xpAnim      = useRef(new Animated.Value(0)).current
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const xpAnim              = useRef(new Animated.Value(0)).current
+  const completionAnim      = useRef(new Animated.Value(0)).current
+  const intervalRef         = useRef<ReturnType<typeof setInterval> | null>(null)
+  const completedSessionsRef = useRef(0)
+  const totalSessionsRef     = useRef(totalSessions)
 
-  // Keep a stable ref to the latest handleSessionDone so the interval always
-  // calls the current version regardless of stale closures.
+  // Keep refs in sync so callbacks always see latest values
+  useEffect(() => { totalSessionsRef.current = totalSessions }, [totalSessions])
+
   const sessionDoneRef = useRef<() => Promise<void>>(async () => {})
 
   // ── Phase-transition handler ────────────────────────────────────────────────
   const handleSessionDone = useCallback(async () => {
     if (phase === 'focus') {
-      // Focus finished → play break-start sound, award XP, then auto-start break
+      // Focus finished → award XP, notify, then auto-start break
       if (soundEnabled) playBreakSound().catch(() => {})
       if (vibrateEnabled) Haptics?.notificationAsync(Haptics?.NotificationFeedbackType?.Success)
 
@@ -176,34 +208,60 @@ export default function FocusTimerScreen() {
       }
 
       const result = await onSessionComplete()
+      const newCompleted = completedSessionsRef.current + 1
+      completedSessionsRef.current = newCompleted
+      setCompletedSessions(newCompleted)
+      setTotalXpEarned(prev => prev + result.xpAwarded)
       setLevelUp(result.levelUp)
       setShowXP(true)
+
       Animated.sequence([
         Animated.timing(xpAnim, { toValue: 1, duration: 400, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }),
         Animated.delay(2000),
         Animated.timing(xpAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
       ]).start(() => {
         setShowXP(false)
-        startBreak()  // auto-start break after XP popup fades
+        startBreak()
       })
 
     } else {
-      // Break finished → play focus-start sound, auto-start next focus session
-      if (soundEnabled) playFocusSound().catch(() => {})
-      if (vibrateEnabled) Haptics?.impactAsync(Haptics?.ImpactFeedbackStyle?.Medium)
+      // Break finished → check if all sessions done
+      if (completedSessionsRef.current >= totalSessionsRef.current) {
+        // All sessions complete → show completion modal
+        if (soundEnabled) playFocusSound().catch(() => {})
+        if (vibrateEnabled) Haptics?.notificationAsync(Haptics?.NotificationFeedbackType?.Success)
 
-      if (Notifications) {
-        Notifications.scheduleNotificationAsync({
-          content: { title: "Tanaffus tugadi! 💪", body: 'Yana diqqat seansi boshlaylik!', sound: true },
-          trigger: null,
-        }).catch(() => {})
+        if (Notifications) {
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'Barcha seanslar tugadi! 🏆',
+              body: `${completedSessionsRef.current} seans muvaffaqiyatli bajarildi!`,
+              sound: true,
+            },
+            trigger: null,
+          }).catch(() => {})
+        }
+
+        setShowCompletion(true)
+        Animated.spring(completionAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }).start()
+
+      } else {
+        // More sessions remaining → start next focus session
+        if (soundEnabled) playFocusSound().catch(() => {})
+        if (vibrateEnabled) Haptics?.impactAsync(Haptics?.ImpactFeedbackStyle?.Medium)
+
+        if (Notifications) {
+          Notifications.scheduleNotificationAsync({
+            content: { title: "Tanaffus tugadi! 💪", body: 'Yana diqqat seansi boshlaylik!', sound: true },
+            trigger: null,
+          }).catch(() => {})
+        }
+
+        completeBreak()
       }
-
-      completeBreak()  // auto-start next focus session
     }
-  }, [phase, onSessionComplete, xpAnim, startBreak, completeBreak])
+  }, [phase, onSessionComplete, xpAnim, completionAnim, startBreak, completeBreak, soundEnabled, vibrateEnabled])
 
-  // Keep ref in sync so the interval captures the latest version
   useEffect(() => { sessionDoneRef.current = handleSessionDone }, [handleSessionDone])
 
   // ── Ticker ──────────────────────────────────────────────────────────────────
@@ -248,13 +306,37 @@ export default function FocusTimerScreen() {
   const totalSeconds = phase === 'focus' ? plannedMinutes * 60 : breakSecs
   const progress     = totalSeconds > 0 ? (totalSeconds - secondsLeft) / totalSeconds : 0
 
-  const xpTranslateY = xpAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] })
+  const xpTranslateY         = xpAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] })
+  const completionScale      = completionAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] })
+  const completionOpacity    = completionAnim
 
   function handlePlayPause() {
-    if (status === 'active') pause()
-    else if (status === 'paused') resume()
-    else start()
+    if (status === 'active') {
+      pause()
+    } else if (status === 'paused') {
+      resume()
+    } else {
+      // Fresh start — reset session tracking
+      completedSessionsRef.current = 0
+      setCompletedSessions(0)
+      setTotalXpEarned(0)
+      setShowCompletion(false)
+      completionAnim.setValue(0)
+      start()
+    }
   }
+
+  function handleReset() {
+    completedSessionsRef.current = 0
+    setCompletedSessions(0)
+    setTotalXpEarned(0)
+    setShowCompletion(false)
+    completionAnim.setValue(0)
+    reset()
+  }
+
+  // Session progress dots for the current run
+  const runDots = Array.from({ length: totalSessions })
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgPrimary }]} edges={['bottom']}>
@@ -272,12 +354,51 @@ export default function FocusTimerScreen() {
           ))}
         </View>
 
+        {/* Session count selector */}
+        <View style={styles.sessionSelectorRow}>
+          <Text style={[styles.selectorLabel, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+            Seanslar:
+          </Text>
+          {SESSION_OPTIONS.map(n => (
+            <SessionChip
+              key={n}
+              count={n}
+              selected={totalSessions === n}
+              onPress={() => selectSessions(n)}
+            />
+          ))}
+        </View>
+
         {/* Break info label */}
         <Text style={[styles.breakHint, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
           {plannedMinutes <= 25 ? '5 daqiqa tanaffus' : '10 daqiqa tanaffus'} · avtomatik
         </Text>
 
-        {/* Session counter */}
+        {/* Run progress dots — shows current session within the set */}
+        {(status !== 'idle' || completedSessions > 0) && totalSessions > 1 && (
+          <View style={styles.runProgressRow}>
+            {runDots.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.runDot,
+                  {
+                    backgroundColor: i < completedSessions
+                      ? FOCUS_COLOR
+                      : (i === completedSessions && phase === 'focus' && status === 'active')
+                        ? FOCUS_COLOR + '66'
+                        : c.bgTertiary,
+                  },
+                ]}
+              />
+            ))}
+            <Text style={[styles.sessionLabel, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+              {completedSessions}/{totalSessions}
+            </Text>
+          </View>
+        )}
+
+        {/* Lifetime session counter */}
         <View style={styles.sessionRow}>
           {Array.from({ length: Math.min(sessionCount, 8) }).map((_, i) => (
             <View key={i} style={[styles.sessionDot, { backgroundColor: FOCUS_COLOR }]} />
@@ -319,7 +440,7 @@ export default function FocusTimerScreen() {
         {/* Controls */}
         <View style={styles.controls}>
           <Pressable
-            onPress={reset}
+            onPress={handleReset}
             hitSlop={10}
             style={[styles.controlBtn, { backgroundColor: c.bgTertiary }]}
           >
@@ -388,6 +509,53 @@ export default function FocusTimerScreen() {
         </View>
 
       </ScrollView>
+
+      {/* ── Completion Modal ──────────────────────────────────────────────────── */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showCompletion}
+        statusBarTranslucent
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View style={[
+            styles.modalCard,
+            { backgroundColor: c.bgSecondary },
+            { opacity: completionOpacity, transform: [{ scale: completionScale }] },
+          ]}>
+            <Text style={styles.modalEmoji}>🏆</Text>
+            <Text style={[styles.modalTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+              Siz buni bajardingiz!
+            </Text>
+            <Text style={[styles.modalSub, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+              {completedSessions} seans · {plannedMinutes * completedSessions} daqiqa
+            </Text>
+
+            {/* Session dots */}
+            <View style={styles.modalDots}>
+              {Array.from({ length: completedSessions }).map((_, i) => (
+                <View key={i} style={[styles.modalDot, { backgroundColor: FOCUS_COLOR }]} />
+              ))}
+            </View>
+
+            {/* XP badge */}
+            <View style={[styles.modalXpBadge, { backgroundColor: FOCUS_COLOR }]}>
+              <Text style={[styles.modalXpText, { fontFamily: typography.fontFamily.bold }]}>
+                +{totalXpEarned} XP
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={handleReset}
+              style={[styles.modalBtn, { backgroundColor: FOCUS_COLOR }]}
+            >
+              <Text style={[styles.modalBtnText, { fontFamily: typography.fontFamily.semibold }]}>
+                Yangidan boshlash
+              </Text>
+            </Pressable>
+          </Animated.View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -406,11 +574,17 @@ const styles = StyleSheet.create({
   },
   durationChipText: { fontSize: typography.size.sm },
 
+  sessionSelectorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  selectorLabel:      { fontSize: typography.size.xs },
+
   breakHint: { fontSize: typography.size.xs, marginTop: -spacing.sm },
 
-  sessionRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 16 },
-  sessionDot:  { width: 8, height: 8, borderRadius: 4 },
-  sessionLabel:{ fontSize: typography.size.xs, marginLeft: spacing.xs },
+  runProgressRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  runDot:         { width: 10, height: 10, borderRadius: 5 },
+
+  sessionRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 16 },
+  sessionDot:   { width: 8, height: 8, borderRadius: 4 },
+  sessionLabel: { fontSize: typography.size.xs, marginLeft: spacing.xs },
 
   clockWrap: {
     alignSelf:      'center',
@@ -448,15 +622,15 @@ const styles = StyleSheet.create({
   controlBtn:  { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   controlIcon: { fontSize: 22 },
   playBtn: {
-    width:         70,
-    height:        70,
-    borderRadius:  35,
-    alignItems:    'center',
+    width:          70,
+    height:         70,
+    borderRadius:   35,
+    alignItems:     'center',
     justifyContent: 'center',
-    shadowOffset:  { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius:  10,
-    elevation:     8,
+    shadowOffset:   { width: 0, height: 4 },
+    shadowOpacity:  0.4,
+    shadowRadius:   10,
+    elevation:      8,
   },
   playIcon: { color: '#fff', fontSize: 28, lineHeight: 32 },
 
@@ -496,4 +670,44 @@ const styles = StyleSheet.create({
   statVal:    { fontSize: typography.size.md },
   statLabel:  { fontSize: typography.size.xs, textAlign: 'center' },
   statDivider:{ width: 1 },
+
+  // Completion modal
+  modalOverlay: {
+    flex:            1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems:      'center',
+    justifyContent:  'center',
+    padding:         spacing.xl,
+  },
+  modalCard: {
+    width:        '100%',
+    borderRadius: radius.xl,
+    padding:      spacing['2xl'],
+    alignItems:   'center',
+    gap:          spacing.md,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius:  20,
+    elevation:     12,
+  },
+  modalEmoji: { fontSize: 56 },
+  modalTitle: { fontSize: typography.size['2xl'], textAlign: 'center' },
+  modalSub:   { fontSize: typography.size.sm, textAlign: 'center' },
+  modalDots:  { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap', justifyContent: 'center' },
+  modalDot:   { width: 12, height: 12, borderRadius: 6 },
+  modalXpBadge: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical:   spacing.sm,
+    borderRadius:      radius.full,
+    marginVertical:    spacing.xs,
+  },
+  modalXpText: { color: '#fff', fontSize: typography.size.xl },
+  modalBtn: {
+    width:          '100%',
+    paddingVertical: spacing.md,
+    borderRadius:   radius.lg,
+    alignItems:     'center',
+    marginTop:      spacing.xs,
+  },
+  modalBtnText: { color: '#fff', fontSize: typography.size.base },
 })

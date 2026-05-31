@@ -1,14 +1,10 @@
-/**
- * Onboarding Step 2: Set Daily Study Goal
- * Three preset cards (10 / 20 / 40 minutes). "Oddiy" pre-selected.
- */
 import React, { useEffect, useState } from 'react'
 import {
   View, Text, StyleSheet, Pressable, BackHandler, ActivityIndicator,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { Leaf, Flame, Lightning } from 'phosphor-react-native'
+import { Briefcase, Wrench, Star, ClipboardText } from 'phosphor-react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring,
 } from 'react-native-reanimated'
@@ -17,56 +13,48 @@ import { onboarding } from '../../lib/api'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 
-function OnboardingProgress({ step, total }: { step: number; total: number }) {
-  const { c } = useTheme()
-  return (
-    <View style={{ flexDirection: 'row', gap: 6, marginBottom: spacing.lg }}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View key={i} style={{ width: 28, height: 4, borderRadius: 2, backgroundColor: i < step ? c.accentPrimary : c.bgTertiary }} />
-      ))}
-    </View>
-  )
+type Motivation = 'career' | 'skill' | 'self' | 'exam'
+
+interface MotivationOption {
+  key:   Motivation
+  label: string
+  sub:   string
+  Icon:  React.ComponentType<{ size: number; color: string; weight: 'fill' }>
+  color: (c: ReturnType<typeof useTheme>['c']) => string
 }
 
-type GoalKey = 'easy' | 'normal' | 'hard'
-
-interface GoalOption {
-  key:     GoalKey
-  label:   string
-  sub:     string
-  minutes: number
-  Icon:    React.ComponentType<{ size: number; color: string; weight: 'fill' }>
-  color:   (c: ReturnType<typeof useTheme>['c']) => string
-}
-
-const GOALS: GoalOption[] = [
+const OPTIONS: MotivationOption[] = [
   {
-    key:     'easy',
-    label:   'Oson',
-    sub:     '10 daqiqa / kun',
-    minutes: 10,
-    Icon:    Leaf as any,
-    color:   c => c.success,
+    key:   'career',
+    label: 'Karyera uchun',
+    sub:   'Ish topish yoki lavozimni ko\'tarish',
+    Icon:  Briefcase as any,
+    color: c => c.accentPrimary,
   },
   {
-    key:     'normal',
-    label:   'Oddiy',
-    sub:     '20 daqiqa / kun',
-    minutes: 20,
-    Icon:    Flame as any,
-    color:   c => c.accentPrimary,
+    key:   'skill',
+    label: 'Yangi ko\'nikma',
+    sub:   'Amaliy ko\'nikmalarni o\'rganmoqchiman',
+    Icon:  Wrench as any,
+    color: c => c.warning,
   },
   {
-    key:     'hard',
-    label:   'Jiddiy',
-    sub:     '40 daqiqa / kun',
-    minutes: 40,
-    Icon:    Lightning as any,
-    color:   c => c.warning,
+    key:   'self',
+    label: 'O\'z-o\'zini rivojlantirish',
+    sub:   'Bilimlarni kengaytirish va o\'sish',
+    Icon:  Star as any,
+    color: c => '#a855f7',
+  },
+  {
+    key:   'exam',
+    label: 'Imtihonga tayyorlanish',
+    sub:   'Sertifikat yoki imtihon uchun',
+    Icon:  ClipboardText as any,
+    color: c => c.success,
   },
 ]
 
-function RadioIndicator({ selected }: { selected: boolean }) {
+function SelectIndicator({ selected }: { selected: boolean }) {
   const { c } = useTheme()
   const scale = useSharedValue(selected ? 1 : 0)
 
@@ -78,23 +66,17 @@ function RadioIndicator({ selected }: { selected: boolean }) {
 
   return (
     <View style={[styles.radio, { borderColor: selected ? c.accentPrimary : c.border }]}>
-      <Animated.View
-        style={[
-          styles.radioFill,
-          fillStyle,
-          { backgroundColor: c.accentPrimary },
-        ]}
-      />
+      <Animated.View style={[styles.radioFill, fillStyle, { backgroundColor: c.accentPrimary }]} />
     </View>
   )
 }
 
-export default function DailyGoalScreen() {
-  const { c }   = useTheme()
-  const insets  = useSafeAreaInsets()
-  const router  = useRouter()
+export default function MotivationScreen() {
+  const { c }  = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
 
-  const [selected, setSelected] = useState<GoalKey>('normal')
+  const [selected, setSelected] = useState<Motivation>('career')
   const [saving,   setSaving]   = useState(false)
 
   useEffect(() => {
@@ -105,35 +87,31 @@ export default function DailyGoalScreen() {
   const handleContinue = async () => {
     if (saving) return
     setSaving(true)
-    const goal = GOALS.find(g => g.key === selected)!
-    await onboarding.setDailyGoal(goal.minutes)
+    await onboarding.saveMotivation(selected)
     setSaving(false)
-    router.push('/(onboarding)/notifications' as any)
+    router.push('/(onboarding)/daily-goal' as any)
   }
 
   return (
     <View style={[styles.container, { backgroundColor: c.bgPrimary }]}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.xl }]}>
-        <OnboardingProgress step={4} total={5} />
+        <OnboardingProgress step={3} total={5} />
         <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-          Kunlik maqsad
+          Nima uchun o'qiyapsiz?
         </Text>
         <Text style={[styles.subtitle, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-          Har kuni qancha vaqt ajratasiz?
+          Siz uchun eng muhim narsaga e'tibor qaratamiz
         </Text>
       </View>
 
-      {/* Goal cards */}
       <View style={[styles.cards, { paddingHorizontal: spacing.lg }]}>
-        {GOALS.map(goal => {
-          const isSelected = selected === goal.key
-          const iconColor  = goal.color(c)
-
+        {OPTIONS.map(opt => {
+          const isSelected = selected === opt.key
+          const iconColor  = opt.color(c)
           return (
             <Pressable
-              key={goal.key}
-              onPress={() => setSelected(goal.key)}
+              key={opt.key}
+              onPress={() => setSelected(opt.key)}
               style={({ pressed }) => [
                 styles.card,
                 {
@@ -145,27 +123,22 @@ export default function DailyGoalScreen() {
               ]}
             >
               <View style={[styles.iconWrap, { backgroundColor: `${iconColor}18` }]}>
-                <goal.Icon size={24} color={iconColor} weight="fill" />
+                <opt.Icon size={22} color={iconColor} weight="fill" />
               </View>
               <View style={styles.cardText}>
                 <Text style={[styles.cardTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                  {goal.label}
+                  {opt.label}
                 </Text>
                 <Text style={[styles.cardSub, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                  {goal.sub}
+                  {opt.sub}
                 </Text>
               </View>
-              <RadioIndicator selected={isSelected} />
+              <SelectIndicator selected={isSelected} />
             </Pressable>
           )
         })}
-
-        <Text style={[styles.hint, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-          Keyinroq o'zgartirsa bo'ladi
-        </Text>
       </View>
 
-      {/* CTA */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg, paddingHorizontal: spacing.lg }]}>
         <Pressable
           onPress={handleContinue}
@@ -187,6 +160,28 @@ export default function DailyGoalScreen() {
   )
 }
 
+function OnboardingProgress({ step, total }: { step: number; total: number }) {
+  const { c } = useTheme()
+  return (
+    <View style={progress.row}>
+      {Array.from({ length: total }).map((_, i) => (
+        <View
+          key={i}
+          style={[
+            progress.dot,
+            { backgroundColor: i < step ? c.accentPrimary : c.bgTertiary },
+          ]}
+        />
+      ))}
+    </View>
+  )
+}
+
+const progress = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 6, marginBottom: spacing.lg },
+  dot: { width: 28, height: 4, borderRadius: 2 },
+})
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
@@ -198,14 +193,14 @@ const styles = StyleSheet.create({
   title:    { fontSize: 24, lineHeight: 30 },
   subtitle: { fontSize: typography.size.base },
 
-  cards: { flex: 1, gap: 16 },
+  cards: { flex: 1, gap: 14 },
 
   card: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    borderRadius:   radius.card,
-    padding:        16,
-    gap:            16,
+    flexDirection: 'row',
+    alignItems:    'center',
+    borderRadius:  radius.card,
+    padding:       16,
+    gap:           16,
   },
   iconWrap: {
     width:          44,
@@ -214,8 +209,8 @@ const styles = StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
-  cardText: { flex: 1, gap: 2 },
-  cardTitle: { fontSize: typography.size.lg },
+  cardText:  { flex: 1, gap: 2 },
+  cardTitle: { fontSize: typography.size.base },
   cardSub:   { fontSize: typography.size.sm },
 
   radio: {
@@ -226,19 +221,9 @@ const styles = StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
-  radioFill: {
-    width:        14,
-    height:       14,
-    borderRadius: 7,
-  },
+  radioFill: { width: 14, height: 14, borderRadius: 7 },
 
-  hint: {
-    fontSize:  typography.size.sm,
-    textAlign: 'center',
-    marginTop: -4,
-  },
-
-  bottom:   { paddingTop: spacing.base },
+  bottom: { paddingTop: spacing.base },
   cta: {
     height:         56,
     borderRadius:   14,

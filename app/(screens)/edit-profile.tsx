@@ -12,8 +12,6 @@ import { profile as profileApi, uploadProfileImage, onboarding } from '../../lib
 import { useProfileStore } from '../../stores/profileStore'
 import { typography, spacing, radius } from '../../lib/constants'
 
-const DAILY_GOALS = [10, 20, 40]
-
 export default function EditProfileScreen() {
   const { c }    = useTheme()
   const router   = useRouter()
@@ -22,7 +20,6 @@ export default function EditProfileScreen() {
   const [firstName,    setFirstName]    = useState(ownProfile?.first_name ?? '')
   const [username,     setUsername]     = useState(ownProfile?.username ?? '')
   const [bio,          setBio]          = useState(ownProfile?.bio ?? '')
-  const [dailyGoal,    setDailyGoal]    = useState<number>(20)
   const [avatarUri,    setAvatarUri]    = useState<string | null>(ownProfile?.photo_url ?? null)
   const [uploading,    setUploading]    = useState(false)
   const [saving,       setSaving]       = useState(false)
@@ -98,7 +95,6 @@ export default function EditProfileScreen() {
           bio:           bio          || undefined,
           site_username: username     || undefined,
         }),
-        onboarding.setDailyGoal(dailyGoal),
       ])
       patchOwnProfile({
         first_name: firstName,
@@ -112,7 +108,7 @@ export default function EditProfileScreen() {
     } finally {
       setSaving(false)
     }
-  }, [saving, isDirty, firstName, bio, username, dailyGoal, patchOwnProfile, loadOwnProfile, router])
+  }, [saving, isDirty, firstName, bio, username, patchOwnProfile, loadOwnProfile, router])
 
   const initials = ((firstName || ownProfile?.first_name || 'U')
     .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase())
@@ -229,41 +225,6 @@ export default function EditProfileScreen() {
               />
             </View>
 
-            {/* Kunlik maqsad */}
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
-                Kunlik maqsad
-              </Text>
-              <View style={styles.radioRow}>
-                {DAILY_GOALS.map(min => (
-                  <Pressable
-                    key={min}
-                    onPress={() => setDailyGoal(min)}
-                    style={[
-                      styles.radioOption,
-                      {
-                        borderColor:     dailyGoal === min ? c.accentPrimary : c.border,
-                        backgroundColor: dailyGoal === min ? c.accentPrimaryMuted : c.bgSecondary,
-                      },
-                    ]}
-                  >
-                    <View style={[
-                      styles.radioCircle,
-                      { borderColor: dailyGoal === min ? c.accentPrimary : c.border },
-                    ]}>
-                      {dailyGoal === min && <View style={[styles.radioDot, { backgroundColor: c.accentPrimary }]} />}
-                    </View>
-                    <Text style={[
-                      styles.radioLabel,
-                      { fontFamily: dailyGoal === min ? typography.fontFamily.semibold : typography.fontFamily.regular },
-                      { color: dailyGoal === min ? c.accentPrimary : c.textPrimary },
-                    ]}>
-                      {min} daq
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

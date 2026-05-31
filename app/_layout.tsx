@@ -2,6 +2,13 @@ import React, { useEffect, useRef } from 'react'
 import { Linking } from 'react-native'
 import { Slot, useRouter, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
+
+// Lazy-required so the module init doesn't throw in Expo Go SDK 53
+let Notifications: typeof import('expo-notifications') | null = null
+try { Notifications = require('expo-notifications') } catch {}
+
+let Constants: typeof import('expo-constants').default | null = null
+try { Constants = require('expo-constants').default } catch {}
 import { useFonts } from 'expo-font'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -57,15 +64,14 @@ function parseDeepLink(url: string): string | null {
   return null
 }
 
-let Notifications: any = null
-try { Notifications = require('expo-notifications') } catch {}
-
 const PUSH_TOKEN_KEY = 'sahifalab_push_token'
 
 SplashScreen.preventAutoHideAsync()
 
 async function registerPushToken() {
-  if (!Notifications) return
+  // Remote notifications removed from Expo Go on Android in SDK 53
+  if (!Notifications || !Constants) return
+  if (Constants.executionEnvironment === 'storeClient') return
   try {
     const { status: existing } = await Notifications.getPermissionsAsync()
     let finalStatus = existing
