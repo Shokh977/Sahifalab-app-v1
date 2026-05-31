@@ -723,6 +723,7 @@ export default function LessonPlayerScreen() {
         <VideoPlayer
           uri={videoUri}
           embedUrl={embedUrl}
+          websiteUrl={`https://www.sahifalab.uz/courses/${lesson.course_id}`}
           title={lesson.title}
           initialPosition={resumePos}
           onComplete={handleComplete}

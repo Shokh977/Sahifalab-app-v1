@@ -29,6 +29,7 @@ interface Props {
   uri?:               string | null
   embedUrl?:          string | null
   title?:             string
+  websiteUrl?:        string | null  // fallback link shown when video can't play
   initialPosition?:   number
   onComplete?:        () => void
   onPlayingChange?:   (playing: boolean) => void
@@ -37,10 +38,11 @@ interface Props {
 
 // ── Native expo-video player ───────────────────────────────────────────────────
 function ExpoVideoPlayer({
-  uri, embedUrl, initialPosition, onComplete, onPlayingChange, onPositionUpdate,
+  uri, embedUrl, websiteUrl, initialPosition, onComplete, onPlayingChange, onPositionUpdate,
 }: {
   uri: string
   embedUrl?: string | null
+  websiteUrl?: string | null
   initialPosition?: number
   onComplete?: () => void
   onPlayingChange?: (playing: boolean) => void
@@ -134,15 +136,16 @@ function ExpoVideoPlayer({
 
   if (hasError) {
     const isLocal = uri.startsWith('file://')
+    const errFallbackUrl = websiteUrl ?? (!isLocal ? uri : null)
     return (
       <View style={[styles.fallback, { height: PLAYER_H }]}>
         <Text style={{ fontSize: 36 }}>⚠️</Text>
         <Text style={styles.fallbackText}>
           {isLocal ? 'Yuklab olish buzilgan. Qayta yuklab oling.' : 'Video ijro etilmadi'}
         </Text>
-        {!isLocal && (
-          <Pressable onPress={() => Linking.openURL(uri)} style={styles.fallbackBtn}>
-            <Text style={styles.fallbackBtnText}>Brauzerda ochish ↗</Text>
+        {errFallbackUrl && (
+          <Pressable onPress={() => Linking.openURL(errFallbackUrl)} style={styles.fallbackBtn}>
+            <Text style={styles.fallbackBtnText}>Saytda ko'rish ↗</Text>
           </Pressable>
         )}
       </View>
@@ -194,28 +197,66 @@ function ExpoVideoPlayer({
   )
 }
 
-// ── Detect YouTube ────────────────────────────────────────────────────────────
+// ── YouTube helpers ───────────────────────────────────────────────────────────
 
 function isYouTubeUrl(url: string) {
   return /youtube\.com|youtu\.be/i.test(url)
 }
 
-function toYouTubeEmbedUrl(url: string): string {
-  // Already an embed URL
-  if (url.includes('youtube.com/embed/')) return url
-  // youtu.be/ID
-  const shortMatch = url.match(/youtu\.be\/([^?&\s]+)/)
-  if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`
-  // youtube.com/watch?v=ID
-  const watchMatch = url.match(/[?&]v=([^&\s]+)/)
-  if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`
-  return url
+/** Extract 11-char video ID from any YouTube URL format. */
+function extractYouTubeId(url: string): string | null {
+  const m = url.match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  )
+  return m ? m[1] : null
 }
 
-const BROWSER_UA =
-  'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+// ── YouTube HTML-iframe wrapper ───────────────────────────────────────────────
+// Loading the embed URL *directly* in WebView triggers YouTube's WebView block.
+// Wrapping it in an <iframe> inside a local HTML page replicates exactly what
+// the sahifalab.uz website does, and YouTube treats it as a normal browser embed.
+function YouTubeWebPlayer({
+  embedUrl, onComplete,
+}: {
+  embedUrl: string
+  onComplete?: () => void
+}) {
+  const videoId = extractYouTubeId(embedUrl)
+  const src = videoId
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&modestbranding=1`
+    : embedUrl
 
-// ── Bunny / embed WebView player ───────────────────────────────────────────────
+  const html = `<!DOCTYPE html><html><head>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none}</style>
+  </head><body>
+    <iframe
+      src="${src}"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+      allowfullscreen
+      frameborder="0"
+    ></iframe>
+  </body></html>`
+
+  return (
+    <View style={[styles.container, { height: PLAYER_H }]}>
+      <WebView
+        source={{ html, baseUrl: 'https://www.sahifalab.uz' }}
+        style={styles.webview}
+        allowsFullscreenVideo
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback
+        javaScriptEnabled
+        domStorageEnabled
+        originWhitelist={['*']}
+        mixedContentMode="always"
+        scrollEnabled={false}
+      />
+    </View>
+  )
+}
+
+// ── Bunny / other embed WebView player ────────────────────────────────────────
 function EmbedWebPlayer({
   embedUrl, initialPosition, onComplete, onPositionUpdate,
 }: {
@@ -225,18 +266,16 @@ function EmbedWebPlayer({
   onPositionUpdate?: (seconds: number) => void
 }) {
   const lastReportedRef = useRef(0)
-  const isYT = isYouTubeUrl(embedUrl)
 
-  // Build final src
-  const baseUrl  = isYT ? toYouTubeEmbedUrl(embedUrl) : embedUrl
-  const sep      = baseUrl.includes('?') ? '&' : '?'
-  const src = isYT
-    ? `${baseUrl}${sep}autoplay=1&playsinline=1&rel=0&modestbranding=1`
-    : `${baseUrl}${sep}autoplay=true&responsive=true&preload=true`
+  // YouTube → dedicated HTML-iframe player (no direct-URI loading)
+  if (isYouTubeUrl(embedUrl)) {
+    return <YouTubeWebPlayer embedUrl={embedUrl} onComplete={onComplete} />
+  }
 
-  // JS injection: Bunny has a direct <video> we can access; YouTube's <video> is
-  // cross-origin inside a nested iframe — skip injection to avoid CSP errors.
-  const injectedJS = isYT ? 'true;' : `
+  const sep = embedUrl.includes('?') ? '&' : '?'
+  const src = `${embedUrl}${sep}autoplay=true&responsive=true&preload=true`
+
+  const injectedJS = `
     (function() {
       var _lastReported = 0;
       var _seekPos = ${Math.floor(initialPosition ?? 0)};
@@ -283,11 +322,8 @@ function EmbedWebPlayer({
   const handleMessage = useCallback((e: any) => {
     try {
       const msg = JSON.parse(e.nativeEvent.data)
-      if (msg.type === 'ended') {
-        onComplete?.()
-      } else if (msg.type === 'timeupdate' && onPositionUpdate) {
-        onPositionUpdate(msg.time)
-      }
+      if (msg.type === 'ended') onComplete?.()
+      else if (msg.type === 'timeupdate' && onPositionUpdate) onPositionUpdate(msg.time)
     } catch {}
   }, [onComplete, onPositionUpdate])
 
@@ -296,9 +332,6 @@ function EmbedWebPlayer({
       <WebView
         source={{ uri: src }}
         style={styles.webview}
-        // YouTube requires a real browser UA — without it the player shows
-        // "Watch on YouTube" instead of playing inline.
-        userAgent={isYT ? BROWSER_UA : undefined}
         allowsFullscreenVideo
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback
@@ -316,7 +349,7 @@ function EmbedWebPlayer({
 
 // ── Public component ───────────────────────────────────────────────────────────
 export function VideoPlayer({
-  uri, embedUrl, title, initialPosition, onComplete, onPlayingChange, onPositionUpdate,
+  uri, embedUrl, title, websiteUrl, initialPosition, onComplete, onPlayingChange, onPositionUpdate,
 }: Props) {
   const isLocal = uri?.startsWith('file://')
 
@@ -348,6 +381,7 @@ export function VideoPlayer({
       <ExpoVideoPlayer
         uri={uri}
         embedUrl={embedUrl}
+        websiteUrl={websiteUrl}
         initialPosition={initialPosition}
         onComplete={onComplete}
         onPlayingChange={onPlayingChange}
@@ -356,17 +390,17 @@ export function VideoPlayer({
     )
   }
 
-  const openUrl = (uri && !uri.startsWith('file://')) ? uri : embedUrl
+  const fallbackUrl = websiteUrl ?? ((uri && !uri.startsWith('file://')) ? uri : embedUrl)
   return (
     <View style={[styles.fallback, { height: PLAYER_H }]}>
       <Text style={{ fontSize: 36 }}>🎬</Text>
-      <Text style={styles.fallbackText}>Video ijro uchun ilovani yangilang</Text>
-      {openUrl ? (
+      <Text style={styles.fallbackText}>Video ijro etilmadi</Text>
+      {fallbackUrl ? (
         <Pressable
-          onPress={() => { Linking.openURL(openUrl); onComplete?.() }}
+          onPress={() => { Linking.openURL(fallbackUrl); onComplete?.() }}
           style={styles.fallbackBtn}
         >
-          <Text style={styles.fallbackBtnText}>Brauzerda ochish ↗</Text>
+          <Text style={styles.fallbackBtnText}>Saytda ko'rish ↗</Text>
         </Pressable>
       ) : null}
     </View>
