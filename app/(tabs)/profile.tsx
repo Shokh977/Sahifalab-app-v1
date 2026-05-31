@@ -339,7 +339,7 @@ export default function ProfileTab() {
           setStreak(s.streak_days ?? 0)
           setTotalFocusMinutes(s.total_focus_minutes ?? 0)
         }),
-        leaderboard.weekly('all').then(r => setRank(r.my_rank ?? null)).catch(() => {}),
+        leaderboard.weekly('week').then(r => setRank(r.my_rank ?? null)).catch(() => {}),
       ])
     } catch {}
     setLoading(false)

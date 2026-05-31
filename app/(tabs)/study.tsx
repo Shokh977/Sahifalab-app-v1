@@ -35,6 +35,7 @@ import { AmbientPlayer } from '../../components/study/AmbientPlayer'
 import type { WeeklyStudyDay, HeatmapDay } from '../../lib/api'
 import { GoalCompleteModal } from '../../components/streak/GoalCompleteModal'
 import { MilestoneModal } from '../../components/streak/MilestoneModal'
+import { FileBarChart2, ChevronRight } from 'lucide-react-native'
 
 // ── Sub-tab bar ───────────────────────────────────────────────────────────────
 
@@ -1117,6 +1118,24 @@ function StatsScreen() {
         </Animated.View>
       </View>
 
+      {/* ── Weekly report link ─────────────────────────────────────────────── */}
+      <Pressable
+        onPress={() => router.push('/(screens)/weekly-report' as any)}
+        style={({ pressed }) => [
+          styles.sectionCard,
+          styles.reportRow,
+          { backgroundColor: c.bgSecondary, borderColor: c.border, opacity: pressed ? 0.7 : 1 },
+        ]}
+      >
+        <View style={styles.reportLeft}>
+          <FileBarChart2 size={18} color={c.textSecondary} strokeWidth={1.8} />
+          <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+            Haftalik hisobot
+          </Text>
+        </View>
+        <ChevronRight size={16} color={c.textMuted} strokeWidth={1.8} />
+      </Pressable>
+
     </ScrollView>
   )
 }
@@ -1415,6 +1434,8 @@ const styles = StyleSheet.create({
   // Stats
   statsLoader:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
   statsContent: { padding: spacing.screenMargin, gap: spacing.base, paddingBottom: 80 },
+  reportRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  reportLeft:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
 
   sectionCard: { borderRadius: radius.cardLg, borderWidth: 1, padding: spacing.base, gap: spacing.sm },
   sectionTitle: { fontSize: typography.size.base },

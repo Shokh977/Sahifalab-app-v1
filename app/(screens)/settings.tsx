@@ -607,16 +607,6 @@ export default function SettingsScreen() {
           </View>
         </SettingGroup>
 
-        {/* HISOBOTLAR */}
-        <SectionHeader title="HISOBOTLAR" />
-        <SettingGroup>
-          <SettingRow
-            label="📊 Haftalik hisobot"
-            isLast
-            onPress={() => router.push('/(screens)/weekly-report' as any)}
-          />
-        </SettingGroup>
-
         {/* HISOB */}
         <SectionHeader title="HISOB" />
         <SettingGroup>
