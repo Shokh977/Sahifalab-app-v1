@@ -2,13 +2,6 @@ import React, { useEffect, useRef } from 'react'
 import { Linking } from 'react-native'
 import { Slot, useRouter, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
-
-// Lazy-required so the module init doesn't throw in Expo Go SDK 53
-let Notifications: typeof import('expo-notifications') | null = null
-try { Notifications = require('expo-notifications') } catch {}
-
-let Constants: typeof import('expo-constants').default | null = null
-try { Constants = require('expo-constants').default } catch {}
 import { useFonts } from 'expo-font'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -22,6 +15,15 @@ import { useOfflineQueueStore } from '../stores/offlineQueueStore'
 import { useOnline } from '../hooks/useOnline'
 import { OfflineBanner } from '../components/ui/OfflineBanner'
 import { NotifToast } from '../components/ui/NotifToast'
+
+// expo-notifications and expo-constants are lazy-required so their module
+// initialisation (which calls addPushTokenListener) cannot throw and crash
+// this layout in Expo Go SDK 53 — where remote notifications were removed.
+let Notifications: typeof import('expo-notifications') | null = null
+try { Notifications = require('expo-notifications') } catch {}
+
+let Constants: typeof import('expo-constants').default | null = null
+try { Constants = require('expo-constants').default } catch {}
 
 // ── Deep link URL → in-app route ─────────────────────────────────────────────
 
