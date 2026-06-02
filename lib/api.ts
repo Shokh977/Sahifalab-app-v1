@@ -1232,6 +1232,24 @@ export const certificates = {
     request<CertificateDetail>(`/api/certificates/${code}`, { auth: true }),
 }
 
+// ── Hero / announcement content (admin-managed) ───────────────────────────────
+
+export interface HeroContent {
+  id:          number
+  title:       string
+  subtitle:    string | null
+  description: string | null
+  image_url:   string | null
+  cta_text:    string | null
+  cta_link:    string | null
+}
+
+export const hero = {
+  get: (): Promise<HeroContent | null> =>
+    request<HeroContent>('/api/hero/')
+      .catch(() => null),
+}
+
 // ── Ambient sounds ────────────────────────────────────────────────────────────
 
 export interface AmbientSound {

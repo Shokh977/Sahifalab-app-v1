@@ -560,8 +560,8 @@ export default function SettingsScreen() {
             value={`${dailyGoal} daq`}
             onPress={() => setShowGoalPicker(true)}
           />
-          {toggleRow("Taymer ovozi", soundEnabled, setSoundEnabled)}
-          {toggleRow("Taymer tebranish", vibrateEnabled, setVibrateEnabled, undefined, true)}
+          {toggleRow("Taymer tovushi", soundEnabled, setSoundEnabled)}
+          {toggleRow("Taymer tebranishi", vibrateEnabled, setVibrateEnabled, undefined, true)}
         </SettingGroup>
 
         {/* BILDIRISHNOMALAR */}

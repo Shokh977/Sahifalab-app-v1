@@ -23,7 +23,7 @@ interface Job {
   salary_max:      number | null
   salary_currency: string | null
   required_skills: string[]
-  applicant_count: number
+  applicants_count: number
   match_pct:       number | null
   expires_at:      string | null
   created_at:      string
@@ -133,9 +133,9 @@ function JobCard({ job, onApply }: { job: Job; onApply: (id: number) => void }) 
             {formatTime(job.created_at)}
           </Text>
         </View>
-        {job.applicant_count > 0 && (
+        {job.applicants_count > 0 && (
           <Text style={[styles.applicants, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-            {job.applicant_count} ariza
+            {job.applicants_count} ariza
           </Text>
         )}
         <Pressable
@@ -171,9 +171,9 @@ export default function JobsScreen() {
       const params = new URLSearchParams()
       if (q.trim()) params.set('q', q.trim())
       const qs  = params.toString() ? `?${params}` : ''
-      const endpoint = t === 'matched' ? `/api/v1/jobs/matched${qs}` : `/api/v1/jobs${qs}`
-      const data = await request<Job[]>(endpoint, { auth: true })
-      setJobs(Array.isArray(data) ? data : [])
+      const endpoint = t === 'matched' ? `/api/jobs/matched${qs}` : `/api/jobs${qs}`
+      const data = await request<{ jobs: Job[] } | Job[]>(endpoint, { auth: true })
+      setJobs(Array.isArray(data) ? data : (data as any).jobs ?? [])
     } catch {}
     finally { setLoading(false); setRefreshing(false) }
   }, [tab, search])
@@ -195,10 +195,10 @@ export default function JobsScreen() {
     if (applying.has(jobId)) return
     setApplying(prev => new Set([...prev, jobId]))
     try {
-      await request(`/api/v1/jobs/${jobId}/apply`, { method: 'POST', auth: true })
+      await request(`/api/jobs/${jobId}/apply`, { method: 'POST', auth: true })
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       Alert.alert('✓ Ariza yuborildi', "Ish beruvchi siz bilan bog'lanadi.")
-      setJobs(prev => prev.map(j => j.id === jobId ? { ...j, applicant_count: j.applicant_count + 1 } : j))
+      setJobs(prev => prev.map(j => j.id === jobId ? { ...j, applicants_count: j.applicants_count + 1 } : j))
     } catch (e: any) {
       if (e?.message?.includes('already')) Alert.alert('', 'Siz allaqachon ariza topshirgansiz.')
       else Alert.alert('Xatolik', 'Ariza yuborishda xatolik yuz berdi.')

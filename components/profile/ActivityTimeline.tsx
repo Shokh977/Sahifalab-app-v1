@@ -11,7 +11,7 @@ const ACTIVITY_META: Record<string, { emoji: string; label: string }> = {
   level_up:             { emoji: '⭐', label: 'Daraja oshdi'         },
   post_created:         { emoji: '✍️',  label: 'Post yozildi'         },
   connection_made:      { emoji: '🤝', label: 'Bog\'lanish qo\'shildi' },
-  focus_completed:      { emoji: '⏱️',  label: 'Focus sessiya'        },
+  focus_completed:      { emoji: '⏱️',  label: 'Fokus sessiyasi'       },
   test_passed:          { emoji: '✅', label: 'Test topshirildi'      },
   skill_endorsed:       { emoji: '👍', label: 'Ko\'nikma tasdiqlandi' },
   badge_earned:         { emoji: '🥇', label: 'Badge olindi'         },

@@ -1,41 +1,36 @@
-/**
- * AmbientPlayer — fetches ambient sounds from the backend and lets the user
- * pick one to loop quietly during a study session.
- *
- * Uses expo-av Audio singleton so playback survives re-renders.
- * Volume slider only shown when a sound is active.
- */
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   View, Text, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native'
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring,
+  useSharedValue, useAnimatedStyle, withTiming, withSpring,
+  withRepeat, withSequence,
 } from 'react-native-reanimated'
+import {
+  CloudRain, Coffee, Leaf, Flame, Waves, Wind, Moon,
+  Music, VolumeX, Volume1, Volume2, Trees,
+} from 'lucide-react-native'
 
 import { ambientSounds, type AmbientSound } from '../../lib/api'
 import { useTheme } from '../../hooks/useTheme'
-import { typography, spacing, radius } from '../../lib/constants'
+import { typography, radius } from '../../lib/constants'
 
 // ── Safe expo-audio import ─────────────────────────────────────────────────────
 let AudioModule: any = null
 try { AudioModule = require('expo-audio') } catch {}
-
 const AV_AVAILABLE = AudioModule !== null
 
-// ── Singleton player ───────────────────────────────────────────────────────────
-let _player: any = null
+// ── Singleton audio state ──────────────────────────────────────────────────────
+// Only one player lives at a time. `_stopCurrent` is async so the native
+// audio session can settle before we allocate a new player — this is what
+// prevents the freeze after 2-3 rapid switches.
 
-async function _stopCurrent() {
-  if (_player) {
-    try { _player.pause(); _player.remove() } catch {}
-    _player = null
-  }
-}
+let _player:    any  = null
+let _audioReady      = false
+let _switching       = false
 
-async function _play(url: string): Promise<any> {
-  if (!AudioModule?.createAudioPlayer) return null
-  await _stopCurrent()
+async function _ensureAudioMode() {
+  if (_audioReady || !AudioModule?.setAudioModeAsync) return
   try {
     await AudioModule.setAudioModeAsync({
       playsInSilentModeIOS:       true,
@@ -43,113 +38,166 @@ async function _play(url: string): Promise<any> {
       shouldDuckAndroid:          false,
       playThroughEarpieceAndroid: false,
     })
-    const player = AudioModule.createAudioPlayer({ uri: url })
-    player.loop   = true
-    player.volume = 0.4
-    player.play()
-    _player = player
-    return player
+    _audioReady = true
+  } catch {}
+}
+
+async function _stopCurrent() {
+  const p = _player
+  _player = null               // null out immediately so nothing else touches it
+  if (!p) return
+  try { p.pause() }  catch {}
+  try { p.remove() } catch {}
+  // Give the native audio session ~80 ms to release resources before the
+  // next allocation. Without this pause expo-audio freezes after 2-3 switches.
+  await new Promise<void>(r => setTimeout(r, 80))
+}
+
+async function _playUrl(url: string, volume: number): Promise<boolean> {
+  if (!AudioModule?.createAudioPlayer) return false
+  await _stopCurrent()         // wait for session to free
+  await _ensureAudioMode()
+  try {
+    const p = AudioModule.createAudioPlayer({ uri: url })
+    p.loop   = true
+    p.volume = volume
+    p.play()
+    _player = p
+    return true
   } catch {
-    return null
+    _player = null
+    return false
   }
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Icon mapping ───────────────────────────────────────────────────────────────
+type IconCmp = React.ComponentType<{ size: number; color: string; strokeWidth?: number }>
 
-interface Props {
-  /** When false the player is hidden but keeps any running sound alive */
-  visible?: boolean
+function resolveIcon(emoji: string): IconCmp {
+  if (/🌧|🌦|☔|🌨/.test(emoji))      return CloudRain
+  if (/☕|🍵|🫖|🧋/.test(emoji))      return Coffee
+  if (/🌲|🌳|🌿|🍃|🌱/.test(emoji))  return Trees
+  if (/🔥|🕯|🪵/.test(emoji))         return Flame
+  if (/🌊|🏖|🌀|🏄/.test(emoji))      return Waves
+  if (/💨|🌬/.test(emoji))             return Wind
+  if (/🌙|🌃|✨|⭐/.test(emoji))       return Moon
+  return Music
 }
 
-export function AmbientPlayer({ visible = true }: Props) {
-  const { c } = useTheme()
-  const [sounds,      setSounds]      = useState<AmbientSound[]>([])
-  const [loading,     setLoading]     = useState(true)
-  const [activeId,    setActiveId]    = useState<number | null>(null)
-  const [isPlaying,   setIsPlaying]   = useState(false)
-  const [volume,      setVolume]      = useState(0.4)
-  const volumeRef     = useRef(volume)
+// ── AmbientPlayer ──────────────────────────────────────────────────────────────
 
-  // Load sound list once
+export function AmbientPlayer({ visible = true }: { visible?: boolean }) {
+  const { c } = useTheme()
+
+  const [sounds,    setSounds]    = useState<AmbientSound[]>([])
+  const [fetching,  setFetching]  = useState(true)
+  const [activeId,  setActiveId]  = useState<number | null>(null)
+  const [loadingId, setLoadingId] = useState<number | null>(null)
+  const [volume,    setVolume]    = useState(0.4)
+
+  const volumeRef  = useRef(0.4)
+  const mountedRef = useRef(true)
+
+  const isPlaying = activeId !== null && loadingId === null
+
   useEffect(() => {
-    ambientSounds.list().then(list => {
-      setSounds(list)
-      setLoading(false)
-    })
+    ambientSounds.list()
+      .then(setSounds)
+      .finally(() => setFetching(false))
   }, [])
 
-  // Sync volume to currently playing sound
   useEffect(() => {
     volumeRef.current = volume
     if (_player) { try { _player.volume = volume } catch {} }
   }, [volume])
 
-  // Stop playback when component unmounts
-  useEffect(() => () => { _stopCurrent() }, [])
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      // fire-and-forget; component is gone so we just need native cleanup
+      _stopCurrent()
+    }
+  }, [])
 
-  const handleSelect = useCallback(async (s: AmbientSound) => {
-    if (activeId === s.id && isPlaying) {
-      // Tap active → stop
-      await _stopCurrent()
+  // ── Select a sound ─────────────────────────────────────────────────────────
+  const handleSelect = async (s: AmbientSound) => {
+    if (_switching) return
+
+    // Tap the active sound → stop it
+    if (activeId === s.id) {
       setActiveId(null)
-      setIsPlaying(false)
+      await _stopCurrent()
       return
     }
-    setActiveId(s.id)
-    setIsPlaying(false)
-    const player = await _play(s.url)
-    if (player) {
-      try { player.volume = volumeRef.current } catch {}
-      setIsPlaying(true)
-    }
-  }, [activeId, isPlaying])
 
-  const handleSilence = useCallback(async () => {
-    await _stopCurrent()
+    _switching = true
+    setActiveId(s.id)
+    setLoadingId(s.id)
+
+    let ok = false
+    try {
+      ok = await _playUrl(s.url, volumeRef.current)
+    } finally {
+      // Always release the lock, even if _playUrl throws for any reason
+      _switching = false
+    }
+
+    if (!mountedRef.current) {
+      if (ok) await _stopCurrent()
+      return
+    }
+    setLoadingId(null)
+    if (!ok) setActiveId(null)
+  }
+
+  const handleOff = async () => {
+    if (_switching) return
     setActiveId(null)
-    setIsPlaying(false)
-  }, [])
+    setLoadingId(null)
+    await _stopCurrent()
+  }
 
   if (!visible) return null
 
-  if (!AV_AVAILABLE) {
-    return (
-      <View style={styles.wrap}>
-        <Text style={[styles.sectionLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
-          🎵 Muhit ovozi
-        </Text>
-        <Text style={[styles.unavailableText, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-          Audio Expo Go'da mavjud emas. Development build talab qilinadi.
-        </Text>
-      </View>
-    )
-  }
-
   return (
-    <View style={styles.wrap}>
-      <Text style={[styles.sectionLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
-        🎵 Muhit ovozi
-      </Text>
+    <View style={styles.root}>
 
-      {loading ? (
-        <ActivityIndicator color={c.accentPrimary} style={{ marginTop: 8 }} />
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Volume1 size={13} color={c.textSecondary} strokeWidth={1.8} />
+          <Text style={[styles.label, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+            Muhit tovushi
+          </Text>
+        </View>
+        {isPlaying && <PlayingDot color={c.accentPrimary} />}
+      </View>
+
+      {/* ── Chips (flex-wrap — no horizontal scroll, no pager conflict) ──────── */}
+      {!AV_AVAILABLE ? (
+        <Text style={[styles.unavailable, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
+          Audio faqat production build'da ishlaydi
+        </Text>
+      ) : fetching ? (
+        <ActivityIndicator size="small" color={c.accentPrimary} style={{ marginTop: 4 }} />
       ) : (
-        <View style={styles.grid}>
-          {/* Silence button */}
+        <View style={styles.chipWrap}>
           <SoundChip
-            label="🔇"
+            icon={VolumeX}
             name="Jim"
-            active={activeId === null}
-            onPress={handleSilence}
+            active={activeId === null && loadingId === null}
+            loading={false}
+            onPress={handleOff}
             c={c}
           />
           {sounds.map(s => (
             <SoundChip
               key={s.id}
-              label={s.emoji}
+              icon={resolveIcon(s.emoji)}
               name={s.name}
               active={activeId === s.id}
-              loading={activeId === s.id && !isPlaying}
+              loading={loadingId === s.id}
               onPress={() => handleSelect(s)}
               c={c}
             />
@@ -157,55 +205,77 @@ export function AmbientPlayer({ visible = true }: Props) {
         </View>
       )}
 
-      {/* Volume row — only when playing */}
+      {/* ── Volume bar ──────────────────────────────────────────────────────── */}
       {isPlaying && (
-        <VolumeRow volume={volume} onChange={setVolume} c={c} />
+        <VolumeBar value={volume} onChange={setVolume} c={c} />
       )}
     </View>
   )
 }
 
+// ── Animated playing dot ───────────────────────────────────────────────────────
+
+function PlayingDot({ color }: { color: string }) {
+  const opacity = useSharedValue(1)
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.2, { duration: 650 }),
+        withTiming(1,   { duration: 650 }),
+      ),
+      -1,
+    )
+  }, [])
+
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }))
+
+  return <Animated.View style={[styles.dot, { backgroundColor: color }, style]} />
+}
+
 // ── Sound chip ─────────────────────────────────────────────────────────────────
 
 function SoundChip({
-  label, name, active, loading = false, onPress, c,
+  icon: Icon, name, active, loading, onPress, c,
 }: {
-  label: string; name: string; active: boolean
-  loading?: boolean; onPress: () => void; c: any
+  icon: IconCmp; name: string
+  active: boolean; loading: boolean
+  onPress: () => void; c: any
 }) {
-  const scale = useSharedValue(1)
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
+  const scale  = useSharedValue(1)
+  const aStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
 
   const handlePress = () => {
-    scale.value = withSpring(0.88, { damping: 8, stiffness: 400 }, () => {
-      scale.value = withSpring(1, { damping: 10, stiffness: 300 })
+    scale.value = withSpring(0.88, { damping: 10, stiffness: 400 }, () => {
+      scale.value = withSpring(1,    { damping: 12, stiffness: 300 })
     })
     onPress()
   }
 
+  const iconColor = active ? c.accentPrimary : c.textMuted
+
   return (
-    <Animated.View style={style}>
+    <Animated.View style={aStyle}>
       <Pressable
         onPress={handlePress}
         style={[
           styles.chip,
           {
-            backgroundColor: active ? c.accentPrimaryMuted : c.bgTertiary,
-            borderColor:     active ? c.accentPrimary      : c.border,
+            backgroundColor: active ? c.accentPrimaryMuted : 'transparent',
+            borderColor:     active ? c.accentPrimary + 'AA' : c.border,
           },
         ]}
       >
-        {loading ? (
-          <ActivityIndicator size="small" color={c.accentPrimary} />
-        ) : (
-          <Text style={styles.chipEmoji}>{label}</Text>
-        )}
+        {loading
+          ? <ActivityIndicator size="small" color={c.accentPrimary} style={{ width: 13, height: 13 }} />
+          : <Icon size={13} color={iconColor} strokeWidth={1.8} />
+        }
         <Text
           style={[
-            styles.chipName,
+            styles.chipLabel,
             {
               color:      active ? c.accentPrimary : c.textSecondary,
-              fontFamily: typography.fontFamily.medium,
+              fontFamily: active ? typography.fontFamily.semibold : typography.fontFamily.regular,
             },
           ]}
           numberOfLines={1}
@@ -217,36 +287,37 @@ function SoundChip({
   )
 }
 
-// ── Volume row ─────────────────────────────────────────────────────────────────
+// ── Volume bar ─────────────────────────────────────────────────────────────────
 
-function VolumeRow({ volume, onChange, c }: { volume: number; onChange: (v: number) => void; c: any }) {
-  const STEPS = [0.1, 0.25, 0.4, 0.6, 0.8, 1.0]
+const VOL_STEPS = [0.15, 0.3, 0.5, 0.7, 1.0]
+
+function VolumeBar({ value, onChange, c }: { value: number; onChange: (v: number) => void; c: any }) {
+  const activeIdx = VOL_STEPS.reduce(
+    (best, v, i) => Math.abs(v - value) < Math.abs(VOL_STEPS[best] - value) ? i : best,
+    0,
+  )
+
   return (
-    <View style={styles.volumeRow}>
-      <Text style={[styles.volumeLabel, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-        🔈
-      </Text>
-      <View style={styles.volumeSteps}>
-        {STEPS.map(v => {
-          const active = Math.abs(volume - v) < 0.01
-          return (
-            <Pressable
-              key={v}
-              onPress={() => onChange(v)}
-              style={[
-                styles.volumeStep,
-                {
-                  backgroundColor: active ? c.accentPrimary : c.bgTertiary,
-                  height:          8 + v * 16,
-                },
-              ]}
-            />
-          )
-        })}
+    <View style={styles.volRow}>
+      <VolumeX size={12} color={c.textDisabled} strokeWidth={1.5} />
+      <View style={styles.volBars}>
+        {VOL_STEPS.map((v, i) => (
+          <Pressable
+            key={v}
+            onPress={() => onChange(v)}
+            hitSlop={6}
+            style={[
+              styles.volBar,
+              {
+                height:          6 + i * 5,
+                backgroundColor: i <= activeIdx ? c.accentPrimary : c.bgTertiary,
+                borderRadius:    2,
+              },
+            ]}
+          />
+        ))}
       </View>
-      <Text style={[styles.volumeLabel, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-        🔊
-      </Text>
+      <Volume2 size={12} color={c.textDisabled} strokeWidth={1.5} />
     </View>
   )
 }
@@ -254,45 +325,32 @@ function VolumeRow({ volume, onChange, c }: { volume: number; onChange: (v: numb
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  wrap: { width: '100%', gap: spacing.sm },
+  root: { gap: 10 },
 
-  sectionLabel:    { fontSize: typography.size.sm, paddingHorizontal: 2 },
-  unavailableText: { fontSize: typography.size.xs, paddingHorizontal: 2, marginTop: 4 },
+  header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  label:      { fontSize: typography.size.xs, letterSpacing: 0.2 },
+  dot:        { width: 6, height: 6, borderRadius: 3 },
+  unavailable:{ fontSize: 11, marginTop: 2 },
 
-  grid: {
+  // Chips in a wrapping row — no horizontal scroll, no pager conflict
+  chipWrap: {
     flexDirection: 'row',
     flexWrap:      'wrap',
-    gap:           spacing.sm,
+    gap:           6,
   },
-
   chip: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    gap:            6,
-    paddingVertical:   8,
-    paddingHorizontal: 12,
-    borderRadius:   radius.full,
-    borderWidth:    1,
-    minWidth:       72,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               5,
+    paddingVertical:   6,
+    paddingHorizontal: 10,
+    borderRadius:      radius.lg,
+    borderWidth:       StyleSheet.hairlineWidth,
   },
-  chipEmoji: { fontSize: 18 },
-  chipName:  { fontSize: typography.size.xs },
+  chipLabel: { fontSize: 11 },
 
-  volumeRow: {
-    flexDirection: 'row',
-    alignItems:    'flex-end',
-    gap:           spacing.sm,
-    marginTop:     spacing.xs,
-  },
-  volumeLabel: { fontSize: 16, marginBottom: 2 },
-  volumeSteps: {
-    flex:          1,
-    flexDirection: 'row',
-    alignItems:    'flex-end',
-    gap:           4,
-  },
-  volumeStep: {
-    flex:         1,
-    borderRadius: 3,
-  },
+  volRow:  { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 2 },
+  volBars: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: 4, paddingBottom: 1 },
+  volBar:  { flex: 1 },
 })

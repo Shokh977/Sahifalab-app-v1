@@ -253,7 +253,7 @@ export default function SignupScreen() {
         {/* Login link */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-            Akkountingiz bormi?{' '}
+            Hisobingiz bormi?{' '}
           </Text>
           <Link href="/(auth)/login" asChild>
             <Pressable>

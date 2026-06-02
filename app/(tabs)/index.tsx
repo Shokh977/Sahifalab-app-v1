@@ -1,17 +1,19 @@
-import React, { useCallback, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   View, Text, ScrollView, RefreshControl, StyleSheet,
-  Pressable, Image,
+  Pressable, Image, Linking,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { Bell } from 'phosphor-react-native'
+import { ArrowRight, X } from 'lucide-react-native'
 
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius, getLevelTier } from '../../lib/constants'
+import { hero, type HeroContent } from '../../lib/api'
 import { SkeletonBlock } from '../../components/dashboard/SkeletonBlock'
 import { UnifiedBanner } from '../../components/dashboard/UnifiedBanner'
 import { ContextualActionRow } from '../../components/dashboard/ContextualActionRow'
@@ -117,6 +119,85 @@ function SectionSkeleton({ rows = 1 }: { rows?: number }) {
   )
 }
 
+// ── Hero announcement banner (admin-managed) ──────────────────────────────────
+
+function HeroBanner() {
+  const { c }  = useTheme()
+  const [content,   setContent]   = useState<HeroContent | null>(null)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => { hero.get().then(setContent) }, [])
+
+  if (!content || dismissed) return null
+
+  const handlePress = () => {
+    if (content.cta_link) Linking.openURL(content.cta_link).catch(() => {})
+  }
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      style={({ pressed }) => [
+        heroBannerStyles.card,
+        { backgroundColor: c.bgSecondary, borderColor: c.border, opacity: pressed ? 0.88 : 1 },
+      ]}
+    >
+      {content.image_url && (
+        <Image source={{ uri: content.image_url }} style={heroBannerStyles.image} />
+      )}
+      <View style={heroBannerStyles.body}>
+        <Text style={[heroBannerStyles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]} numberOfLines={2}>
+          {content.title}
+        </Text>
+        {content.subtitle && (
+          <Text style={[heroBannerStyles.sub, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]} numberOfLines={1}>
+            {content.subtitle}
+          </Text>
+        )}
+        {content.cta_text && (
+          <View style={heroBannerStyles.ctaRow}>
+            <Text style={[heroBannerStyles.cta, { color: c.accentPrimary, fontFamily: typography.fontFamily.medium }]}>
+              {content.cta_text}
+            </Text>
+            <ArrowRight size={12} color={c.accentPrimary} strokeWidth={2} />
+          </View>
+        )}
+      </View>
+      <Pressable onPress={() => setDismissed(true)} hitSlop={10} style={heroBannerStyles.dismiss}>
+        <X size={14} color={c.textDisabled} strokeWidth={2} />
+      </Pressable>
+    </Pressable>
+  )
+}
+
+const heroBannerStyles = StyleSheet.create({
+  card: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    borderRadius:   14,
+    borderWidth:    StyleSheet.hairlineWidth,
+    overflow:       'hidden',
+    gap:            12,
+    paddingVertical:   12,
+    paddingHorizontal: 14,
+  },
+  image: {
+    width:        44,
+    height:       44,
+    borderRadius: 10,
+    flexShrink:   0,
+  },
+  body:   { flex: 1, gap: 3 },
+  title:  { fontSize: 13, lineHeight: 18 },
+  sub:    { fontSize: 11 },
+  ctaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  cta:    { fontSize: 11 },
+  dismiss: {
+    padding:  4,
+    flexShrink: 0,
+  },
+})
+
 // ── Main dashboard ────────────────────────────────────────────────────────────
 
 export default function HomeTab() {
@@ -151,6 +232,11 @@ export default function HomeTab() {
 
         {/* Contextual action chips */}
         {data && <ContextualActionRow data={data} />}
+
+        {/* Hero announcement (admin-managed, dismissible) */}
+        <View style={{ paddingHorizontal: spacing.screenMargin }}>
+          <HeroBanner />
+        </View>
 
         <View style={styles.gap} />
 
