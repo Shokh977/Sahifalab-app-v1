@@ -13,6 +13,15 @@ try {
   VideoView      = mod.VideoView      ?? null
 } catch {}
 
+// expo-screen-capture — lazy-require so web/Expo Go don't crash
+let preventScreenCaptureAsync: ((tag?: string) => Promise<void>) | null = null
+let allowScreenCaptureAsync:   ((tag?: string) => Promise<void>) | null = null
+try {
+  const scMod = require('expo-screen-capture')
+  preventScreenCaptureAsync = scMod.preventScreenCaptureAsync ?? null
+  allowScreenCaptureAsync   = scMod.allowScreenCaptureAsync   ?? null
+} catch {}
+
 // react-native-webview — lazy-require
 let WebView: any = null
 try { WebView = require('react-native-webview').WebView } catch {}
@@ -352,6 +361,12 @@ export function VideoPlayer({
   uri, embedUrl, title, websiteUrl, initialPosition, onComplete, onPlayingChange, onPositionUpdate,
 }: Props) {
   const isLocal = uri?.startsWith('file://')
+
+  useEffect(() => {
+    if (!preventScreenCaptureAsync || !allowScreenCaptureAsync) return
+    preventScreenCaptureAsync('video-player')
+    return () => { allowScreenCaptureAsync!('video-player') }
+  }, [])
 
   if (isLocal && uri && useVideoPlayer && VideoView) {
     return (

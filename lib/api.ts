@@ -23,6 +23,12 @@ export async function request<T>(
   options: RequestInit & { auth?: boolean } = {},
 ): Promise<T> {
   const { auth = false, ...init } = options
+
+  const fullUrl = `${API_URL}${path}`
+  if (!fullUrl.startsWith('https://') && !fullUrl.startsWith('http://localhost') && !fullUrl.startsWith('http://127.')) {
+    throw new Error('Only HTTPS connections are allowed')
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(init.headers as Record<string, string> | undefined),
@@ -31,7 +37,7 @@ export async function request<T>(
     const token = await getToken()
     if (token) headers['Authorization'] = `Bearer ${token}`
   }
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers })
+  const res = await fetch(fullUrl, { ...init, headers })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     const message = data?.detail ?? `HTTP ${res.status}`

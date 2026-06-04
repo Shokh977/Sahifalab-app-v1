@@ -48,10 +48,10 @@ const XP_ROWS = [
 
 // ── Calendar colours ─────────────────────────────────────────────────────────
 const CAL = {
-  studied: { cell: '#0d2c18', num: '#4ade80', conn: '#166534' },
-  frozen:  { cell: '#0a1a3a', num: '#60a5fa', conn: '#1e3a8a' },
-  missed:  { cell: '#2c0a0a', num: '#f87171', conn: null      },
-  future:  { cell: null,      num: null,      conn: null      },
+  studied: { connColor: '#22c55e' },
+  frozen:  { connColor: '#3b82f6' },
+  missed:  { connColor: null      },
+  future:  { connColor: null      },
 }
 
 // ── Calendar cell ─────────────────────────────────────────────────────────────
@@ -64,32 +64,87 @@ function CalCell({
   connectLeft:  boolean
   connectRight: boolean
 }) {
-  if (!day) {
-    return <View style={styles.calSlot} />
-  }
+  if (!day) return <View style={styles.calSlot} />
 
   const dayNum = new Date(day.date).getDate()
-  const pal    = CAL[day.status as keyof typeof CAL] ?? CAL.future
+  const status = day.status as keyof typeof CAL
+  const connColor = CAL[status]?.connColor ?? 'transparent'
 
-  const cellBg   = pal.cell ?? c.bgTertiary
-  const numColor = pal.num  ?? c.textMuted
-  const connBg   = pal.conn ?? 'transparent'
+  // ── future ──────────────────────────────────────────────────────────────────
+  if (status === 'future') {
+    return (
+      <View style={styles.calSlot}>
+        <View style={{ flex: 1 }} />
+        <View style={[styles.calCell, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }]}>
+          <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.13)' }} />
+        </View>
+        <View style={{ flex: 1 }} />
+      </View>
+    )
+  }
 
+  // ── studied ──────────────────────────────────────────────────────────────────
+  if (status === 'studied') {
+    return (
+      <View style={styles.calSlot}>
+        <View style={[styles.connHalf, { backgroundColor: connectLeft ? connColor : 'transparent' }]} />
+        <View style={[styles.cellGlow, { shadowColor: '#22c55e' }, isToday && styles.todayGlowRing]}>
+          <LinearGradient
+            colors={['#86efac', '#15803d']}
+            start={{ x: 0.15, y: 0 }}
+            end={{ x: 0.85, y: 1 }}
+            style={styles.calCell}
+          >
+            {/* gloss highlight */}
+            <View style={styles.cellGloss} />
+            {isToday && <View style={styles.todayInnerRing} />}
+            <Text style={[styles.calNum, { color: '#fff', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
+            <Text style={styles.studiedCheck}>✓</Text>
+          </LinearGradient>
+        </View>
+        <View style={[styles.connHalf, { backgroundColor: connectRight ? connColor : 'transparent' }]} />
+      </View>
+    )
+  }
+
+  // ── frozen ───────────────────────────────────────────────────────────────────
+  if (status === 'frozen') {
+    return (
+      <View style={styles.calSlot}>
+        <View style={[styles.connHalf, { backgroundColor: connectLeft ? connColor : 'transparent' }]} />
+        <View style={[styles.cellGlow, { shadowColor: '#60a5fa' }, isToday && styles.todayGlowRing]}>
+          <LinearGradient
+            colors={['#bae6fd', '#0c4a6e']}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={[styles.calCell, styles.frozenBorder]}
+          >
+            {/* ice corner reflection */}
+            <View style={styles.iceGloss} />
+            {isToday && <View style={styles.todayInnerRing} />}
+            <Snowflake
+              size={11}
+              color="rgba(224,242,254,0.75)"
+              strokeWidth={2.5}
+              style={styles.snowflakeIcon}
+            />
+            <Text style={[styles.calNum, { color: '#e0f2fe', fontFamily: typography.fontFamily.bold, marginTop: 5 }]}>{dayNum}</Text>
+          </LinearGradient>
+        </View>
+        <View style={[styles.connHalf, { backgroundColor: connectRight ? connColor : 'transparent' }]} />
+      </View>
+    )
+  }
+
+  // ── missed ───────────────────────────────────────────────────────────────────
   return (
     <View style={styles.calSlot}>
-      <View style={[styles.connHalf, { backgroundColor: connectLeft ? connBg : 'transparent' }]} />
-
-      <View style={[
-        styles.calCell,
-        { backgroundColor: cellBg },
-        isToday && { borderWidth: 2, borderColor: c.accentPrimary },
-      ]}>
-        <Text style={[styles.calNum, { color: numColor, fontFamily: typography.fontFamily.bold }]}>
-          {dayNum}
-        </Text>
+      <View style={{ flex: 1 }} />
+      <View style={[styles.calCell, styles.missedCell, isToday && { borderColor: c.accentPrimary, borderWidth: 2 }]}>
+        <Text style={[styles.calNum, { color: '#7f1d1d', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
+        <Text style={styles.missedX}>✕</Text>
       </View>
-
-      <View style={[styles.connHalf, { backgroundColor: connectRight ? connBg : 'transparent' }]} />
+      <View style={{ flex: 1 }} />
     </View>
   )
 }
@@ -393,20 +448,24 @@ export default function StreakDetailScreen() {
 
           {/* Legend */}
           <View style={styles.legend}>
-            {[
-              { cell: CAL.studied.cell!, num: CAL.studied.num!, label: "O'qildi" },
-              { cell: CAL.frozen.cell!,  num: CAL.frozen.num!,  label: 'Muzlatildi' },
-              { cell: CAL.missed.cell!,  num: CAL.missed.num!,  label: "O'tkazildi" },
-            ].map(({ cell, num, label }) => (
-              <View key={label} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: cell }]}>
-                  <View style={[styles.legendDotInner, { backgroundColor: num }]} />
-                </View>
-                <Text style={[styles.legendText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                  {label}
-                </Text>
+            <View style={styles.legendItem}>
+              <LinearGradient colors={['#86efac', '#15803d']} start={{x:0.15,y:0}} end={{x:0.85,y:1}} style={styles.legendChip}>
+                <Text style={styles.legendChipIcon}>✓</Text>
+              </LinearGradient>
+              <Text style={[styles.legendText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>O'qildi</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <LinearGradient colors={['#bae6fd', '#0c4a6e']} start={{x:0.1,y:0}} end={{x:0.9,y:1}} style={[styles.legendChip, styles.frozenBorder]}>
+                <Snowflake size={8} color="rgba(224,242,254,0.85)" strokeWidth={2.5} />
+              </LinearGradient>
+              <Text style={[styles.legendText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>Muzlatildi</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendChip, styles.missedCell]}>
+                <Text style={[styles.legendChipIcon, { color: 'rgba(239,68,68,0.6)' }]}>✕</Text>
               </View>
-            ))}
+              <Text style={[styles.legendText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>O'tkazildi</Text>
+            </View>
           </View>
 
           {/* Calendar grid */}
@@ -674,19 +733,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize:  10,
   },
-  legend: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: {
-    width: 14, height: 14, borderRadius: 7,
-    alignItems: 'center', justifyContent: 'center',
+  legend: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap', paddingVertical: 2 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendChip: {
+    width: 18, height: 18, borderRadius: 5,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  legendDotInner: { width: 6, height: 6, borderRadius: 3 },
+  legendChipIcon: { fontSize: 9, color: '#fff', fontWeight: '700' },
   legendText: { fontSize: typography.size.xs },
 
   // No gap — spacing comes from the connector half-views inside each slot
   calRow: { flexDirection: 'row' },
 
-  // Each slot: [connHalf] [circle] [connHalf]
+  // Each slot: [connHalf] [cell] [connHalf]
   calSlot: {
     flex:          1,
     flexDirection: 'row',
@@ -694,17 +753,102 @@ const styles = StyleSheet.create({
   },
   connHalf: {
     flex:         1,
-    height:       3,
+    height:       4,
     borderRadius: 2,
   },
+
+  // Shadow/glow wrapper (not overflow:hidden so shadow bleeds out)
+  cellGlow: {
+    borderRadius:   10,
+    shadowOffset:   { width: 0, height: 2 },
+    shadowOpacity:  0.55,
+    shadowRadius:   7,
+    elevation:      5,
+  },
+  todayGlowRing: {
+    shadowOpacity: 0.9,
+    shadowRadius:  10,
+    elevation:     8,
+  },
+
+  // Gradient cell (overflow:hidden to clip gradient corners)
   calCell: {
-    width:          32,
-    aspectRatio:    1,
-    borderRadius:   16,
+    width:          36,
+    height:         36,
+    borderRadius:   10,
     alignItems:     'center',
     justifyContent: 'center',
+    overflow:       'hidden',
   },
-  calNum: { fontSize: 10, lineHeight: 13 },
+  calNum: { fontSize: 11, lineHeight: 13 },
+
+  // Gloss highlight shared by studied + frozen
+  cellGloss: {
+    position:        'absolute',
+    top:             4,
+    left:            6,
+    width:           13,
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: 'rgba(255,255,255,0.32)',
+  },
+
+  // Today inner ring (inside gradient, so always visible)
+  todayInnerRing: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth:  2,
+    borderColor:  'rgba(255,255,255,0.7)',
+    borderRadius: 10,
+  },
+
+  // Studied badge ✓
+  studiedCheck: {
+    position:   'absolute',
+    bottom:     2,
+    right:      5,
+    fontSize:   9,
+    color:      'rgba(255,255,255,0.75)',
+    fontWeight: '800',
+  },
+
+  // Frozen: 3-D border — light top/left, dark bottom/right
+  frozenBorder: {
+    borderWidth:       1.5,
+    borderTopColor:    '#7dd3fc',
+    borderLeftColor:   '#7dd3fc',
+    borderBottomColor: '#1e40af',
+    borderRightColor:  '#1e40af',
+  },
+  // Ice corner reflection (top-left white sheen)
+  iceGloss: {
+    position:        'absolute',
+    top:             3,
+    left:            4,
+    width:           10,
+    height:          5,
+    borderRadius:    2.5,
+    backgroundColor: 'rgba(255,255,255,0.42)',
+  },
+  snowflakeIcon: {
+    position: 'absolute',
+    top:      3,
+    right:    3,
+  },
+
+  // Missed: dark hollow cell with dim red border
+  missedCell: {
+    backgroundColor: '#1e0505',
+    borderWidth:     1,
+    borderColor:     'rgba(239,68,68,0.28)',
+  },
+  missedX: {
+    position:   'absolute',
+    bottom:     2,
+    right:      5,
+    fontSize:   9,
+    color:      'rgba(239,68,68,0.45)',
+    fontWeight: '800',
+  },
 
   // Milestones
   milestoneList: { gap: 0 },
