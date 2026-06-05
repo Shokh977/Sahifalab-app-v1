@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react'
-import { Linking } from 'react-native'
+import React, { useEffect, useRef, Component } from 'react'
+import { Linking, View, Text, Pressable, StyleSheet } from 'react-native'
 import { Slot, useRouter, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts } from 'expo-font'
@@ -66,6 +66,39 @@ function parseDeepLink(url: string): string | null {
 
   return null
 }
+
+// ── Global error boundary ─────────────────────────────────────────────────────
+class AppErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { crashed: boolean }
+> {
+  state = { crashed: false }
+  static getDerivedStateFromError() { return { crashed: true } }
+  componentDidCatch(error: Error) {
+    console.error('[AppErrorBoundary]', error)
+  }
+  render() {
+    if (!this.state.crashed) return this.props.children
+    return (
+      <View style={eb.wrap}>
+        <Text style={eb.emoji}>⚠️</Text>
+        <Text style={eb.title}>Xatolik yuz berdi</Text>
+        <Text style={eb.body}>Ilovani qaytadan ishga tushiring.</Text>
+        <Pressable style={eb.btn} onPress={() => this.setState({ crashed: false })}>
+          <Text style={eb.btnText}>Qayta urinish</Text>
+        </Pressable>
+      </View>
+    )
+  }
+}
+const eb = StyleSheet.create({
+  wrap:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#0D0D0F' },
+  emoji:   { fontSize: 48, marginBottom: 16 },
+  title:   { fontSize: 20, fontWeight: '700', color: '#F0EEEB', marginBottom: 8 },
+  body:    { fontSize: 14, color: '#9B9BA4', textAlign: 'center', marginBottom: 24 },
+  btn:     { backgroundColor: '#F5A623', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12 },
+  btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+})
 
 const PUSH_TOKEN_KEY = 'sahifalab_push_token'
 
@@ -276,11 +309,13 @@ export default function RootLayout() {
   if (!fontsLoaded || isLoading) return null
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.bgPrimary }}>
-      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
-      <Slot />
-      <OfflineBanner />
-      <NotifToast />
-    </GestureHandlerRootView>
+    <AppErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.bgPrimary }}>
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+        <Slot />
+        <OfflineBanner />
+        <NotifToast />
+      </GestureHandlerRootView>
+    </AppErrorBoundary>
   )
 }

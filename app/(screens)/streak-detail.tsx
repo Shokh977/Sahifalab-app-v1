@@ -18,6 +18,9 @@ import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { ComingSoonModal } from '../../components/ui/ComingSoonModal'
 
+let Haptics: any = null
+try { Haptics = require('expo-haptics') } catch {}
+
 
 
 const MILESTONE_DAYS = [3, 7, 14, 30, 60, 100, 200, 365]
@@ -271,6 +274,7 @@ export default function StreakDetailScreen() {
   async function handleUseFreeze() {
     try {
       const res = await streaksApi.useFreeze()
+      Haptics?.notificationAsync(Haptics?.NotificationFeedbackType?.Success)
       setLocalFreeze(res.freeze_count)
       if (data) setData({ ...data, freeze_count: res.freeze_count, is_active: true })
       setShowLostModal(false)

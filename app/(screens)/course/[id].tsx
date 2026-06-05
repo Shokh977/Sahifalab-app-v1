@@ -26,6 +26,9 @@ import type { Course, Lesson, CourseReview, CourseCertificate } from '../../../l
 import type { ProfileData } from '../../../lib/types'
 import { ComingSoonModal } from '../../../components/ui/ComingSoonModal'
 
+let Haptics: any = null
+try { Haptics = require('expo-haptics') } catch {}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 const LEVEL_LABEL: Record<string, string> = {
@@ -825,9 +828,11 @@ export default function CourseDetailScreen() {
   // ── Lesson complete ────────────────────────────────────────────────────────
   async function handleLessonComplete() {
     if (!currentLesson || !canAccess) return
+    Haptics?.impactAsync(Haptics?.ImpactFeedbackStyle?.Light)
     try {
       const res = await markComplete(courseId, currentLesson.id)
       if (res.certificate_issued) {
+        Haptics?.notificationAsync(Haptics?.NotificationFeedbackType?.Success)
         const certs = await lessonsApi.getMyCertificates().catch(() => [])
         const cert  = certs.find((c: any) => c.course_id === courseId) ?? null
         setCertificate(cert)

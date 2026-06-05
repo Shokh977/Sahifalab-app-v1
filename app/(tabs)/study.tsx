@@ -16,7 +16,6 @@ import * as Haptics from 'expo-haptics'
 import { useTimerStore } from '../../stores/timerStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
-import { useOfflineQueueStore } from '../../stores/offlineQueueStore'
 import { useFlashcardStore } from '../../stores/flashcardStore'
 import { focus, profile, focusStats, focusChallenges } from '../../lib/api'
 import type { FocusStats } from '../../lib/api'
@@ -389,8 +388,6 @@ function TimerScreen() {
           setSheetXP(result.xpAwarded)
           if (result.fromServer) {
             useAuthStore.getState().patchUser({ level: result.newLevel, total_xp: result.totalXp })
-          } else {
-            useOfflineQueueStore.getState().enqueue(totalMin)
           }
         } catch {}
       }, 800)

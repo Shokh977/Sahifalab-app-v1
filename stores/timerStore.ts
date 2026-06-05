@@ -5,6 +5,7 @@
  */
 import { create } from 'zustand'
 import { focus } from '../lib/api'
+import { useOfflineQueueStore } from './offlineQueueStore'
 
 export interface SoundTrack {
   id:       string
@@ -219,6 +220,8 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
         fromServer:          true,
       }
     } catch {
+      // Offline — queue the session so it syncs when connectivity returns
+      useOfflineQueueStore.getState().enqueue(actualMinutes).catch(() => {})
       const xp = Math.round(actualMinutes)
       set({ lastXP: xp })
       return {

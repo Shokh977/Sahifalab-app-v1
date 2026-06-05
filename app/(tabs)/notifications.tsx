@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, FlatList, Pressable,
-  ActivityIndicator, Animated,
+  ActivityIndicator, Animated, RefreshControl,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -236,6 +236,7 @@ export default function NotificationsTab() {
   const [items,       setItems]       = useState<NotifItem[]>([])
   const [loading,     setLoading]     = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [refreshing,  setRefreshing]  = useState(false)
   const [hasMore,     setHasMore]     = useState(true)
   const [markingAll,  setMarkingAll]  = useState(false)
   const cursorRef = useRef<number | undefined>(undefined)
@@ -256,7 +257,14 @@ export default function NotificationsTab() {
     } catch {}
     setLoading(false)
     setLoadingMore(false)
+    setRefreshing(false)
   }, [])
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true)
+    fetchUnreadCount()
+    loadPage(true)
+  }, [loadPage, fetchUnreadCount])
 
   useEffect(() => {
     loadPage(true)
@@ -336,6 +344,14 @@ export default function NotificationsTab() {
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={items.length === 0 ? styles.listEmpty : undefined}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={c.accentPrimary}
+              colors={[c.accentPrimary]}
+            />
+          }
         />
       )}
     </View>
