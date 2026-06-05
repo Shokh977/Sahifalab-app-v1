@@ -12,6 +12,7 @@ import { useThemeStore } from '../../stores/themeStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { account, onboarding, auth as authApi } from '../../lib/api'
+import { TermsModal } from '../../components/ui/TermsModal'
 import { typography, spacing, radius } from '../../lib/constants'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -432,6 +433,7 @@ export default function SettingsScreen() {
   // HISOB
   const [showDelete,      setShowDelete]      = useState(false)
   const [showTgLink,      setShowTgLink]      = useState(false)
+  const [showTerms,       setShowTerms]       = useState(false)
   const [showEmailLink,   setShowEmailLink]   = useState(false)
 
   // True if logged in with real Telegram (positive id), false if email/Google (negative synthetic id)
@@ -458,6 +460,11 @@ export default function SettingsScreen() {
 
   const syncNotif = (key: string, val: boolean) => {
     account.saveNotifPrefs({ [key]: val }).catch(() => {})
+    if (key === 'streak') {
+      const { scheduleStreakReminder, cancelStreakReminder } = require('../../lib/streakNotifications')
+      if (val) scheduleStreakReminder().catch(() => {})
+      else     cancelStreakReminder().catch(() => {})
+    }
   }
 
   const handleLogout = useCallback(() => {
@@ -607,6 +614,16 @@ export default function SettingsScreen() {
           </View>
         </SettingGroup>
 
+        {/* YORDAM */}
+        <SectionHeader title="YORDAM" />
+        <SettingGroup>
+          <SettingRow
+            label="Foydalanish shartlari"
+            isLast
+            onPress={() => setShowTerms(true)}
+          />
+        </SettingGroup>
+
         {/* HISOB */}
         <SectionHeader title="HISOB" />
         <SettingGroup>
@@ -639,6 +656,8 @@ export default function SettingsScreen() {
         onConfirm={handleDeleteAccount}
         c={c}
       />
+
+      <TermsModal visible={showTerms} onClose={() => setShowTerms(false)} />
 
       {/* Telegram Bot-Code Link Modal (for email users) */}
       <TelegramLinkModal

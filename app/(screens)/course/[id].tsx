@@ -24,6 +24,7 @@ import { courses as coursesApi, lessons as lessonsApi, profile } from '../../../
 import { typography, spacing, radius, WEB_URL } from '../../../lib/constants'
 import type { Course, Lesson, CourseReview, CourseCertificate } from '../../../lib/api'
 import type { ProfileData } from '../../../lib/types'
+import { ComingSoonModal } from '../../../components/ui/ComingSoonModal'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -686,6 +687,7 @@ export default function CourseDetailScreen() {
   const [certificate,    setCertificate]    = useState<CourseCertificate | null>(null)
   const [loading,        setLoading]        = useState(true)
   const [enrolling,      setEnrolling]      = useState(false)
+  const [showComingSoon, setShowComingSoon] = useState(false)
   const [wishlisted,     setWishlisted]     = useState(false)
   const [descExpanded,   setDescExpanded]   = useState(false)
   const [showAllSections,setShowAllSections]= useState(false)
@@ -813,7 +815,7 @@ export default function CourseDetailScreen() {
   // ── Enroll / buy ───────────────────────────────────────────────────────────
   async function handleEnroll() {
     if (!course) return
-    if (course.is_paid) { await Linking.openURL(`${WEB_URL}/courses/${courseId}`); return }
+    if (course.is_paid) { setShowComingSoon(true); return }
     setEnrolling(true)
     try { await enroll(courseId) }
     catch (e: any) { Alert.alert('Xatolik', e?.message ?? "Ro'yxatdan o'tishda xatolik") }
@@ -1435,6 +1437,8 @@ export default function CourseDetailScreen() {
           </Pressable>
         </MotiView>
       )}
+
+      <ComingSoonModal visible={showComingSoon} onClose={() => setShowComingSoon(false)} />
     </SafeAreaView>
   )
 }

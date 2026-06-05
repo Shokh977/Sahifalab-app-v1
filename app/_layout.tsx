@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../stores/authStore'
+import { syncStreakReminderWithPrefs } from '../lib/streakNotifications'
 import { useThemeStore } from '../stores/themeStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { useNotifToastStore } from '../stores/notifToastStore'
@@ -67,6 +68,7 @@ function parseDeepLink(url: string): string | null {
 }
 
 const PUSH_TOKEN_KEY = 'sahifalab_push_token'
+
 
 SplashScreen.preventAutoHideAsync()
 
@@ -168,13 +170,14 @@ export default function RootLayout() {
         const data = response?.notification?.request?.content?.data ?? {}
         // Resolve route from data
         const routeMap: Record<string, string> = {
-          study_timer:       '/(tabs)/study',
-          profile:           '/(tabs)/profile',
-          home:              '/(tabs)',
-          leaderboard:       '/(screens)/leaderboard',
-          weekly_report:     '/(screens)/weekly-report',
-          teacher_dashboard: '/(screens)/teacher-dashboard',
-          notifications:     '/(tabs)/notifications',
+          study_timer:      '/(tabs)/study',
+          streak_reminder:  '/(tabs)/study',
+          profile:          '/(tabs)/profile',
+          home:             '/(tabs)',
+          leaderboard:      '/(screens)/leaderboard',
+          weekly_report:    '/(screens)/weekly-report',
+          teacher_dashboard:'/(screens)/teacher-dashboard',
+          notifications:    '/(tabs)/notifications',
         }
         let route: string | null = null
         // Dynamic routes first (actor profile, course, test, certificate)
@@ -219,11 +222,12 @@ export default function RootLayout() {
     }
   }, [isLoading, isAuthenticated, needsOnboarding, fontsLoaded, segments])
 
-  // ── After auth: register push token + fetch unread count ──────────────────
+  // ── After auth: register push token, unread count, streak reminder ──────────
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       registerPushToken()
       fetchUnreadCount()
+      syncStreakReminderWithPrefs()
     }
   }, [isAuthenticated, isLoading])
 

@@ -18,6 +18,7 @@ import Animated, {
 import { useAuthStore } from '../../stores/authStore'
 import { useTheme } from '../../hooks/useTheme'
 import { auth as authApi } from '../../lib/api'
+import { TermsModal } from '../../components/ui/TermsModal'
 import { typography, spacing } from '../../lib/constants'
 
 export default function WelcomeScreen() {
@@ -29,6 +30,7 @@ export default function WelcomeScreen() {
   const [phase, setPhase] = useState<'idle' | 'loading' | 'waiting' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [botLink, setBotLink]   = useState<string | null>(null)
+  const [showTerms, setShowTerms] = useState(false)
 
   const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const codeRef  = useRef<string | null>(null)
@@ -237,8 +239,23 @@ export default function WelcomeScreen() {
             </Pressable>
           </View>
         )}
+
+        {/* Legal note */}
+        {!tgWaiting && (
+          <Text style={[styles.legalNote, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
+            Davom etish orqali{' '}
+            <Text
+              style={{ color: c.textSecondary }}
+              onPress={() => setShowTerms(true)}
+            >
+              Foydalanish shartlarimizga
+            </Text>
+            {' '}rozilik bildirasiz
+          </Text>
+        )}
       </Animated.View>
 
+      <TermsModal visible={showTerms} onClose={() => setShowTerms(false)} />
     </View>
   )
 }
@@ -355,4 +372,12 @@ const styles = StyleSheet.create({
   },
   registerHint: { fontSize: 14 },
   registerLink: { fontSize: 14 },
+
+  legalNote: {
+    fontSize:   11,
+    textAlign:  'center',
+    lineHeight: 16,
+    paddingHorizontal: spacing.lg,
+    marginTop: -4,
+  },
 })

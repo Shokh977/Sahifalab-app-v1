@@ -16,6 +16,7 @@ import { StreakLostModal } from '../../components/streak/StreakLostModal'
 import { TreeStage, treeStageFromStreak } from '../../components/ui/TreeStage'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
+import { ComingSoonModal } from '../../components/ui/ComingSoonModal'
 
 
 
@@ -223,7 +224,8 @@ export default function StreakDetailScreen() {
   const [loading, setLoading]         = useState(true)
   const [refreshing, setRefreshing]   = useState(false)
   const [loadError, setLoadError]     = useState<string | null>(null)
-  const [showFreeze, setShowFreeze]         = useState(false)
+  const [showFreeze,     setShowFreeze]     = useState(false)
+  const [showComingSoon, setShowComingSoon] = useState(false)
   const [showMilestones, setShowMilestones] = useState(false)
   const [showLostModal, setShowLostModal]   = useState(false)
   const [prevStreakDays, setPrevStreakDays] = useState(0)
@@ -523,7 +525,7 @@ export default function StreakDetailScreen() {
             )}
             <Pressable
               style={[styles.freezeBtn, { backgroundColor: '#60a5fa', borderRadius: radius.lg }]}
-              onPress={() => setShowFreeze(true)}
+              onPress={() => setShowComingSoon(true)}
             >
               <Text style={[styles.freezeBtnText, { fontFamily: typography.fontFamily.semibold }]}>
                 Sotib olish
@@ -580,6 +582,7 @@ export default function StreakDetailScreen() {
         onClose={() => setShowLostModal(false)}
         onUseFreeze={freezeCount > 0 ? handleUseFreeze : undefined}
       />
+      <ComingSoonModal visible={showComingSoon} onClose={() => setShowComingSoon(false)} />
 
       {/* ── Milestones modal ──────────────────────────────────────────── */}
       <Modal

@@ -19,6 +19,7 @@ import Animated, {
 import { useAuthStore } from '../../stores/authStore'
 import { auth } from '../../lib/api'
 import { useTheme } from '../../hooks/useTheme'
+import { TermsModal } from '../../components/ui/TermsModal'
 import { typography, spacing } from '../../lib/constants'
 
 type Step = 'email' | 'password' | 'register'
@@ -29,13 +30,15 @@ export default function EmailAuthScreen() {
   const router        = useRouter()
   const { loginEmail } = useAuthStore()
 
-  const [step,      setStep]      = useState<Step>('email')
-  const [email,     setEmail]     = useState('')
-  const [name,      setName]      = useState('')
-  const [password,  setPassword]  = useState('')
-  const [showPw,    setShowPw]    = useState(false)
-  const [loading,   setLoading]   = useState(false)
-  const [error,     setError]     = useState<string | null>(null)
+  const [step,        setStep]        = useState<Step>('email')
+  const [email,       setEmail]       = useState('')
+  const [name,        setName]        = useState('')
+  const [password,    setPassword]    = useState('')
+  const [showPw,      setShowPw]      = useState(false)
+  const [agreeTerms,  setAgreeTerms]  = useState(false)
+  const [showTerms,   setShowTerms]   = useState(false)
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState<string | null>(null)
 
   const pwRef   = useRef<TextInput>(null)
   const nameRef = useRef<TextInput>(null)
@@ -107,6 +110,11 @@ export default function EmailAuthScreen() {
     }
     if (password.length < 6) {
       setError('Parol kamida 6 ta belgidan iborat bo\'lishi kerak')
+      shake()
+      return
+    }
+    if (!agreeTerms) {
+      setError('Foydalanish shartlarini qabul qilish talab qilinadi')
       shake()
       return
     }
@@ -243,6 +251,31 @@ export default function EmailAuthScreen() {
           )}
         </Animated.View>
 
+        {/* Terms checkbox — register step only */}
+        {step === 'register' && (
+          <View style={styles.termsRow}>
+            <Pressable
+              onPress={() => setAgreeTerms(v => !v)}
+              hitSlop={12}
+              style={[
+                styles.checkbox,
+                { borderColor: agreeTerms ? c.accentPrimary : c.border, backgroundColor: agreeTerms ? c.accentPrimary : 'transparent' },
+              ]}
+            >
+              {agreeTerms && <Text style={styles.checkMark}>✓</Text>}
+            </Pressable>
+            <Text style={[styles.termsText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+              <Text
+                style={{ color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }}
+                onPress={() => setShowTerms(true)}
+              >
+                Foydalanish shartlariga
+              </Text>
+              {' '}roziman
+            </Text>
+          </View>
+        )}
+
         {/* CTA button */}
         <Pressable
           onPress={
@@ -273,6 +306,7 @@ export default function EmailAuthScreen() {
         )}
 
       </ScrollView>
+      <TermsModal visible={showTerms} onClose={() => setShowTerms(false)} />
     </KeyboardAvoidingView>
   )
 }
@@ -327,6 +361,20 @@ const styles = StyleSheet.create({
   },
 
   error: { fontSize: typography.size.sm, textAlign: 'center' },
+
+  termsRow: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           spacing.sm,
+    marginBottom:  spacing.sm,
+  },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 6, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center', marginTop: 1,
+    flexShrink: 0,
+  },
+  checkMark: { color: '#fff', fontSize: 11, fontWeight: '800', lineHeight: 13 },
+  termsText: { fontSize: typography.size.sm, lineHeight: 18, flex: 1 },
 
   cta: {
     height:         56,

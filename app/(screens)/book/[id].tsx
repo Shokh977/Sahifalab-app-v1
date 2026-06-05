@@ -13,6 +13,7 @@ import { useTheme } from '../../../hooks/useTheme'
 import { useAuthStore } from '../../../stores/authStore'
 import { request } from '../../../lib/api'
 import { typography, spacing, radius } from '../../../lib/constants'
+import { ComingSoonModal } from '../../../components/ui/ComingSoonModal'
 
 interface Book {
   id:              number
@@ -311,10 +312,11 @@ export default function BookDetailScreen() {
   const scrollRef  = useRef<ScrollView>(null)
   const { id }     = useLocalSearchParams<{ id: string }>()
 
-  const [book,         setBook]         = useState<Book | null>(null)
-  const [reviews,      setReviews]      = useState<BookReview[]>([])
-  const [reviewsError, setReviewsError] = useState<string | null>(null)
-  const [loading,      setLoading]      = useState(true)
+  const [book,          setBook]          = useState<Book | null>(null)
+  const [reviews,       setReviews]       = useState<BookReview[]>([])
+  const [reviewsError,  setReviewsError]  = useState<string | null>(null)
+  const [loading,       setLoading]       = useState(true)
+  const [showComingSoon,setShowComingSoon] = useState(false)
 
   useEffect(() => { load() }, [id])
 
@@ -368,7 +370,7 @@ export default function BookDetailScreen() {
       await Linking.openURL(res.download_url)
     } catch (e: any) {
       if (e?.message?.includes('402') || e?.message?.includes('Purchase')) {
-        Alert.alert("To'lov kerak", `Bu kitob ${book?.price?.toLocaleString('uz-UZ')} so'm turadi.`)
+        setShowComingSoon(true)
       } else {
         Alert.alert('Xatolik', 'Yuklab olishda xatolik yuz berdi.')
       }
@@ -561,6 +563,7 @@ export default function BookDetailScreen() {
 
       </ScrollView>
       </KeyboardAvoidingView>
+      <ComingSoonModal visible={showComingSoon} onClose={() => setShowComingSoon(false)} />
     </SafeAreaView>
   )
 }

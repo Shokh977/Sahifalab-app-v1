@@ -9,6 +9,7 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { playFocusSound, playBreakSound } from '../../lib/timerSounds'
+import { rescheduleStreakReminderForTomorrow } from '../../lib/streakNotifications'
 
 // expo modules lazy-required for Expo Go compatibility
 let Notifications: any = null
@@ -242,6 +243,7 @@ export default function FocusTimerScreen() {
           }).catch(() => {})
         }
 
+        rescheduleStreakReminderForTomorrow().catch(() => {})
         setShowCompletion(true)
         Animated.spring(completionAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }).start()
 

@@ -17,6 +17,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useTheme } from '../../hooks/useTheme'
 import { auth as authApi } from '../../lib/api'
 import { PasswordStrengthBar } from '../../components/ui/PasswordStrengthBar'
+import { TermsModal } from '../../components/ui/TermsModal'
 import { checkPassword, validateEmail } from '../../lib/validators'
 import { GOOGLE_CLIENT_ID, typography, spacing, radius } from '../../lib/constants'
 
@@ -28,13 +29,15 @@ export default function SignupScreen() {
   const insets  = useSafeAreaInsets()
   const { loginGoogle } = useAuthStore()
 
-  const [firstName, setFirstName] = useState('')
-  const [email,     setEmail]     = useState('')
-  const [password,  setPassword]  = useState('')
-  const [showPw,    setShowPw]    = useState(false)
-  const [loading,   setLoading]   = useState<'email' | 'google' | null>(null)
-  const [error,     setError]     = useState<string | null>(null)
-  const [sent,      setSent]      = useState(false)
+  const [firstName,   setFirstName]   = useState('')
+  const [email,       setEmail]       = useState('')
+  const [password,    setPassword]    = useState('')
+  const [showPw,      setShowPw]      = useState(false)
+  const [agreeTerms,  setAgreeTerms]  = useState(false)
+  const [showTerms,   setShowTerms]   = useState(false)
+  const [loading,     setLoading]     = useState<'email' | 'google' | null>(null)
+  const [error,       setError]       = useState<string | null>(null)
+  const [sent,        setSent]        = useState(false)
 
   const pwCheck = checkPassword(password)
 
@@ -61,6 +64,7 @@ export default function SignupScreen() {
     if (!firstName.trim())         { setError('Ismingizni kiriting'); return }
     if (!validateEmail(email))     { setError("To'g'ri email kiriting"); return }
     if (pwCheck.errors.length > 0) { setError(pwCheck.errors[0]); return }
+    if (!agreeTerms)               { setError("Foydalanish shartlarini qabul qilish talab qilinadi"); return }
 
     setLoading('email')
     try {
@@ -231,6 +235,29 @@ export default function SignupScreen() {
             {password.length > 0 && <PasswordStrengthBar password={password} />}
           </View>
 
+          {/* Terms agreement */}
+          <View style={styles.termsRow}>
+            <Pressable
+              onPress={() => setAgreeTerms(v => !v)}
+              hitSlop={12}
+              style={[
+                styles.checkbox,
+                { borderColor: agreeTerms ? c.brand : c.borderStrong, backgroundColor: agreeTerms ? c.brand : 'transparent' },
+              ]}
+            >
+              {agreeTerms && <Text style={styles.checkMark}>✓</Text>}
+            </Pressable>
+            <Text style={[styles.termsText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+              <Text
+                style={{ color: c.brand, fontFamily: typography.fontFamily.semibold }}
+                onPress={() => setShowTerms(true)}
+              >
+                Foydalanish shartlariga
+              </Text>
+              {' '}roziman
+            </Text>
+          </View>
+
           <Pressable
             onPress={handleRegister}
             disabled={!!loading}
@@ -265,6 +292,7 @@ export default function SignupScreen() {
         </View>
 
       </ScrollView>
+      <TermsModal visible={showTerms} onClose={() => setShowTerms(false)} />
     </KeyboardAvoidingView>
   )
 }
@@ -330,6 +358,20 @@ const styles = StyleSheet.create({
     shadowRadius: 8, elevation: 6,
   },
   submitBtnText: { color: '#fff', fontSize: typography.size.base },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           spacing.sm,
+    marginTop:     spacing.xs,
+  },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 6, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center', marginTop: 1,
+    flexShrink: 0,
+  },
+  checkMark: { color: '#fff', fontSize: 11, fontWeight: '800', lineHeight: 13 },
+  termsText: { fontSize: typography.size.sm, lineHeight: 18, flex: 1 },
+
   footer:     { flexDirection: 'row', justifyContent: 'center' },
   footerText: { fontSize: typography.size.sm },
   footerLink: { fontSize: typography.size.sm },
