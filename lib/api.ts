@@ -888,6 +888,7 @@ export const account = {
     bio:              string
     course_idea:      string
     motivation:       string
+    contact:          string
   }) =>
     request<{ ok: boolean; already_applied?: boolean; status?: string }>(
       '/api/auth/apply-teacher',

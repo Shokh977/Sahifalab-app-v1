@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router'
 import {
   Flame, Trophy, TrendingUp, Video, Info, Bell,
   Users, Heart, MessageCircle, Repeat2, Bookmark,
-  AtSign, Zap, Award, CheckCircle,
+  AtSign, Zap, Award, CheckCircle, GraduationCap,
 } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -38,6 +38,7 @@ const TITLES: Record<string, string> = {
   new_sale:            "Yangi sotish",
   payout:              "To'lov o'tkazildi",
   welcome:             "Sahifalab'ga xush kelibsiz",
+  teacher_approved:    "Ariza qabul qilindi 🎉",
   leaderboard_rank:    "Reyting",
   streak_reminder:     "Seriya eslatmasi",
   new_content:         "Yangi dars",
@@ -69,6 +70,7 @@ function notifBody(type: string, meta: Record<string, any>): string {
     new_sale:            "Yangi daromad tushdi.",
     payout:              "Daromadingiz hisobingizga o'tkazildi.",
     welcome:             "Ilm yo'liga xush kelibsiz. Profilingizni to'ldiring.",
+    teacher_approved:    "Tabriklaymiz! Siz endi o'qituvchi sifatida tasdiqlangansiz. Kurs yaratishni boshlashingiz mumkin.",
     leaderboard_rank:    meta.message ?? "Reyting o'zgardi.",
     streak_reminder:     "Bugun dars o'tmaganiz — seriyangizni saqlang!",
     new_content:         meta.lesson_title ? `Yangi dars: ${meta.lesson_title}` : "Yangi dars qo'shildi.",
@@ -147,6 +149,8 @@ function getIconCfg(type: string): { Icon: LucideIcon; color: string; bg: string
       return { Icon: TrendingUp,     color: '#34C759', bg: 'rgba(52,199,89,0.12)'   }
     case 'welcome':
       return { Icon: Bell,           color: '#4DA6FF', bg: 'rgba(77,166,255,0.12)'  }
+    case 'teacher_approved':
+      return { Icon: GraduationCap,  color: '#E8792F', bg: 'rgba(232,121,47,0.12)' }
     default:
       return { Icon: Info,           color: '#9B9BA4', bg: 'rgba(155,155,164,0.12)' }
   }
@@ -177,6 +181,7 @@ const TYPE_GROUP: Record<string, string> = {
   new_sale:            'Moliya',
   payout:              'Moliya',
   welcome:             'Tizim',
+  teacher_approved:    'Tizim',
 }
 
 const TABS = [

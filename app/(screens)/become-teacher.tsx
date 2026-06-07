@@ -17,12 +17,6 @@ import { typography, spacing, radius } from '../../lib/constants'
 
 // ── Static content ─────────────────────────────────────────────────────────────
 
-const STEPS = [
-  { num: '1️⃣', title: 'Ariza topshir',  desc: "Formani to'ldiring va admin tasdiqlashini kuting" },
-  { num: '2️⃣', title: 'Badj oling',     desc: "Admin tasdiqlashi bilan o'qituvchi badji beriladi" },
-  { num: '3️⃣', title: 'Kurs yarating',  desc: 'Video va materiallar yuklang, daromad olishni boshlang' },
-]
-
 const BENEFITS = [
   { icon: BookOpen,    title: "O'z kurslaringizni yarating",  desc: "Video darslar, testlar va materiallar bilan to'liq kurs tuzing" },
   { icon: BadgeCheck,  title: "O'qituvchi badji",             desc: "Profilingizda ko'rinadigan \"Teacher\" badge olasiz" },
@@ -75,6 +69,7 @@ export default function BecomeTeacherScreen() {
   const [bio,            setBio]            = useState('')
   const [courseIdea,     setCourseIdea]     = useState('')
   const [motivation,     setMotivation]     = useState('')
+  const [contact,        setContact]        = useState('')
   const [errorMsg,       setErrorMsg]       = useState('')
 
   const isValid =
@@ -83,7 +78,8 @@ export default function BecomeTeacherScreen() {
     expYears !== null &&
     bio.trim().length >= 20 &&
     courseIdea.trim().length >= 20 &&
-    motivation.trim().length >= 20
+    motivation.trim().length >= 20 &&
+    contact.trim().length > 0
 
   async function handleSubmit() {
     if (!isValid) return
@@ -96,6 +92,7 @@ export default function BecomeTeacherScreen() {
         bio:              bio.trim(),
         course_idea:      courseIdea.trim(),
         motivation:       motivation.trim(),
+        contact:          contact.trim(),
       })
       if (res.already_applied) {
         setScreenState(res.status === 'active' ? 'success' : 'pending')
@@ -207,26 +204,6 @@ export default function BecomeTeacherScreen() {
             ) : null}
           </Text>
         </LinearGradient>
-
-        {/* ── How it works ──────────────────────────────────────────────── */}
-        <View style={[s.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-          <Text style={[s.cardTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-            Qanday ishlaydi?
-          </Text>
-          <View style={s.stepsRow}>
-            {STEPS.map(step => (
-              <View key={step.num} style={[s.stepCard, { backgroundColor: 'rgba(232,121,47,0.07)', borderColor: 'rgba(232,121,47,0.14)' }]}>
-                <Text style={{ fontSize: 20 }}>{step.num}</Text>
-                <Text style={[s.stepCardTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-                  {step.title}
-                </Text>
-                <Text style={[s.stepCardDesc, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                  {step.desc}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
 
         {/* ── Benefits grid ─────────────────────────────────────────────── */}
         <View style={s.benefitsGrid}>
@@ -406,6 +383,19 @@ export default function BecomeTeacherScreen() {
             </Text>
           </FormField>
 
+          {/* Contact */}
+          <FormField label="Aloqa (email yoki telefon) *" hint="Admin siz bilan bog'lanishi uchun email yoki telefon raqamingizni kiriting.">
+            <TextInput
+              value={contact}
+              onChangeText={setContact}
+              placeholder="email@example.com yoki +998 90 123 45 67"
+              placeholderTextColor={c.textDisabled}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={[s.input, { color: c.textPrimary, backgroundColor: c.bgTertiary, borderColor: c.border, fontFamily: typography.fontFamily.regular }]}
+            />
+          </FormField>
+
           {/* Error */}
           {!!errorMsg && (
             <View style={[s.errorBox, { backgroundColor: 'rgba(255,59,48,0.1)', borderColor: 'rgba(255,59,48,0.3)' }]}>
@@ -525,15 +515,6 @@ const s = StyleSheet.create({
   },
   cardTitle:    { fontSize: 14 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-
-  // Steps row
-  stepsRow:     { flexDirection: 'row', gap: 8 },
-  stepCard: {
-    flex: 1, borderRadius: 12, borderWidth: 1,
-    padding: 10, gap: 5, alignItems: 'center',
-  },
-  stepCardTitle: { fontSize: 11, textAlign: 'center' },
-  stepCardDesc:  { fontSize: 10, textAlign: 'center', lineHeight: 14 },
 
   // Benefits
   benefitsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
