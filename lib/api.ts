@@ -1391,3 +1391,37 @@ export const streaks = {
       { method: 'POST', auth: true },
     ),
 }
+
+// ── Teacher wallet ─────────────────────────────────────────────────────────────
+
+export interface WalletBalance {
+  teacher_id:         number
+  available_balance:  number
+  pending_withdrawal: number
+  withdrawn_total:    number
+}
+
+export interface PayoutRequest {
+  id:           number
+  teacher_id:   number
+  amount:       number
+  card_number:  string
+  status:       'pending' | 'approved' | 'rejected'
+  admin_note:   string | null
+  created_at:   string
+  processed_at: string | null
+}
+
+export const wallet = {
+  balance: () =>
+    request<WalletBalance>('/api/teacher/wallet', { auth: true }),
+
+  withdraw: (amount: number, card_number: string) =>
+    request<{ success: boolean; payout: PayoutRequest }>(
+      '/api/teacher/wallet/withdraw',
+      { method: 'POST', body: JSON.stringify({ amount, card_number }), auth: true },
+    ),
+
+  history: (limit = 50) =>
+    request<{ history: PayoutRequest[] }>(`/api/teacher/wallet/history?limit=${limit}`, { auth: true }),
+}

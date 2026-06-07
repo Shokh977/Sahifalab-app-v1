@@ -414,7 +414,9 @@ export default function CoursesTab() {
       offset: 0,
     }).then(res => {
       if (cancelled) return
-      setCourseList(res.courses)
+      let list = res.courses
+      if (sortKey === 'free') list = list.filter(c => !c.is_paid)
+      setCourseList(list)
       setTotal(res.total)
       pageRef.current = 1
     }).catch(() => {}).finally(() => {

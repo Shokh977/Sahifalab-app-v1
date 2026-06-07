@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
-  ActivityIndicator, Image, RefreshControl, Alert,
+  ActivityIndicator, Image, RefreshControl, Alert, Linking,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import {
@@ -250,8 +250,8 @@ export default function TeacherDashboardScreen() {
 
   return (
     <ScrollView
-      style={[styles.root, { backgroundColor: c.bgPrimary }]}
-      contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
+      style={[styles.root, { backgroundColor: c.bgSecondary }]}
+      contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + spacing.xl }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.brand} colors={[c.brand]} />}
       showsVerticalScrollIndicator={false}
     >
@@ -327,15 +327,36 @@ export default function TeacherDashboardScreen() {
           accent="#4ade80"
           colors={c}
         />
-        <StatTile
-          icon={Wallet}
-          label="Daromad"
-          value={netRevenue >= 1000 ? fmtUzs(netRevenue) : '—'}
-          sub={netRevenue > 0 ? '70% ulush' : undefined}
-          accent="#f59e0b"
-          colors={c}
-        />
+        <Pressable
+          onPress={() => router.push('/(screens)/teacher-earnings' as any)}
+          style={{ flex: 1 }}
+        >
+          <StatTile
+            icon={Wallet}
+            label="Daromad"
+            value={netRevenue >= 1000 ? fmtUzs(netRevenue) : '—'}
+            sub={netRevenue > 0 ? "Batafsil →" : undefined}
+            accent="#f59e0b"
+            colors={c}
+          />
+        </Pressable>
       </View>
+
+      {/* ── Website note ──────────────────────────────────────────────────── */}
+      <Pressable
+        onPress={() => Linking.openURL('https://sahifalab.uz')}
+        style={({ pressed }) => [styles.webNote, { backgroundColor: pressed ? c.bgTertiary : c.bgSecondary, borderColor: c.border }]}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.webNoteTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+            sahifalab.uz — kurs yaratish
+          </Text>
+          <Text style={[styles.webNoteSub, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+            Kurs yaratish, darslar qo'shish, to'liq statistika va daromad boshqaruvi saytda yanada qulay
+          </Text>
+        </View>
+        <ChevronRight size={16} color={c.accentPrimary} />
+      </Pressable>
 
       {/* ── Courses performance ─────────────────────────────────────────── */}
       {(analytics?.course_performance?.length ?? 0) > 0 && (
@@ -517,6 +538,19 @@ const styles = StyleSheet.create({
     borderRadius:      radius.full,
     marginTop:         spacing.sm,
   },
+
+  webNote: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    marginHorizontal:  spacing.base,
+    marginTop:         spacing.base,
+    padding:           spacing.base,
+    borderRadius:      radius['2xl'],
+    borderWidth:       1,
+    gap:               spacing.sm,
+  },
+  webNoteTitle: { fontSize: typography.size.sm },
+  webNoteSub:   { fontSize: typography.size.xs, lineHeight: 17, marginTop: 2 },
 })
 
 const tile = StyleSheet.create({
