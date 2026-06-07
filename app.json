@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sahifalab",
     "slug": "sahifalab",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "scheme": "sahifalab",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.sahifalab.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D0D0F"
