@@ -193,7 +193,7 @@ export default function WeeklyReportScreen() {
     if (!data) return
     try {
       await Share.share({
-        message: `📊 Bu hafta SAHIFALAB'da:\n⏱ ${fmtTime(data.total_minutes)}\n⚡ +${data.week_xp.toLocaleString()} XP\n🔥 ${data.streak_days} kunlik streak\n\nO'qish — kelajakka investitsiya!`,
+        message: `📊 Bu hafta SAHIFALAB'da:\n⏱ ${fmtTime(data.total_minutes)}\n⚡ +${data.week_xp.toLocaleString()} XP\n🔥 ${data.streak_days} kunlik seriya\n\nO'qish — kelajakka investitsiya!`,
       })
     } catch {}
   }
@@ -339,7 +339,7 @@ export default function WeeklyReportScreen() {
           <StatCard
             emoji="🔥"
             value={`${data.streak_days}`}
-            label="Streak kun"
+            label="Seriya kun"
             c={c}
           />
           <StatCard

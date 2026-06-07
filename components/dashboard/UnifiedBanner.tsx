@@ -233,7 +233,7 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
                   {streak}
                 </Text>
                 <Text style={[styles.streakLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                  {streak === 0 ? 'Yangi boshlanish' : 'kunlik streak'}
+                  {streak === 0 ? 'Yangi boshlanish' : 'kunlik seriya'}
                 </Text>
               </View>
 

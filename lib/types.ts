@@ -54,6 +54,8 @@ export interface ProfileData {
   xp_percent:        number
   // Activity
   focus_hours:       number
+  streak_days:       number
+  longest_streak:    number
   profile_views:     number
   profile_views_week: number
   posts_count:       number
@@ -189,10 +191,11 @@ export interface ReviewResult {
 }
 
 export interface CompleteSessionResult {
-  ok:            boolean
-  xp_awarded:    number
-  flash_minutes: number
-  today_minutes: number
-  streak_days:   number
-  goal_met:      boolean
+  ok:                   boolean
+  xp_awarded:           number
+  flash_minutes:        number
+  today_minutes:        number
+  streak_days:          number
+  goal_met:             boolean
+  challenges_completed: Array<{ key: string; title: string; bonus_xp: number }>
 }

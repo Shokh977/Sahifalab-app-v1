@@ -172,7 +172,7 @@ export function StreakBanner({ stats, goalDone }: Props) {
             {stats.streak_days}
           </Text>
           <Text style={[styles.streakLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-            kunlik streak
+            kunlik seriya
           </Text>
         </View>
 

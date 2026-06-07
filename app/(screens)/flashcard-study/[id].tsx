@@ -23,6 +23,7 @@ import { useFlashcardStore } from '../../../stores/flashcardStore'
 import { useAuthStore } from '../../../stores/authStore'
 import type { Flashcard, FlashcardDeck } from '../../../lib/types'
 import { typography, spacing, radius } from '../../../lib/constants'
+import { MilestoneModal } from '../../../components/streak/MilestoneModal'
 
 const { width: SW } = Dimensions.get('window')
 const CARD_W = SW - 32
@@ -192,7 +193,7 @@ export default function FlashcardStudyScreen() {
   const insets   = useSafeAreaInsets()
   const router   = useRouter()
 
-  const { patchDeckCard } = useFlashcardStore()
+  const { patchDeckCard, fetchDecks } = useFlashcardStore()
   const patchUser         = useAuthStore(s => s.patchUser)
 
   // ── Session state ──────────────────────────────────────────────────────────
@@ -208,6 +209,9 @@ export default function FlashcardStudyScreen() {
   const [done,         setDone]         = useState(false)
   const [masteryBefore, setMasteryBefore] = useState(0)
   const [masteryAfter,  setMasteryAfter]  = useState(0)
+  const [milestoneVisible,  setMilestoneVisible]  = useState(false)
+  const [milestoneDays,     setMilestoneDays]     = useState(0)
+  const [milestoneBonusXp,  setMilestoneBonusXp]  = useState(0)
 
   const startTimeRef    = useRef(Date.now())
   const cardStartRef    = useRef(Date.now())
@@ -355,6 +359,16 @@ export default function FlashcardStudyScreen() {
       }).then(result => {
         setTotalXP(t => t + result.xp_awarded)
         patchUser({ streak_days: result.streak_days })
+        fetchDecks()
+        if (result.challenges_completed?.length > 0) {
+          const ch = result.challenges_completed[0]
+          const days = parseInt(ch.key.replace('streak_', ''), 10)
+          if (!isNaN(days)) {
+            setMilestoneDays(days)
+            setMilestoneBonusXp(ch.bonus_xp)
+            setMilestoneVisible(true)
+          }
+        }
       }).catch(() => {})
 
       // Stop timer
@@ -387,17 +401,25 @@ export default function FlashcardStudyScreen() {
   // ── Session complete ───────────────────────────────────────────────────────
   if (!loading && done && deck) {
     return (
-      <SessionComplete
-        deck={deck}
-        totalReviewed={reviewed}
-        correctCount={correctCount}
-        sessionSec={sessionSecRef.current}
-        xpEarned={totalXP}
-        masteryBefore={masteryBefore}
-        masteryAfter={masteryAfter}
-        onHome={() => router.push('/(tabs)' as any)}
-        onOther={() => router.push('/(screens)/flashcards' as any)}
-      />
+      <>
+        <SessionComplete
+          deck={deck}
+          totalReviewed={reviewed}
+          correctCount={correctCount}
+          sessionSec={sessionSecRef.current}
+          xpEarned={totalXP}
+          masteryBefore={masteryBefore}
+          masteryAfter={masteryAfter}
+          onHome={() => router.push('/(tabs)' as any)}
+          onOther={() => router.push('/(screens)/flashcards' as any)}
+        />
+        <MilestoneModal
+          visible={milestoneVisible}
+          days={milestoneDays}
+          bonusXp={milestoneBonusXp}
+          onClose={() => setMilestoneVisible(false)}
+        />
+      </>
     )
   }
 
@@ -441,7 +463,9 @@ export default function FlashcardStudyScreen() {
       <View style={styles.cardArea}>
         <Animated.View style={[scaleStyle, slideStyle]}>
           <GestureDetector gesture={composed}>
-            <View style={[styles.card, { backgroundColor: deck.color + '1A', borderColor: deck.color + '33', shadowColor: '#000' }]}>
+            <View style={[styles.card, { backgroundColor: c.bgSecondary, borderColor: c.border, shadowColor: '#000' }]}>
+              {/* Deck colour accent bar */}
+              <View style={[styles.cardAccentBar, { backgroundColor: deck.color }]} />
               {/* Front face */}
               <Animated.View style={[StyleSheet.absoluteFill, styles.cardFace, frontStyle]}>
                 <Text style={[styles.cardSideLabel, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
@@ -463,7 +487,7 @@ export default function FlashcardStudyScreen() {
               </Animated.View>
 
               {/* Back face */}
-              <Animated.View style={[StyleSheet.absoluteFill, styles.cardFace, { backgroundColor: deck.color + '26' }, backStyle]}>
+              <Animated.View style={[StyleSheet.absoluteFill, styles.cardFace, backStyle]}>
                 <Text style={[styles.cardSideLabel, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
                   ORQA TOMON
                 </Text>
@@ -604,12 +628,20 @@ const styles = StyleSheet.create({
     width:         CARD_W,
     height:        Math.round(Dimensions.get('window').height * 0.52),
     borderRadius:  20,
-    borderWidth:   1,
-    shadowOpacity: 0.15,
-    shadowRadius:  16,
-    shadowOffset:  { width: 0, height: 4 },
-    elevation:     6,
+    borderWidth:   StyleSheet.hairlineWidth,
+    shadowOpacity: 0.08,
+    shadowRadius:  12,
+    shadowOffset:  { width: 0, height: 3 },
+    elevation:     4,
     overflow:      'hidden',
+  },
+  cardAccentBar: {
+    position:     'absolute',
+    top:          0,
+    left:         0,
+    right:        0,
+    height:       4,
+    zIndex:       1,
   },
   cardFace: {
     padding:        24,

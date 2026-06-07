@@ -13,8 +13,10 @@ import { useProfileStore } from '../../../stores/profileStore'
 import { profile as profileApi, follows, type SocialUser } from '../../../lib/api'
 import { Avatar } from '../../../components/ui/Avatar'
 import { HeroLevelCard } from '../../../components/profile/HeroLevelCard'
+import { CompareModal, type CompareUser } from '../../../components/profile/CompareModal'
 import { typography, spacing, radius } from '../../../lib/constants'
 import type { ProfileData, ProfileCertificate } from '../../../lib/types'
+import { useDashboardStore } from '../../../stores/dashboardStore'
 
 // ── XP Ring Avatar ────────────────────────────────────────────────────────────
 
@@ -240,12 +242,14 @@ export default function PublicProfileScreen() {
   const insets   = useSafeAreaInsets()
   const { id }   = useLocalSearchParams<{ id: string }>()
   const authUser = useAuthStore(s => s.user)
-  const { loadPublicProfile, patchCachedStatus, cache } = useProfileStore()
+  const { loadPublicProfile, loadOwnProfile, patchCachedStatus, cache, ownProfile } = useProfileStore()
+  const focusStats = useDashboardStore(s => s.data?.focusStats)
 
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState<string | null>(null)
   const [refreshing,    setRefreshing]    = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const [showCompare,   setShowCompare]   = useState(false)
   const [followModal,   setFollowModal]   = useState<{ type: 'followers' | 'following'; visible: boolean }>({
     type: 'followers', visible: false,
   })
@@ -414,7 +418,7 @@ export default function PublicProfileScreen() {
                 c={c}
               />
               <Pressable
-                onPress={() => Alert.alert('Tez orada', 'Taqqoslash imkoniyati tez orada ishga tushadi.')}
+                onPress={() => { if (!ownProfile) loadOwnProfile(); setShowCompare(true) }}
                 style={[styles.compareBtn, { backgroundColor: c.bgSecondary, borderColor: c.border }]}
               >
                 <BarChart2 size={16} color={c.textSecondary} />
@@ -488,6 +492,33 @@ export default function PublicProfileScreen() {
         onClose={() => setFollowModal(m => ({ ...m, visible: false }))}
         router={router}
       />
+
+      {!isOwn && authUser && (
+        <CompareModal
+          visible={showCompare}
+          onClose={() => setShowCompare(false)}
+          me={{
+            name:             authUser.first_name,
+            photo_url:        authUser.photo_url ?? null,
+            level:            authUser.level,
+            total_xp:         authUser.total_xp,
+            longest_streak:   focusStats?.longest_streak ?? authUser.streak_days,
+            focus_hours:      focusStats?.total_focus_minutes != null
+                                ? Math.round((focusStats.total_focus_minutes / 60) * 10) / 10
+                                : (ownProfile?.focus_hours ?? 0),
+            courses_completed: ownProfile?.courses_completed ?? 0,
+          }}
+          them={{
+            name:             p.first_name,
+            photo_url:        p.photo_url,
+            level:            p.level,
+            total_xp:         p.total_xp,
+            longest_streak:   p.longest_streak ?? 0,
+            focus_hours:      p.focus_hours,
+            courses_completed: p.courses_completed,
+          }}
+        />
+      )}
     </View>
   )
 }

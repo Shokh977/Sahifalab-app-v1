@@ -5,7 +5,7 @@ import {
   Animated as RNAnimated, Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withRepeat, withSequence, Easing, runOnJS,
@@ -832,10 +832,12 @@ function FlashcardsView() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [showInfo,  setShowInfo]  = useState(false)
 
-  useEffect(() => {
-    fetchDecks()
-    fetchStats()
-  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      fetchDecks()
+      fetchStats()
+    }, [])
+  )
 
   const stats = useFlashcardStore(s => s.stats)
 
@@ -1125,7 +1127,7 @@ function StatsScreen() {
             {longestStreak}
           </Text>
           <Text style={[styles.statLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-            Eng uzun streak
+            Eng uzun seriya
           </Text>
         </Pressable>
 
@@ -1140,7 +1142,7 @@ function StatsScreen() {
             <Text style={styles.flameEmoji}>🔥</Text>
           </View>
           <Text style={[styles.statLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-            Hozirgi streak
+            Hozirgi seriya
           </Text>
         </Pressable>
       </View>
@@ -1302,7 +1304,7 @@ export default function StudyTab() {
             </Text>
             {[
               { icon: '🎯', title: 'Chuqur diqqat', desc: 'Vaqt chegarasi borligi sababli miyangiz faqat bir ishga to\'liq yopishadi va chalg\'ish kamayadi.' },
-              { icon: '🔥', title: 'Streak va odatlar', desc: 'Har kuni o\'qish odatini shakllantiradi. Uzilmagan kunlar seriyasi (streak) motivatsiyani oshiradi.' },
+              { icon: '🔥', title: 'Seriya va odatlar', desc: 'Har kuni o\'qish odatini shakllantiradi. Uzilmagan kunlar seriyasi motivatsiyani oshiradi.' },
               { icon: '⭐', title: 'XP va daraja', desc: 'Har bir tugatilgan sessiya uchun tajriba ballari (XP) olasiz va darajangiz o\'sadi.' },
               { icon: '📊', title: 'Taraqqiyotni ko\'rish', desc: 'Haftalik grafik va issiqlik xaritasida o\'qish odatingizning rivojlanishini kuzatasiz.' },
             ].map(item => (

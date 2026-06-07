@@ -16,7 +16,6 @@ import { StreakLostModal } from '../../components/streak/StreakLostModal'
 import { TreeStage, treeStageFromStreak } from '../../components/ui/TreeStage'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
-import { ComingSoonModal } from '../../components/ui/ComingSoonModal'
 
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
@@ -44,10 +43,10 @@ const XP_ROWS = [
   { label: '⏱ Fokus taymer',      value: '1.66 XP/daq', sub: '≈ 100 XP / soat' },
   { label: '📝 Test topshirish',   value: '+25 XP',      sub: 'Kunlik limit: 100 XP' },
   { label: '🎓 Kurs tugatish',     value: '+200 XP',     sub: 'Bir marta, har kurs' },
-  { label: '🔥 7 kunlik streak',   value: '+50 XP',      sub: 'Bonus' },
-  { label: '⚡ 14 kunlik streak',  value: '+120 XP',     sub: 'Bonus' },
-  { label: '🏆 30 kunlik streak',  value: '+300 XP',     sub: 'Bonus' },
-  { label: '👑 100 kunlik streak', value: '+1000 XP',    sub: 'Afsonaviy bonus' },
+  { label: '🔥 7 kunlik seriya',   value: '+50 XP',      sub: 'Bonus' },
+  { label: '⚡ 14 kunlik seriya',  value: '+120 XP',     sub: 'Bonus' },
+  { label: '🏆 30 kunlik seriya',  value: '+300 XP',     sub: 'Bonus' },
+  { label: '👑 100 kunlik seriya', value: '+1000 XP',    sub: 'Afsonaviy bonus' },
 ]
 
 // ── Calendar colours ─────────────────────────────────────────────────────────
@@ -228,7 +227,6 @@ export default function StreakDetailScreen() {
   const [refreshing, setRefreshing]   = useState(false)
   const [loadError, setLoadError]     = useState<string | null>(null)
   const [showFreeze,     setShowFreeze]     = useState(false)
-  const [showComingSoon, setShowComingSoon] = useState(false)
   const [showMilestones, setShowMilestones] = useState(false)
   const [showLostModal, setShowLostModal]   = useState(false)
   const [prevStreakDays, setPrevStreakDays] = useState(0)
@@ -529,7 +527,7 @@ export default function StreakDetailScreen() {
             )}
             <Pressable
               style={[styles.freezeBtn, { backgroundColor: '#60a5fa', borderRadius: radius.lg }]}
-              onPress={() => setShowComingSoon(true)}
+              onPress={() => setShowFreeze(true)}
             >
               <Text style={[styles.freezeBtnText, { fontFamily: typography.fontFamily.semibold }]}>
                 Sotib olish
@@ -586,8 +584,6 @@ export default function StreakDetailScreen() {
         onClose={() => setShowLostModal(false)}
         onUseFreeze={freezeCount > 0 ? handleUseFreeze : undefined}
       />
-      <ComingSoonModal visible={showComingSoon} onClose={() => setShowComingSoon(false)} />
-
       {/* ── Milestones modal ──────────────────────────────────────────── */}
       <Modal
         transparent

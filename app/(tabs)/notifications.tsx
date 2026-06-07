@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, FlatList, Pressable,
-  ActivityIndicator, Animated, RefreshControl,
+  View, Text, StyleSheet, FlatList, ScrollView, Pressable,
+  ActivityIndicator, Animated, RefreshControl, useWindowDimensions,
+  NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -38,7 +39,7 @@ const TITLES: Record<string, string> = {
   payout:              "To'lov o'tkazildi",
   welcome:             "Sahifalab'ga xush kelibsiz",
   leaderboard_rank:    "Reyting",
-  streak_reminder:     "Streak eslatmasi",
+  streak_reminder:     "Seriya eslatmasi",
   new_content:         "Yangi dars",
 }
 
@@ -69,7 +70,7 @@ function notifBody(type: string, meta: Record<string, any>): string {
     payout:              "Daromadingiz hisobingizga o'tkazildi.",
     welcome:             "Ilm yo'liga xush kelibsiz. Profilingizni to'ldiring.",
     leaderboard_rank:    meta.message ?? "Reyting o'zgardi.",
-    streak_reminder:     "Bugun dars o'tmaganiz — streakingizni saqlang!",
+    streak_reminder:     "Bugun dars o'tmaganiz — seriyangizni saqlang!",
     new_content:         meta.lesson_title ? `Yangi dars: ${meta.lesson_title}` : "Yangi dars qo'shildi.",
   }
   return map[type] ?? 'Yangi bildirishnoma'
@@ -151,6 +152,47 @@ function getIconCfg(type: string): { Icon: LucideIcon; color: string; bg: string
   }
 }
 
+// ── Grouping ──────────────────────────────────────────────────────────────────
+
+const TYPE_GROUP: Record<string, string> = {
+  level_up:            'Yutuqlar',
+  achievement:         'Yutuqlar',
+  xp_reward:           'Yutuqlar',
+  streak_reminder:     'Yutuqlar',
+  leaderboard_rank:    'Yutuqlar',
+  course_complete:     "O'qish",
+  certificate:         "O'qish",
+  quiz_pass:           "O'qish",
+  new_content:         "O'qish",
+  follow:              'Ijtimoiy',
+  like:                'Ijtimoiy',
+  comment:             'Ijtimoiy',
+  comment_reply:       'Ijtimoiy',
+  repost:              'Ijtimoiy',
+  save:                'Ijtimoiy',
+  mention:             'Ijtimoiy',
+  connection_request:  'Ijtimoiy',
+  connection_accepted: 'Ijtimoiy',
+  new_student:         'Ijtimoiy',
+  new_sale:            'Moliya',
+  payout:              'Moliya',
+  welcome:             'Tizim',
+}
+
+const TABS = [
+  { key: 'all',       label: 'Barchasi' },
+  { key: "O'qish",    label: "O'qish"   },
+  { key: 'Yutuqlar',  label: 'Yutuqlar' },
+  { key: 'Ijtimoiy',  label: 'Ijtimoiy' },
+  { key: 'Moliya',    label: 'Moliya'   },
+  { key: 'Tizim',     label: 'Tizim'    },
+]
+
+function filterForTab(items: NotifItem[], tabKey: string): NotifItem[] {
+  if (tabKey === 'all') return items
+  return items.filter(item => (TYPE_GROUP[item.type] ?? 'Tizim') === tabKey)
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 20
@@ -228,9 +270,10 @@ function NotifRow({ item, onPress, c }: { item: NotifItem; onPress: (item: Notif
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function NotificationsTab() {
-  const { c }   = useTheme()
-  const insets  = useSafeAreaInsets()
-  const router  = useRouter()
+  const { c }              = useTheme()
+  const insets             = useSafeAreaInsets()
+  const router             = useRouter()
+  const { width: SCREEN_W } = useWindowDimensions()
   const { fetchUnreadCount, decrement, reset } = useNotificationStore()
 
   const [items,       setItems]       = useState<NotifItem[]>([])
@@ -239,7 +282,21 @@ export default function NotificationsTab() {
   const [refreshing,  setRefreshing]  = useState(false)
   const [hasMore,     setHasMore]     = useState(true)
   const [markingAll,  setMarkingAll]  = useState(false)
-  const cursorRef = useRef<number | undefined>(undefined)
+  const [activeTab,   setActiveTab]   = useState(0)
+  const cursorRef    = useRef<number | undefined>(undefined)
+  const pageScrollRef = useRef<ScrollView>(null)
+  const tabScrollRef  = useRef<ScrollView>(null)
+
+  const goToTab = useCallback((idx: number) => {
+    setActiveTab(idx)
+    pageScrollRef.current?.scrollTo({ x: idx * SCREEN_W, animated: true })
+    tabScrollRef.current?.scrollTo({ x: Math.max(0, (idx - 1) * 80), animated: true })
+  }, [SCREEN_W])
+
+  const onPageScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W)
+    if (idx !== activeTab) setActiveTab(idx)
+  }, [activeTab, SCREEN_W])
 
   const loadPage = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -293,27 +350,32 @@ export default function NotificationsTab() {
     if (!loadingMore && hasMore) loadPage(false)
   }, [loadingMore, hasMore, loadPage])
 
-  const renderItem     = ({ item }: { item: NotifItem }) => (
+  const renderItem   = ({ item }: { item: NotifItem }) => (
     <NotifRow item={item} onPress={handleNotifPress} c={c} />
   )
-  const renderSep      = () => <View style={[styles.separator, { backgroundColor: c.border }]} />
-  const renderFooter   = () => loadingMore
+  const renderSep    = () => <View style={[styles.separator, { backgroundColor: c.border }]} />
+  const renderFooter = () => loadingMore
     ? <ActivityIndicator color={c.accentPrimary} style={{ marginVertical: spacing.base }} />
     : null
-  const renderEmpty    = () => loading ? null : (
-    <View style={styles.emptyState}>
-      <Bell size={48} color={c.textDisabled} />
-      <Text style={[styles.emptyTitle, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
-        Hozircha bildirishnoma yo'q
-      </Text>
-      <Text style={[styles.emptySub, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-        Faoliyatingiz bo'lganda bu yerda ko'rinadi
-      </Text>
-    </View>
-  )
+
+  function renderEmpty(tabKey: string) {
+    if (loading) return null
+    return (
+      <View style={styles.emptyState}>
+        <Bell size={48} color={c.textDisabled} />
+        <Text style={[styles.emptyTitle, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+          {tabKey === 'all' ? "Hozircha bildirishnoma yo'q" : "Bu bo'limda bildirishnoma yo'q"}
+        </Text>
+        <Text style={[styles.emptySub, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
+          Faoliyatingiz bo'lganda bu yerda ko'rinadi
+        </Text>
+      </View>
+    )
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
+      {/* ── Header ── */}
       <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm, borderBottomColor: c.border }]}>
         <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
           Bildirishnomalar
@@ -328,31 +390,83 @@ export default function NotificationsTab() {
         </Pressable>
       </View>
 
-      {loading ? (
+      {/* ── Tab bar ── */}
+      <View style={[styles.tabBar, { borderBottomColor: c.border }]}>
+        <ScrollView
+          ref={tabScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabBarContent}
+        >
+          {TABS.map((tab, idx) => {
+            const active = activeTab === idx
+            return (
+              <Pressable
+                key={tab.key}
+                onPress={() => goToTab(idx)}
+                style={[
+                  styles.tabChip,
+                  active
+                    ? { backgroundColor: c.accentPrimary }
+                    : { backgroundColor: c.bgSecondary, borderColor: c.border, borderWidth: 1 },
+                ]}
+              >
+                <Text style={[
+                  styles.tabLabel,
+                  { fontFamily: active ? typography.fontFamily.semibold : typography.fontFamily.regular },
+                  { color: active ? '#fff' : c.textSecondary },
+                ]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </ScrollView>
+      </View>
+
+      {/* ── Pager ── */}
+      {loading && items.length === 0 ? (
         <View style={{ paddingTop: spacing.sm }}>
           {[0, 1, 2, 3, 4].map(i => <SkeletonRow key={i} c={c} />)}
         </View>
       ) : (
-        <FlatList
-          data={items}
-          keyExtractor={item => String(item.id)}
-          renderItem={renderItem}
-          ItemSeparatorComponent={renderSep}
-          ListEmptyComponent={renderEmpty}
-          ListFooterComponent={renderFooter}
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.3}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={items.length === 0 ? styles.listEmpty : undefined}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={c.accentPrimary}
-              colors={[c.accentPrimary]}
-            />
-          }
-        />
+        <ScrollView
+          ref={pageScrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={onPageScroll}
+          style={{ flex: 1 }}
+        >
+          {TABS.map(tab => {
+            const tabItems = filterForTab(items, tab.key)
+            return (
+              <View key={tab.key} style={{ width: SCREEN_W, flex: 1 }}>
+                <FlatList
+                  data={tabItems}
+                  keyExtractor={item => String(item.id)}
+                  renderItem={renderItem}
+                  ItemSeparatorComponent={renderSep}
+                  ListEmptyComponent={() => renderEmpty(tab.key)}
+                  ListFooterComponent={renderFooter}
+                  onEndReached={tab.key === 'all' ? handleEndReached : undefined}
+                  onEndReachedThreshold={0.3}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={tabItems.length === 0 ? styles.listEmpty : undefined}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={onRefresh}
+                      tintColor={c.accentPrimary}
+                      colors={[c.accentPrimary]}
+                    />
+                  }
+                />
+              </View>
+            )
+          })}
+        </ScrollView>
       )}
     </View>
   )
@@ -373,6 +487,22 @@ const styles = StyleSheet.create({
   },
   topTitle:    { fontSize: 20 },
   markAllText: { fontSize: 13 },
+
+  tabBar: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  tabBarContent: {
+    paddingHorizontal: spacing.screenMargin,
+    paddingVertical:   10,
+    gap:               8,
+    flexDirection:     'row',
+  },
+  tabChip: {
+    paddingHorizontal: 14,
+    paddingVertical:   7,
+    borderRadius:      20,
+  },
+  tabLabel: { fontSize: 13 },
 
   row: {
     flexDirection:     'row',

@@ -54,7 +54,7 @@ function buildCards(data: DashboardData, c: any): ActionCard[] {
   if (data.focusStats.streak_days > 0) {
     cards.push({
       id:      'streak',
-      title:   `${data.focusStats.streak_days} kunlik streak`,
+      title:   `${data.focusStats.streak_days} kunlik seriya`,
       sub:     'Fokus taymerini ishga tushiring',
       color:   '#FF4500',
       bgColor: 'rgba(255,69,0,0.10)',

@@ -574,7 +574,7 @@ export default function SettingsScreen() {
         {/* BILDIRISHNOMALAR */}
         <SectionHeader title="BILDIRISHNOMALAR" />
         <SettingGroup>
-          {toggleRow("Streak eslatmalari",  notifStreak,  setNotifStreak,  'streak'  )}
+          {toggleRow("Seriya eslatmalari",   notifStreak,  setNotifStreak,  'streak'  )}
           {toggleRow("Kurs eslatmalari",    notifCourse,  setNotifCourse,  'course'  )}
           {toggleRow("Yutuqlar",            notifAchiev,  setNotifAchiev,  'achieve' )}
           {toggleRow("Haftalik hisobot",    notifWeekly,  setNotifWeekly,  'weekly', true)}

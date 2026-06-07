@@ -41,7 +41,7 @@ const DICT: Record<string, {
   certificate:     { Icon: Award,         color: '#fbbf24', title: 'Sertifikat',      message: m => m.course_title ? `"${m.course_title}" sertifikati tayyor.` : "Sertifikat tayyor." },
   level_up:        { Icon: TrendingUp,    color: '#e8792f', title: 'Daraja oshdi',    message: m => `Siz ${m.level ?? '?'}-darajaga ko'tarildingiz!` },
   achievement:     { Icon: Trophy,        color: '#fbbf24', title: 'Yutuq',           message: m => m.achievement_name ? `"${m.achievement_name}" qo'lga kiritildi!` : "Yangi yutuq!" },
-  daily_streak:    { Icon: Flame,         color: '#fb923c', title: 'Streak',          message: m => `${m.streak_days ?? '?'} kunlik ketma-ketlik!`   },
+  daily_streak:    { Icon: Flame,         color: '#fb923c', title: 'Seriya',          message: m => `${m.streak_days ?? '?'} kunlik ketma-ketlik!`   },
   xp_reward:       { Icon: Zap,           color: '#facc15', title: 'XP',              message: m => `${m.xp ?? 0} XP berildi.`                       },
   new_student:     { Icon: Users,         color: '#60a5fa', title: 'Yangi talaba',    message: m => `${m.student_name || 'Yangi talaba'} kursingizga a'zo bo'ldi.` },
   new_review:      { Icon: Star,          color: '#fbbf24', title: 'Baho',            message: m => `${actor(m)} kursizga baho qoldirdi.`            },

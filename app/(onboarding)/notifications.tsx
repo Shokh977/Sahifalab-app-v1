@@ -69,7 +69,7 @@ export default function NotificationsScreen() {
         <StreakFlame streakDays={7} size={150} />
 
         <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-          Streak'ingizni yo'qotmang!
+          Seriyangizni yo'qotmang!
         </Text>
         <Text style={[styles.subtitle, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
           Har kuni eslatma oling va o'qish odatini shakllantiring
