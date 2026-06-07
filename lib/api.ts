@@ -59,6 +59,7 @@ export interface AuthResponse {
   email_verified: boolean
   has_password:   boolean
   role:           string
+  status:         string
 }
 
 export interface MeResponse extends AuthResponse {

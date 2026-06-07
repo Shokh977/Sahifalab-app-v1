@@ -14,6 +14,7 @@ export interface AppUser {
   email_verified:      boolean
   has_password:        boolean
   role:                string
+  status:              string
   level:               number
   total_xp:            number
   streak_days:         number
@@ -48,7 +49,8 @@ function mapToUser(r: AuthResponse | MeResponse): AppUser {
     email:              r.email ?? null,
     email_verified:     r.email_verified ?? false,
     has_password:       r.has_password ?? false,
-    role:               r.role ?? 'student',
+    role:               r.role   ?? 'student',
+    status:             r.status ?? 'active',
     level:              me.level              ?? 1,
     total_xp:           me.total_xp           ?? 0,
     streak_days:        me.streak_days        ?? 0,

@@ -249,13 +249,14 @@ const flStyles = StyleSheet.create({
 // ── Teacher Banner ────────────────────────────────────────────────────────────
 
 function TeacherBanner({
-  role, router, c,
+  role, status, router, c,
 }: {
-  role: string
+  role:   string
+  status: string
   router: ReturnType<typeof useRouter>
   c: any
 }) {
-  const isTeacher = role === 'teacher' || role === 'admin'
+  const isTeacher = role === 'admin' || (role === 'teacher' && status === 'active')
 
   return (
     <Pressable
@@ -467,7 +468,7 @@ export default function ProfileTab() {
           </View>
 
           {/* Teacher banner */}
-          <TeacherBanner role={authUser?.role ?? ''} router={router} c={c} />
+          <TeacherBanner role={authUser?.role ?? ''} status={authUser?.status ?? 'active'} router={router} c={c} />
 
           {/* Achievements section header */}
           <View style={styles.sectionHeader}>

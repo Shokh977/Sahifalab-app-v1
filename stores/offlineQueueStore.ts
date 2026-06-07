@@ -40,24 +40,29 @@ export const useOfflineQueueStore = create<OfflineQueueState>((set, get) => ({
   },
 
   flush: async () => {
-    const { queue, flushing } = get()
-    if (flushing || queue.length === 0) return { flushed: 0, failed: 0 }
+    if (get().flushing || get().queue.length === 0) return { flushed: 0, failed: 0 }
     set({ flushing: true })
 
     let flushed = 0
-    const remaining: QueueItem[] = []
+    let failed = 0
 
-    for (const item of queue) {
+    // Process one item at a time and persist the removal after each success.
+    // This prevents double-submission if the app crashes mid-flush.
+    while (get().queue.length > 0) {
+      const item = get().queue[0]
       try {
         await focus.complete(item.minutes)
+        const remaining = get().queue.slice(1)
+        set({ queue: remaining })
+        await persist(remaining)
         flushed++
       } catch {
-        remaining.push(item)
+        failed++
+        break  // network is down — remaining items stay queued
       }
     }
 
-    set({ queue: remaining, flushing: false })
-    await persist(remaining)
-    return { flushed, failed: remaining.length }
+    set({ flushing: false })
+    return { flushed, failed }
   },
 }))

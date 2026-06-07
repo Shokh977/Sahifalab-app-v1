@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
   TextInput, ActivityIndicator,
@@ -62,7 +62,22 @@ export default function BecomeTeacherScreen() {
   const insets   = useSafeAreaInsets()
   const authUser = useAuthStore(s => s.user)
 
-  const [screenState,    setScreenState]    = useState<ScreenState>('form')
+  const [screenState,    setScreenState]    = useState<ScreenState>(() => {
+    if (authUser?.role === 'admin' || (authUser?.role === 'teacher' && authUser?.status === 'active')) return 'success'
+    if (authUser?.status === 'pending') return 'pending'
+    return 'form'
+  })
+
+  // authUser may be null on first render (auth still loading) — sync when it arrives
+  useEffect(() => {
+    if (!authUser) return
+    if (screenState === 'submitting') return
+    if (authUser.role === 'admin' || (authUser.role === 'teacher' && authUser.status === 'active')) {
+      setScreenState('success')
+    } else if (authUser.status === 'pending') {
+      setScreenState('pending')
+    }
+  }, [authUser?.role, authUser?.status])
   const [agreed,         setAgreed]         = useState(false)
   const [specialization, setSpecialization] = useState('')
   const [expYears,       setExpYears]       = useState<number | null>(null)

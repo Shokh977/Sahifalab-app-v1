@@ -17,6 +17,7 @@ import { useTimerStore } from '../../stores/timerStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { useFlashcardStore } from '../../stores/flashcardStore'
+import { useOfflineQueueStore } from '../../stores/offlineQueueStore'
 import { focus, profile, focusStats, focusChallenges } from '../../lib/api'
 import type { FocusStats } from '../../lib/api'
 import { useTheme } from '../../hooks/useTheme'
@@ -272,14 +273,21 @@ function TimerScreen() {
           status:         'active',
           phase:          saved.phase,
           plannedMinutes: saved.plannedMinutes,
+          currentSession: saved.currentSession ?? 1,
+          totalSessions:  saved.totalSessions  ?? 1,
           secondsLeft:    Math.ceil((saved.targetEnd - Date.now()) / 1000),
           _targetEnd:     saved.targetEnd,
           _pauseLeft:     0,
         })
         setRemainingMs(saved.targetEnd - Date.now())
       } else {
-        // Timer ended while app was closed — clear stale state
+        // Timer ended while app was closed — credit the completed focus session
         clearTimerState()
+        if (saved.phase === 'focus') {
+          focus.complete(saved.plannedMinutes).catch(() => {
+            useOfflineQueueStore.getState().enqueue(saved.plannedMinutes)
+          })
+        }
       }
     })
   }, [])
@@ -292,6 +300,8 @@ function TimerScreen() {
         targetEnd:      store._targetEnd,
         plannedMinutes: store.plannedMinutes,
         phase:          store.phase,
+        currentSession: store.currentSession,
+        totalSessions:  store.totalSessions,
       })
       scheduleTimerEndNotification(store._targetEnd, store.phase)
     } else if (status === 'paused') {
