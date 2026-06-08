@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, FlatList, Pressable, ScrollView,
-  TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView,
+  TextInput, ActivityIndicator, Modal, KeyboardAvoidingView,
   Platform, Image, Animated, Easing,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native'
 import { useShallow } from 'zustand/shallow'
 import { useTheme } from '../../hooks/useTheme'
+import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { useAuthStore } from '../../stores/authStore'
 import { useTimerStore } from '../../stores/timerStore'
 import { request } from '../../lib/api'
@@ -326,6 +327,7 @@ export default function WorkspaceScreen() {
   const [noteTitle,     setNoteTitle]     = useState('')
   const [noteContent,   setNoteContent]   = useState('')
   const [savingNote,    setSavingNote]    = useState(false)
+  const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
 
   // ── Courses state ────────────────────────────────────────────────────────────
   const [enrolled,        setEnrolled]        = useState<EnrolledCourse[]>([])
@@ -389,16 +391,19 @@ export default function WorkspaceScreen() {
     }
   }
 
-  async function deleteTask(id: number) {
-    Alert.alert('O\'chirish', 'Bu vazifani o\'chirmoqchimisiz?', [
-      { text: 'Bekor', style: 'cancel' },
-      { text: "O'chirish", style: 'destructive', onPress: async () => {
+  function deleteTask(id: number) {
+    setConfirm({
+      visible: true,
+      title: "Vazifani o'chirish",
+      message: "Bu amalni bekor qilib bo'lmaydi. 🗑️",
+      onConfirm: async () => {
+        setConfirm(s => ({ ...s, visible: false }))
         setTasks(prev => prev.filter(t => t.id !== id))
         try {
           await request(`/api/v1/planner/tasks/${id}`, { method: 'DELETE', auth: true })
         } catch {}
-      }},
-    ])
+      },
+    })
   }
 
   async function createTask() {
@@ -453,16 +458,19 @@ export default function WorkspaceScreen() {
     finally { setSavingNote(false) }
   }
 
-  async function deleteNote(id: number) {
-    Alert.alert('O\'chirish', 'Bu qaydni o\'chirmoqchimisiz?', [
-      { text: 'Bekor', style: 'cancel' },
-      { text: "O'chirish", style: 'destructive', onPress: async () => {
+  function deleteNote(id: number) {
+    setConfirm({
+      visible: true,
+      title: "Qaydni o'chirish",
+      message: "Bu amalni bekor qilib bo'lmaydi. 🗑️",
+      onConfirm: async () => {
+        setConfirm(s => ({ ...s, visible: false }))
         setNotes(prev => prev.filter(n => n.id !== id))
         try {
           await request(`/api/v1/planner/notes/${id}`, { method: 'DELETE', auth: true })
         } catch {}
-      }},
-    ])
+      },
+    })
   }
 
   // ── Task groups ──────────────────────────────────────────────────────────────
@@ -778,6 +786,17 @@ export default function WorkspaceScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ConfirmModal
+        visible={confirm.visible}
+        emoji="🗑️"
+        title={confirm.title}
+        message={confirm.message}
+        confirmText="O'chirish"
+        danger
+        onConfirm={confirm.onConfirm}
+        onCancel={() => setConfirm(s => ({ ...s, visible: false }))}
+      />
     </SafeAreaView>
   )
 }

@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft, Search as SearchIcon, X, BadgeCheck, BookOpen, FileText, Frown, Clock } from 'lucide-react-native'
+import { RoleBadge } from '../../components/ui/RoleBadge'
 import { useTheme } from '../../hooks/useTheme'
 import { search, type SearchPerson, type SearchCourse, type SearchResults } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
@@ -221,6 +222,7 @@ export default function SearchScreen() {
             {item.is_verified && (
               <BadgeCheck size={14} color={c.brand} />
             )}
+            <RoleBadge accountType={item.account_type} size={14} />
           </View>
           {item.headline && (
             <Text numberOfLines={1} style={[styles.resultSub, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>

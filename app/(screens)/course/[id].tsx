@@ -25,6 +25,8 @@ import { typography, spacing, radius, WEB_URL } from '../../../lib/constants'
 import type { Course, Lesson, CourseReview, CourseCertificate } from '../../../lib/api'
 import type { ProfileData } from '../../../lib/types'
 import { ComingSoonModal } from '../../../components/ui/ComingSoonModal'
+import { ConfirmModal } from '../../../components/ui/ConfirmModal'
+import { RoleBadge } from '../../../components/ui/RoleBadge'
 
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
@@ -169,11 +171,27 @@ function DownloadBtn({
 
 // ── Enrolled: lesson item ──────────────────────────────────────────────────────
 
+function WatchRing({ ratio, color, mutedColor }: { ratio: number; color: string; mutedColor: string }) {
+  const R    = 8.5
+  const circ = 2 * Math.PI * R
+  return (
+    <Svg width={22} height={22} style={{ transform: [{ rotate: '-90deg' }] }}>
+      <Circle cx={11} cy={11} r={R} stroke={mutedColor} strokeWidth={1.5} fill="none" />
+      <Circle cx={11} cy={11} r={R} stroke={color} strokeWidth={1.5} fill="none"
+        strokeDasharray={`${circ}`}
+        strokeDashoffset={`${circ * (1 - ratio)}`}
+        strokeLinecap="round"
+      />
+    </Svg>
+  )
+}
+
 function LessonItem({
-  lesson, current, isPlaying, completed, onPress, onDownload,
+  lesson, current, isPlaying, completed, watchRatio, onPress, onDownload,
   downloaded, downloading, dlProgress, c,
 }: {
   lesson: Lesson; current: boolean; isPlaying: boolean; completed: boolean
+  watchRatio: number
   onPress: () => void; onDownload: () => void
   downloaded: boolean; downloading: boolean; dlProgress: number
   c: any
@@ -189,16 +207,19 @@ function LessonItem({
       ]}
     >
       <View style={styles.lessonItemIcon}>
-        {completed
-          ? <CheckCircle size={16} color={c.brand} fill={c.brand} />
-          : isPdf
-            ? <FileText size={16} color={c.textMuted} />
-            : current && isPlaying
-              ? <Pause size={16} color={c.brand} fill={c.brand} />
-              : current
-                ? <Play size={16} color={c.brand} fill={c.brand} />
-                : <View style={[styles.lessonCircle, { borderColor: c.textMuted }]} />
-        }
+        {completed ? (
+          <CheckCircle size={20} color={c.brand} />
+        ) : isPdf ? (
+          <FileText size={18} color={c.textMuted} />
+        ) : current && isPlaying ? (
+          <Pause size={18} color={c.brand} />
+        ) : current ? (
+          <Play size={18} color={c.brand} />
+        ) : watchRatio > 0 ? (
+          <WatchRing ratio={watchRatio} color={c.brand} mutedColor={c.border} />
+        ) : (
+          <View style={[styles.lessonCircle, { borderColor: c.border }]} />
+        )}
       </View>
       <View style={{ flex: 1 }}>
         <Text numberOfLines={2} style={[styles.lessonItemTitle, {
@@ -227,10 +248,11 @@ function LessonItem({
 }
 
 function EnrolledSectionRow({
-  section, currentId, isVideoPlaying, progress, onLesson, onDownload,
+  section, currentId, isVideoPlaying, progress, watchRatio, onLesson, onDownload,
   isDownloaded, isDownloading, getDlProgress, defaultOpen, c,
 }: {
   section: Section; currentId: number | null; isVideoPlaying: boolean; progress: Set<number>
+  watchRatio: number
   onLesson: (l: Lesson) => void
   onDownload: (l: Lesson) => void
   isDownloaded: (id: number) => boolean
@@ -259,6 +281,7 @@ function EnrolledSectionRow({
           current={l.id === currentId}
           isPlaying={l.id === currentId && isVideoPlaying}
           completed={progress.has(l.id)}
+          watchRatio={l.id === currentId && !progress.has(l.id) ? watchRatio : 0}
           onPress={() => onLesson(l)}
           onDownload={() => onDownload(l)}
           downloaded={isDownloaded(l.id)}
@@ -491,11 +514,14 @@ function ReviewCard({ rv, courseId, myUserId, myUsername, onChanged, c }: {
 
 // ── Enrolled: info tab (certificate + about) ───────────────────────────────────
 
+
 function EnrolledInfoTab({
-  course, lessons, progress, certificate, teacher, reviews, myUserId, myUsername, onReviewSubmitted, router, c, insets,
+  course, lessons, progress, certificate, teacher, teacherExtra, reviews, myUserId, myUsername, onReviewSubmitted, router, c, insets,
 }: {
   course: Course; lessons: Lesson[]; progress: Set<number>
-  certificate: CourseCertificate | null; teacher: ProfileData | null
+  certificate: CourseCertificate | null
+  teacher: ProfileData | null
+  teacherExtra: import('../../../lib/types').TeacherProfileData | null
   reviews: CourseReview[]; myUserId?: number; myUsername?: string | null
   onReviewSubmitted: () => void; router: any; c: any; insets: any
 }) {
@@ -635,18 +661,39 @@ function EnrolledInfoTab({
               style={styles.teacherRow}
             >
               {teacher.photo_url
-                ? <Image source={{ uri: teacher.photo_url }} style={styles.teacherAvatar} />
-                : <View style={[styles.teacherAvatar, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
+                ? <Image source={{ uri: teacher.photo_url }} style={[styles.teacherAvatar, { width: 44, height: 44, borderRadius: 22 }]} />
+                : <View style={[styles.teacherAvatar, { width: 44, height: 44, borderRadius: 22, backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
                     <Text style={{ color: c.textMuted, fontSize: 16 }}>{teacher.first_name[0].toUpperCase()}</Text>
                   </View>
               }
-              <View style={{ flex: 1 }}>
-                <Text numberOfLines={1} style={[styles.teacherName, { color: c.brand, fontFamily: typography.fontFamily.bold }]}>{teacher.first_name}</Text>
+              <View style={{ flex: 1, gap: 3 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text numberOfLines={1} style={[styles.teacherName, { color: c.brand, fontFamily: typography.fontFamily.bold }]}>{teacher.first_name}</Text>
+                  <RoleBadge role="teacher" size={13} />
+                </View>
                 {teacher.headline && (
                   <Text numberOfLines={1} style={[styles.teacherHeadline, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>{teacher.headline}</Text>
                 )}
               </View>
             </Pressable>
+            {(teacherExtra?.specialization || (teacherExtra?.experience_years ?? 0) > 0) && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                {teacherExtra?.specialization && (
+                  <View style={[styles.teacherChip, { backgroundColor: c.bgTertiary }]}>
+                    <Text style={[styles.teacherChipText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+                      {teacherExtra.specialization}
+                    </Text>
+                  </View>
+                )}
+                {(teacherExtra?.experience_years ?? 0) > 0 && (
+                  <View style={[styles.teacherChip, { backgroundColor: 'rgba(52,199,89,0.1)' }]}>
+                    <Text style={[styles.teacherChipText, { color: '#34C759', fontFamily: typography.fontFamily.medium }]}>
+                      {teacherExtra!.experience_years} yil tajriba
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
             {teacher.bio && (
               <Text numberOfLines={3} style={[styles.teacherBio, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>{teacher.bio}</Text>
             )}
@@ -700,10 +747,12 @@ export default function CourseDetailScreen() {
   const [reviews,        setReviews]        = useState<CourseReview[]>([])
   const [teacher,        setTeacher]        = useState<ProfileData | null>(null)
   const [teacherCourses, setTeacherCourses] = useState<Course[]>([])
+  const [teacherExtra,   setTeacherExtra]   = useState<import('../../../lib/types').TeacherProfileData | null>(null)
   const [certificate,    setCertificate]    = useState<CourseCertificate | null>(null)
   const [loading,        setLoading]        = useState(true)
   const [enrolling,      setEnrolling]      = useState(false)
   const [showComingSoon, setShowComingSoon] = useState(false)
+  const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
   const [wishlisted,     setWishlisted]     = useState(false)
   const [descExpanded,   setDescExpanded]   = useState(false)
   const [showAllSections,setShowAllSections]= useState(false)
@@ -714,9 +763,12 @@ export default function CourseDetailScreen() {
   const [embedUrl,       setEmbedUrl]       = useState<string | null>(null)
   const [videoLoading,   setVideoLoading]   = useState(false)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const [videoWatchRatio, setVideoWatchRatio] = useState(0)
 
-  const priceY      = useRef(0)
-  const tabScrollRef = useRef<ScrollView>(null)
+  const priceY          = useRef(0)
+  const tabScrollRef    = useRef<ScrollView>(null)
+  const videoDurationRef = useRef(0)
+  const advancedFromRef  = useRef<number | null>(null)
   const tabScrollX   = useRef(new Animated.Value(0)).current
 
   const enrollment = enrollmentCache[courseId]
@@ -753,12 +805,14 @@ export default function CourseDetailScreen() {
       const first   = startL ?? ls.find(l => !progSet.has(l.id) && l.lesson_type !== 'pdf' && l.lesson_type !== 'test') ?? ls.find(l => l.lesson_type !== 'pdf' && l.lesson_type !== 'test') ?? null
       setCurrentLesson(first)
 
-      const [teacherData, tcRes, certs] = await Promise.all([
+      const [teacherData, tcRes, certs, teacherExtraData] = await Promise.all([
         profile.getPublic(courseData.teacher_id).catch(() => null),
         coursesApi.list({ teacher_id: courseData.teacher_id, limit: 4 }).catch(() => null),
         lessonsApi.getMyCertificates().catch(() => [] as any[]),
+        profile.getTeacherProfile(courseData.teacher_id).catch(() => null),
       ])
       setTeacher(teacherData)
+      if (teacherExtraData) setTeacherExtra(teacherExtraData)
       if (tcRes) setTeacherCourses(tcRes.courses.filter((c: Course) => c.id !== courseId).slice(0, 3))
       const cert = (certs as any[]).find((c: any) => c.course_id === courseId) ?? null
       setCertificate(cert)
@@ -838,9 +892,33 @@ export default function CourseDetailScreen() {
     finally { setEnrolling(false) }
   }
 
+  // ── Reset watch state when lesson changes ─────────────────────────────────
+  useEffect(() => {
+    setVideoWatchRatio(0)
+    videoDurationRef.current = 0
+    advancedFromRef.current  = null
+  }, [currentLesson?.id])
+
+  // ── Video progress tracking ────────────────────────────────────────────────
+  function handleDurationChange(seconds: number) {
+    if (seconds > 0) videoDurationRef.current = seconds
+  }
+
+  function handlePositionUpdate(seconds: number) {
+    const dur = videoDurationRef.current
+    if (!dur || !currentLesson) return
+    const ratio = Math.min(seconds / dur, 1)
+    setVideoWatchRatio(ratio)
+    if (ratio >= 0.85 && !progress.has(currentLesson.id) && advancedFromRef.current !== currentLesson.id) {
+      handleLessonComplete()
+    }
+  }
+
   // ── Lesson complete ────────────────────────────────────────────────────────
   async function handleLessonComplete() {
     if (!currentLesson || !canAccess) return
+    if (advancedFromRef.current === currentLesson.id) return
+    advancedFromRef.current = currentLesson.id
     Haptics?.impactAsync(Haptics?.ImpactFeedbackStyle?.Light)
     try {
       const res = await markComplete(courseId, currentLesson.id)
@@ -860,14 +938,15 @@ export default function CourseDetailScreen() {
   // ── Download lesson ────────────────────────────────────────────────────────
   async function handleDownload(lesson: Lesson) {
     if (isDownloaded(lesson.id)) {
-      Alert.alert(
-        "Yuklab olingan fayl",
-        `"${lesson.title}" ni o'chirmoqchimisiz?`,
-        [
-          { text: 'Bekor qilish', style: 'cancel' },
-          { text: "O'chirish", style: 'destructive', onPress: () => deleteDownload(lesson.id) },
-        ],
-      )
+      setConfirm({
+        visible:   true,
+        title:     "Yuklamani o'chirish",
+        message:   `"${lesson.title}" oflayn fayli o'chiriladi.`,
+        onConfirm: () => {
+          setConfirm(s => ({ ...s, visible: false }))
+          deleteDownload(lesson.id)
+        },
+      })
       return
     }
     if (isDownloading(lesson.id) || !course) return
@@ -983,6 +1062,8 @@ export default function CourseDetailScreen() {
               embedUrl={embedUrl}
               onComplete={handleLessonComplete}
               onPlayingChange={setIsVideoPlaying}
+              onPositionUpdate={handlePositionUpdate}
+              onDurationChange={handleDurationChange}
             />
           ) : videoLoading ? (
             <View style={styles.playerCenter}>
@@ -1085,6 +1166,7 @@ export default function CourseDetailScreen() {
                   currentId={currentLesson?.id ?? null}
                   isVideoPlaying={isVideoPlaying}
                   progress={progress}
+                  watchRatio={videoWatchRatio}
                   onLesson={selectLesson}
                   onDownload={handleDownload}
                   isDownloaded={isDownloaded}
@@ -1099,7 +1181,7 @@ export default function CourseDetailScreen() {
           <View style={{ width: SCREEN_W, flex: 1 }}>
             <EnrolledInfoTab
               course={course} lessons={lessons} progress={progress}
-              certificate={certificate} teacher={teacher} reviews={reviews}
+              certificate={certificate} teacher={teacher} teacherExtra={teacherExtra} reviews={reviews}
               myUserId={user?.telegram_id}
               myUsername={user?.username ?? null}
               onReviewSubmitted={refreshReviews}
@@ -1377,11 +1459,32 @@ export default function CourseDetailScreen() {
                       <Text style={{ color: c.textMuted, fontSize: 18 }}>{teacher.first_name[0].toUpperCase()}</Text>
                     </View>
                 }
-                <View style={{ flex: 1 }}>
-                  <Text numberOfLines={1} style={[{ color: c.brand, fontSize: typography.size.base, fontFamily: typography.fontFamily.bold }]}>{teacher.first_name}</Text>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text numberOfLines={1} style={[{ color: c.brand, fontSize: typography.size.base, fontFamily: typography.fontFamily.bold }]}>{teacher.first_name}</Text>
+                    <RoleBadge role="teacher" size={13} />
+                  </View>
                   {teacher.headline && <Text numberOfLines={1} style={[{ color: c.textMuted, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>{teacher.headline}</Text>}
                 </View>
               </Pressable>
+              {(teacherExtra?.specialization || (teacherExtra?.experience_years ?? 0) > 0) && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                  {teacherExtra?.specialization && (
+                    <View style={[styles.teacherChip, { backgroundColor: c.bgTertiary }]}>
+                      <Text style={[styles.teacherChipText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+                        {teacherExtra.specialization}
+                      </Text>
+                    </View>
+                  )}
+                  {(teacherExtra?.experience_years ?? 0) > 0 && (
+                    <View style={[styles.teacherChip, { backgroundColor: 'rgba(52,199,89,0.1)' }]}>
+                      <Text style={[styles.teacherChipText, { color: '#34C759', fontFamily: typography.fontFamily.medium }]}>
+                        {teacherExtra!.experience_years} yil tajriba
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
               {teacher.bio && (
                 <Text numberOfLines={3} style={[{ color: c.textSecondary, fontSize: typography.size.sm, lineHeight: 22, fontFamily: typography.fontFamily.regular }]}>{teacher.bio}</Text>
               )}
@@ -1457,6 +1560,17 @@ export default function CourseDetailScreen() {
       )}
 
       <ComingSoonModal visible={showComingSoon} onClose={() => setShowComingSoon(false)} />
+
+      <ConfirmModal
+        visible={confirm.visible}
+        emoji="🗑️"
+        title={confirm.title}
+        message={confirm.message}
+        confirmText="O'chirish"
+        danger
+        onConfirm={confirm.onConfirm}
+        onCancel={() => setConfirm(s => ({ ...s, visible: false }))}
+      />
     </SafeAreaView>
   )
 }
@@ -1591,6 +1705,8 @@ const styles = StyleSheet.create({
   teacherName:    { fontSize: typography.size.base },
   teacherHeadline:{ fontSize: typography.size.xs, marginTop: 2 },
   teacherBio:     { fontSize: typography.size.sm, lineHeight: 22 },
+  teacherChip:    { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  teacherChipText:{ fontSize: 11 },
 
   // Marketing view
   cover:       { width: '100%', height: 220 },

@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, useRouter } from 'expo-router'
 import { ArrowLeft, Info } from 'lucide-react-native'
+import { RoleBadge } from '../../components/ui/RoleBadge'
 import { useTheme } from '../../hooks/useTheme'
 import { useAuthStore } from '../../stores/authStore'
 import { leaderboard, type LeaderboardEntry, type LeaderboardPeriod } from '../../lib/api'
@@ -95,16 +96,19 @@ function Podium({ entries, authId, c, onPress }: {
           borderColor={isMe ? c.accentPrimary : tier.border}
           borderWidth={rank === 1 ? 3 : 2}
         />
-        <Text
-          style={[
-            styles.podiumName,
-            { color: isMe ? c.accentPrimary : c.textPrimary, fontFamily: typography.fontFamily.semibold },
-            rank !== 1 && { fontSize: 11 },
-          ]}
-          numberOfLines={1}
-        >
-          {entry.first_name}{isMe ? ' (Sen)' : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, justifyContent: 'center' }}>
+          <Text
+            style={[
+              styles.podiumName,
+              { color: isMe ? c.accentPrimary : c.textPrimary, fontFamily: typography.fontFamily.semibold },
+              rank !== 1 && { fontSize: 11 },
+            ]}
+            numberOfLines={1}
+          >
+            {entry.first_name}{isMe ? ' (Sen)' : ''}
+          </Text>
+          <RoleBadge accountType={entry.account_type} size={12} />
+        </View>
         <Text style={[
           styles.podiumXP,
           { color: c.accentPrimary, fontFamily: typography.fontFamily.bold },
@@ -173,16 +177,19 @@ function RankRow({
       {/* Avatar */}
       <AvatarCircle uri={entry.photo_url} name={entry.first_name} size={36} />
 
-      {/* Name */}
-      <Text
-        style={[
-          styles.rankName,
-          { color: isMe ? c.accentPrimary : c.textPrimary, fontFamily: isMe ? typography.fontFamily.semibold : typography.fontFamily.regular },
-        ]}
-        numberOfLines={1}
-      >
-        {entry.first_name}{isMe ? ' (Sen)' : ''}
-      </Text>
+      {/* Name + role badge */}
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 0 }}>
+        <Text
+          style={[
+            styles.rankName,
+            { color: isMe ? c.accentPrimary : c.textPrimary, fontFamily: isMe ? typography.fontFamily.semibold : typography.fontFamily.regular, flex: 1 },
+          ]}
+          numberOfLines={1}
+        >
+          {entry.first_name}{isMe ? ' (Sen)' : ''}
+        </Text>
+        <RoleBadge accountType={entry.account_type} size={13} />
+      </View>
 
       {/* Level badge */}
       <View style={[styles.levelPill, { backgroundColor: tier.bg, borderColor: tier.border }]}>

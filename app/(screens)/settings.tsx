@@ -13,6 +13,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { account, onboarding, auth as authApi } from '../../lib/api'
 import { TermsModal } from '../../components/ui/TermsModal'
+import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { typography, spacing, radius } from '../../lib/constants'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -431,10 +432,11 @@ export default function SettingsScreen() {
   }, [])
 
   // HISOB
-  const [showDelete,      setShowDelete]      = useState(false)
-  const [showTgLink,      setShowTgLink]      = useState(false)
-  const [showTerms,       setShowTerms]       = useState(false)
-  const [showEmailLink,   setShowEmailLink]   = useState(false)
+  const [showDelete,        setShowDelete]        = useState(false)
+  const [showTgLink,        setShowTgLink]        = useState(false)
+  const [showTerms,         setShowTerms]         = useState(false)
+  const [showEmailLink,     setShowEmailLink]     = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   // True if logged in with real Telegram (positive id), false if email/Google (negative synthetic id)
   const isRealTelegram = (user?.telegram_id ?? 0) > 0
@@ -468,15 +470,8 @@ export default function SettingsScreen() {
   }
 
   const handleLogout = useCallback(() => {
-    Alert.alert(
-      'Hisobdan chiqasizmi?',
-      '',
-      [
-        { text: 'Bekor', style: 'cancel' },
-        { text: 'Chiqish', style: 'destructive', onPress: logout },
-      ],
-    )
-  }, [logout])
+    setShowLogoutConfirm(true)
+  }, [])
 
   const handleDeleteAccount = useCallback(async () => {
     await account.deleteAccount()
@@ -673,6 +668,18 @@ export default function SettingsScreen() {
         onClose={() => setShowEmailLink(false)}
         onSuccess={handleEmailLinkSuccess}
         c={c}
+      />
+
+      <ConfirmModal
+        visible={showLogoutConfirm}
+        emoji="👋"
+        title="Chiqmoqchimisiz?"
+        message="Tez orada qaytib kelasiz-ku? Sizni sog'inib qolamiz! 🥺"
+        confirmText="Chiqish"
+        cancelText="Qolish"
+        danger
+        onConfirm={() => { setShowLogoutConfirm(false); logout() }}
+        onCancel={() => setShowLogoutConfirm(false)}
       />
     </SafeAreaView>
   )

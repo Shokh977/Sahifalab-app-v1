@@ -4,7 +4,7 @@ import React, {
 import {
   View, Text, StyleSheet, Modal, Pressable, FlatList,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Image, Alert, Animated, Dimensions,
+  Image, Animated, Dimensions,
 } from 'react-native'
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withSpring, runOnJS,
@@ -22,6 +22,8 @@ import { social, type CommentItem } from '../../lib/api'
 import { formatTime } from '../../lib/utils'
 import { LinkText } from '../ui/LinkText'
 import { typography, spacing, radius } from '../../lib/constants'
+import { ConfirmModal } from '../ui/ConfirmModal'
+import { RoleBadge } from '../ui/RoleBadge'
 import type { Post } from '../../lib/types'
 
 const SCREEN_H     = Dimensions.get('window').height
@@ -170,6 +172,7 @@ function CommentRow({ thread, myId, onLike, onReply, onDelete, c }: {
             <Text numberOfLines={1} style={[styles.authorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
               {comment.author.full_name}
             </Text>
+            <RoleBadge role={comment.author.role} size={13} />
             <Text style={[styles.timeText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
               {formatTime(comment.created_at)}
             </Text>
@@ -223,6 +226,7 @@ function CommentRow({ thread, myId, onLike, onReply, onDelete, c }: {
                     <Text numberOfLines={1} style={[styles.authorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold, fontSize: typography.size.xs }]}>
                       {r.author.full_name}
                     </Text>
+                    <RoleBadge role={r.author.role} size={12} />
                     <Text style={[styles.timeText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
                       {formatTime(r.created_at)}
                     </Text>
@@ -280,6 +284,7 @@ export function CommentsSheet({ post, visible, onClose }: Props) {
   const [text,       setText]       = useState('')
   const [sending,    setSending]    = useState(false)
   const [replyingTo, setReplyingTo] = useState<ReplyingTo | null>(null)
+  const [confirm, setConfirm] = useState<{ visible: boolean; pendingId: number }>({ visible: false, pendingId: 0 })
   const inputRef = useRef<TextInput>(null)
 
   const translateY = useSharedValue(SCREEN_H)
@@ -358,20 +363,17 @@ export function CommentsSheet({ post, visible, onClose }: Props) {
   // ── Delete ───────────────────────────────────────────────────────────────
 
   const handleDelete = useCallback((id: number) => {
-    Alert.alert("Izohni o'chirish", "O'chirishni tasdiqlaysizmi?", [
-      { text: 'Bekor', style: 'cancel' },
-      {
-        text: "O'chirish", style: 'destructive',
-        onPress: async () => {
-          setComments(prev => {
-            const removed = prev.filter(c => c.id === id || c.parent_id === id)
-            if (post) updatePost({ ...post, comments_count: Math.max(0, (post.comments_count ?? removed.length) - removed.length) })
-            return prev.filter(c => c.id !== id && c.parent_id !== id)
-          })
-          try { await social.deleteComment(id) } catch {}
-        },
-      },
-    ])
+    setConfirm({ visible: true, pendingId: id })
+  }, [])
+
+  const doDeleteComment = useCallback(async (id: number) => {
+    setConfirm({ visible: false, pendingId: 0 })
+    setComments(prev => {
+      const removed = prev.filter(c => c.id === id || c.parent_id === id)
+      if (post) updatePost({ ...post, comments_count: Math.max(0, (post.comments_count ?? removed.length) - removed.length) })
+      return prev.filter(c => c.id !== id && c.parent_id !== id)
+    })
+    try { await social.deleteComment(id) } catch {}
   }, [post])
 
   // ── Reply tap ────────────────────────────────────────────────────────────
@@ -420,9 +422,12 @@ export function CommentsSheet({ post, visible, onClose }: Props) {
             <View style={[styles.postPreview, { borderBottomColor: c.border, backgroundColor: c.bgSecondary }]}>
               <Avatar uri={post.author.photo_url} name={post.author.full_name} size={28} />
               <View style={{ flex: 1 }}>
-                <Text numberOfLines={1} style={[styles.previewAuthor, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                  {post.author.full_name}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text numberOfLines={1} style={[styles.previewAuthor, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                    {post.author.full_name}
+                  </Text>
+                  <RoleBadge role={post.author.role} size={12} />
+                </View>
                 <Text numberOfLines={1} style={[styles.previewText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
                   {post.content}
                 </Text>
@@ -507,6 +512,17 @@ export function CommentsSheet({ post, visible, onClose }: Props) {
           </View>
         </KeyboardAvoidingView>
       </Reanimated.View>
+
+      <ConfirmModal
+        visible={confirm.visible}
+        emoji="🗑️"
+        title="Izohni o'chirish"
+        message="Bu izoh butunlay o'chirib tashlanadi."
+        confirmText="O'chirish"
+        danger
+        onConfirm={() => doDeleteComment(confirm.pendingId)}
+        onCancel={() => setConfirm({ visible: false, pendingId: 0 })}
+      />
     </Modal>
   )
 }

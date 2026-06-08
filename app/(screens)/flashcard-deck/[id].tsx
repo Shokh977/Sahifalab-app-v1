@@ -18,6 +18,7 @@ import { flashcards as flashcardsApi } from '../../../lib/api'
 import { useFlashcardStore } from '../../../stores/flashcardStore'
 import type { FlashcardDeck, Flashcard } from '../../../lib/types'
 import { typography, spacing, radius } from '../../../lib/constants'
+import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 
 const PRESET_COLORS = [
   '#F5A623', '#FF6B6B', '#4DA6FF', '#34C759', '#AF52DE',
@@ -228,6 +229,7 @@ export default function DeckDetailScreen() {
   const [menuOpen,  setMenuOpen]  = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editCard,  setEditCard]  = useState<Flashcard | null>(null)
+  const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; danger?: boolean; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
 
   const refresh = useCallback(async () => {
     try {
@@ -247,47 +249,40 @@ export default function DeckDetailScreen() {
   useFocusEffect(useCallback(() => { refresh() }, [refresh]))
 
   const handleDeleteDeck = () => {
-    Alert.alert(
-      "To'plamni o'chirish",
-      "Barcha kartalar ham o'chiriladi. Davom etasizmi?",
-      [
-        { text: 'Bekor qilish', style: 'cancel' },
-        {
-          text: "O'chirish", style: 'destructive',
-          onPress: async () => {
-            try {
-              await flashcardsApi.deleteDeck(deckId)
-              removeDeck(deckId)
-              router.back()
-            } catch (e: any) {
-              Alert.alert('Xatolik', e.message)
-            }
-          },
-        },
-      ],
-    )
+    setConfirm({
+      visible:  true,
+      title:    "To'plamni o'chirish",
+      message:  "Barcha kartalar ham yo'qoladi. 😢",
+      danger:   true,
+      onConfirm: async () => {
+        setConfirm(s => ({ ...s, visible: false }))
+        try {
+          await flashcardsApi.deleteDeck(deckId)
+          removeDeck(deckId)
+          router.back()
+        } catch (e: any) {
+          Alert.alert('Xatolik', e.message)
+        }
+      },
+    })
   }
 
   const handleDeleteCard = (cardId: number) => {
-    Alert.alert(
-      "Kartani o'chirish",
-      "Bu kartani o'chirmoqchimisiz?",
-      [
-        { text: 'Bekor qilish', style: 'cancel' },
-        {
-          text: "O'chirish", style: 'destructive',
-          onPress: async () => {
-            try {
-              await flashcardsApi.deleteCard(cardId)
-              setCards(prev => prev.filter(c => c.id !== cardId))
-              setDeck(prev => prev ? { ...prev, card_count: prev.card_count - 1 } : prev)
-            } catch (e: any) {
-              Alert.alert('Xatolik', e.message)
-            }
-          },
-        },
-      ],
-    )
+    setConfirm({
+      visible:  true,
+      title:    "Kartani o'chirish",
+      message:  "Bu amalni bekor qilib bo'lmaydi.",
+      onConfirm: async () => {
+        setConfirm(s => ({ ...s, visible: false }))
+        try {
+          await flashcardsApi.deleteCard(cardId)
+          setCards(prev => prev.filter(c => c.id !== cardId))
+          setDeck(prev => prev ? { ...prev, card_count: prev.card_count - 1 } : prev)
+        } catch (e: any) {
+          Alert.alert('Xatolik', e.message)
+        }
+      },
+    })
   }
 
   const onCardSaved = (card: Flashcard, isNew: boolean) => {
@@ -484,6 +479,17 @@ export default function DeckDetailScreen() {
         editing={editCard}
         onClose={() => setSheetOpen(false)}
         onSaved={onCardSaved}
+      />
+
+      <ConfirmModal
+        visible={confirm.visible}
+        emoji="🗑️"
+        title={confirm.title}
+        message={confirm.message}
+        confirmText="O'chirish"
+        danger={confirm.danger}
+        onConfirm={confirm.onConfirm}
+        onCancel={() => setConfirm(s => ({ ...s, visible: false }))}
       />
     </View>
   )

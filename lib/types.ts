@@ -44,6 +44,7 @@ export interface ProfileData {
   location_city:     string | null
   website_url:       string | null
   account_type:      'student' | 'teacher' | 'company'
+  role?:             string
   is_verified:       boolean
   joined_at:         string | null
   // Gamification
@@ -81,6 +82,21 @@ export interface ProfileData {
   experiences:       any[]
   education:         any[]
   profile_completeness: number
+}
+
+export interface TeacherProfileData {
+  telegram_id:      number
+  specialization:   string | null
+  experience_years: number | null
+  bio:              string | null
+  education:        string | null
+  website_url:      string | null
+  youtube_url:      string | null
+  telegram_channel: string | null
+  first_name:       string | null
+  username:         string | null
+  photo_url:        string | null
+  level:            number | null
 }
 
 // ── Posts ────────────────────────────────────────────────────────────────────

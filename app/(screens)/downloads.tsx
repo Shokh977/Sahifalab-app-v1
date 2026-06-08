@@ -1,12 +1,13 @@
-import React, { useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback, useState } from 'react'
 import {
-  View, Text, StyleSheet, FlatList, Pressable, Alert,
+  View, Text, StyleSheet, FlatList, Pressable,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft, Trash2, Download, FolderOpen, Play } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useDownloadStore } from '../../stores/downloadStore'
+import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { typography, spacing, radius } from '../../lib/constants'
 import type { DownloadEntry } from '../../stores/downloadStore'
 
@@ -34,6 +35,7 @@ export default function DownloadsScreen() {
   const router   = useRouter()
   const insets   = useSafeAreaInsets()
   const { entries, load, deleteDownload } = useDownloadStore()
+  const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
 
   useEffect(() => { load() }, [])
 
@@ -41,29 +43,27 @@ export default function DownloadsScreen() {
   const totalEntries = Object.keys(entries).length
 
   function confirmDelete(entry: DownloadEntry) {
-    Alert.alert(
-      "O'chirishni tasdiqlang",
-      `"${entry.title}" oflayn faylini o'chirasizmi?`,
-      [
-        { text: 'Bekor qilish', style: 'cancel' },
-        { text: "O'chirish", style: 'destructive', onPress: () => deleteDownload(entry.lessonId) },
-      ],
-    )
+    setConfirm({
+      visible:   true,
+      title:     "Yuklamani o'chirish",
+      message:   `"${entry.title}" oflayn fayli o'chiriladi.`,
+      onConfirm: () => {
+        setConfirm(s => ({ ...s, visible: false }))
+        deleteDownload(entry.lessonId)
+      },
+    })
   }
 
   function confirmDeleteCourse(group: GroupedCourse) {
-    Alert.alert(
-      "Kurs yuklamalarini o'chirish",
-      `"${group.courseTitle}" kursi uchun barcha ${group.lessons.length} ta fayl o'chiriladi.`,
-      [
-        { text: 'Bekor qilish', style: 'cancel' },
-        {
-          text:    "O'chirish",
-          style:   'destructive',
-          onPress: () => group.lessons.forEach(l => deleteDownload(l.lessonId)),
-        },
-      ],
-    )
+    setConfirm({
+      visible:   true,
+      title:     "Kurs yuklamalarini o'chirish",
+      message:   `"${group.courseTitle}" kursi uchun barcha ${group.lessons.length} ta fayl o'chiriladi.`,
+      onConfirm: () => {
+        setConfirm(s => ({ ...s, visible: false }))
+        group.lessons.forEach(l => deleteDownload(l.lessonId))
+      },
+    })
   }
 
   function handlePlay(entry: DownloadEntry) {
@@ -164,6 +164,17 @@ export default function DownloadsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      <ConfirmModal
+        visible={confirm.visible}
+        emoji="🗑️"
+        title={confirm.title}
+        message={confirm.message}
+        confirmText="O'chirish"
+        danger
+        onConfirm={confirm.onConfirm}
+        onCancel={() => setConfirm(s => ({ ...s, visible: false }))}
+      />
     </SafeAreaView>
   )
 }

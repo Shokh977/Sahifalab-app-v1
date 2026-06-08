@@ -43,11 +43,12 @@ interface Props {
   onComplete?:        () => void
   onPlayingChange?:   (playing: boolean) => void
   onPositionUpdate?:  (seconds: number) => void
+  onDurationChange?:  (seconds: number) => void
 }
 
 // ── Native expo-video player ───────────────────────────────────────────────────
 function ExpoVideoPlayer({
-  uri, embedUrl, websiteUrl, initialPosition, onComplete, onPlayingChange, onPositionUpdate,
+  uri, embedUrl, websiteUrl, initialPosition, onComplete, onPlayingChange, onPositionUpdate, onDurationChange,
 }: {
   uri: string
   embedUrl?: string | null
@@ -56,6 +57,7 @@ function ExpoVideoPlayer({
   onComplete?: () => void
   onPlayingChange?: (playing: boolean) => void
   onPositionUpdate?: (seconds: number) => void
+  onDurationChange?: (seconds: number) => void
 }) {
   const [isPlaying,       setIsPlaying]       = useState(true)
   const [isBuffering,     setIsBuffering]      = useState(true)
@@ -65,18 +67,27 @@ function ExpoVideoPlayer({
   const [duration,    setDuration]    = useState(0)
   const [speed,       setSpeed]       = useState<Speed>(1)
 
-  const lastReportedRef = useRef(0)
-  const seekedRef       = useRef(false)
-  const videoViewRef    = useRef<any>(null)
+  const lastReportedRef    = useRef(0)
+  const seekedRef          = useRef(false)
+  const videoViewRef       = useRef<any>(null)
+  const onCompleteRef      = useRef(onComplete)
+  const onPlayingChangeRef = useRef(onPlayingChange)
+  const onPositionUpdateRef = useRef(onPositionUpdate)
+  const onDurationChangeRef = useRef(onDurationChange)
+  // Keep refs fresh on every render so listeners always call the latest callback
+  onCompleteRef.current       = onComplete
+  onPlayingChangeRef.current  = onPlayingChange
+  onPositionUpdateRef.current = onPositionUpdate
+  onDurationChangeRef.current = onDurationChange
 
   const player = useVideoPlayer!(uri, (p: any) => { p.play() })
 
   useEffect(() => {
     const subs = [
-      player.addListener('playToEnd', () => { onComplete?.() }),
+      player.addListener('playToEnd', () => { onCompleteRef.current?.() }),
       player.addListener('playingChange', ({ isPlaying: ip }: any) => {
         setIsPlaying(ip)
-        onPlayingChange?.(ip)
+        onPlayingChangeRef.current?.(ip)
       }),
       player.addListener('statusChange', ({ status }: any) => {
         setIsBuffering(status === 'loading')
@@ -95,12 +106,16 @@ function ExpoVideoPlayer({
       player.addListener('timeUpdate', ({ currentTime: ct }: any) => {
         const t = ct ?? 0
         setCurrentTime(t)
-        if (onPositionUpdate && t - lastReportedRef.current >= POSITION_INTERVAL) {
+        if (t - lastReportedRef.current >= POSITION_INTERVAL) {
           lastReportedRef.current = t
-          onPositionUpdate(t)
+          onPositionUpdateRef.current?.(t)
         }
       }),
-      player.addListener('sourceLoad', ({ duration: d }: any) => setDuration(d ?? 0)),
+      player.addListener('sourceLoad', ({ duration: d }: any) => {
+        const dur = d ?? 0
+        setDuration(dur)
+        if (dur > 0) onDurationChangeRef.current?.(dur)
+      }),
     ]
     return () => subs.forEach(s => s.remove())
   }, [player])
@@ -267,14 +282,21 @@ function YouTubeWebPlayer({
 
 // ── Bunny / other embed WebView player ────────────────────────────────────────
 function EmbedWebPlayer({
-  embedUrl, initialPosition, onComplete, onPositionUpdate,
+  embedUrl, initialPosition, onComplete, onPositionUpdate, onDurationChange,
 }: {
-  embedUrl:          string
-  initialPosition?:  number
-  onComplete?:       () => void
-  onPositionUpdate?: (seconds: number) => void
+  embedUrl:           string
+  initialPosition?:   number
+  onComplete?:        () => void
+  onPositionUpdate?:  (seconds: number) => void
+  onDurationChange?:  (seconds: number) => void
 }) {
-  const lastReportedRef = useRef(0)
+  const lastReportedRef     = useRef(0)
+  const onCompleteRef       = useRef(onComplete)
+  const onPositionUpdateRef = useRef(onPositionUpdate)
+  const onDurationChangeRef = useRef(onDurationChange)
+  onCompleteRef.current       = onComplete
+  onPositionUpdateRef.current = onPositionUpdate
+  onDurationChangeRef.current = onDurationChange
 
   // YouTube → dedicated HTML-iframe player (no direct-URI loading)
   if (isYouTubeUrl(embedUrl)) {
@@ -316,7 +338,12 @@ function EmbedWebPlayer({
         var video = document.querySelector('video');
         if (video) {
           clearInterval(findInterval);
-          video.addEventListener('loadedmetadata', function() { trySeek(video); });
+          video.addEventListener('loadedmetadata', function() {
+            trySeek(video);
+            if (video.duration && video.duration > 0) {
+              window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'duration', duration: video.duration }));
+            }
+          });
           video.addEventListener('ended', function() {
             window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ended' }));
           });
@@ -331,10 +358,11 @@ function EmbedWebPlayer({
   const handleMessage = useCallback((e: any) => {
     try {
       const msg = JSON.parse(e.nativeEvent.data)
-      if (msg.type === 'ended') onComplete?.()
-      else if (msg.type === 'timeupdate' && onPositionUpdate) onPositionUpdate(msg.time)
+      if (msg.type === 'ended')      onCompleteRef.current?.()
+      else if (msg.type === 'timeupdate') onPositionUpdateRef.current?.(msg.time)
+      else if (msg.type === 'duration')   onDurationChangeRef.current?.(msg.duration)
     } catch {}
-  }, [onComplete, onPositionUpdate])
+  }, [])
 
   return (
     <View style={[styles.container, { height: PLAYER_H }]}>
@@ -358,7 +386,7 @@ function EmbedWebPlayer({
 
 // ── Public component ───────────────────────────────────────────────────────────
 export function VideoPlayer({
-  uri, embedUrl, title, websiteUrl, initialPosition, onComplete, onPlayingChange, onPositionUpdate,
+  uri, embedUrl, title, websiteUrl, initialPosition, onComplete, onPlayingChange, onPositionUpdate, onDurationChange,
 }: Props) {
   const isLocal = uri?.startsWith('file://')
 
@@ -387,6 +415,7 @@ export function VideoPlayer({
         initialPosition={initialPosition}
         onComplete={onComplete}
         onPositionUpdate={onPositionUpdate}
+        onDurationChange={onDurationChange}
       />
     )
   }
@@ -401,6 +430,7 @@ export function VideoPlayer({
         onComplete={onComplete}
         onPlayingChange={onPlayingChange}
         onPositionUpdate={onPositionUpdate}
+        onDurationChange={onDurationChange}
       />
     )
   }

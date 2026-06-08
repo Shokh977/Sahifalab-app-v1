@@ -289,13 +289,14 @@ export async function uploadPostImage(
 // ── Search ────────────────────────────────────────────────────────────────────
 
 export interface SearchPerson {
-  id:           number
-  name:         string
-  username:     string | null
-  avatar_url:   string | null
-  headline:     string | null
-  is_verified:  boolean
+  id:            number
+  name:          string
+  username:      string | null
+  avatar_url:    string | null
+  headline:      string | null
+  is_verified:   boolean
   is_connected?: boolean
+  account_type?: string
 }
 
 export interface SearchCourse {
@@ -381,6 +382,12 @@ export const profile = {
       `/api/profiles/heatmap?telegram_id=${telegramId}&days=${days}`,
       { auth: true },
     ),
+
+  getTeacherProfile: (telegramId: number) =>
+    request<import('./types').TeacherProfileData>(`/api/teacher/profile/${telegramId}`),
+
+  getMutualConnections: (userId: number) =>
+    request<{ count: number; users: MutualUser[] }>(`/api/v1/connections/mutual/${userId}`, { auth: true }),
 }
 
 export interface HeatmapDay {
@@ -391,6 +398,17 @@ export interface HeatmapDay {
 }
 
 /** Shape returned by _profile_to_author in social_service */
+export interface MutualUser {
+  id:           number
+  name:         string
+  username:     string | null
+  avatar_url:   string | null
+  headline:     string
+  level:        number
+  account_type: string
+  is_verified:  boolean
+}
+
 export interface SocialUser {
   telegram_id:  number
   full_name:    string
@@ -399,6 +417,8 @@ export interface SocialUser {
   headline:     string | null
   is_verified:  boolean
   level:        number
+  role?:        string
+  account_type?: string
 }
 
 export async function uploadProfileImage(
@@ -1005,15 +1025,16 @@ export const onboarding = {
 // ── Leaderboard ───────────────────────────────────────────────────────────────
 
 export interface LeaderboardEntry {
-  rank:        number
-  telegram_id: number
-  first_name:  string
-  username:    string | null
-  photo_url:   string | null
-  level:       number
-  score:       number
-  minutes:     number  // focus minutes in the selected period
-  is_me:       boolean
+  rank:         number
+  telegram_id:  number
+  first_name:   string
+  username:     string | null
+  photo_url:    string | null
+  level:        number
+  score:        number
+  minutes:      number  // focus minutes in the selected period
+  is_me:        boolean
+  account_type?: string
 }
 
 type _OldLbRow = {

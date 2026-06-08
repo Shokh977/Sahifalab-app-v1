@@ -1,7 +1,7 @@
 import React, { useState, useCallback, memo, useRef } from 'react'
 import {
   View, Text, StyleSheet, Pressable, Image, Share,
-  Modal, TextInput, Alert, Animated,
+  Modal, TextInput, Animated,
 } from 'react-native'
 import {
   Star, MessageCircle, Repeat2, Bookmark, BadgeCheck,
@@ -18,6 +18,8 @@ import { social } from '../../lib/api'
 import { formatCount, formatTime } from '../../lib/utils'
 import { LinkText } from '../ui/LinkText'
 import { typography, spacing, radius } from '../../lib/constants'
+import { ConfirmModal } from '../ui/ConfirmModal'
+import { RoleBadge } from '../ui/RoleBadge'
 import type { Post } from '../../lib/types'
 
 interface Props {
@@ -112,23 +114,20 @@ function PostCardComponent({ post, onCommentPress }: Props) {
   const [showMenu,  setShowMenu]  = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editText,  setEditText]  = useState(post.content ?? '')
-  const [saving2,   setSaving2]   = useState(false)
+  const [saving2,       setSaving2]       = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const isOwner = !!user && user.telegram_id === post.author.telegram_id
 
   const handleDelete = useCallback(() => {
     setShowMenu(false)
-    Alert.alert("O'chirish", "Bu postni o'chirishni tasdiqlaysizmi?", [
-      { text: 'Bekor qilish', style: 'cancel' },
-      {
-        text: "O'chirish", style: 'destructive',
-        onPress: async () => {
-          removePost(post.id)
-          try { await social.deletePost(post.id) }
-          catch { /* already removed from UI */ }
-        },
-      },
-    ])
+    setShowDeleteConfirm(true)
+  }, [])
+
+  const doDeletePost = useCallback(async () => {
+    setShowDeleteConfirm(false)
+    removePost(post.id)
+    try { await social.deletePost(post.id) } catch {}
   }, [post.id, removePost])
 
   const handleSaveEdit = useCallback(async () => {
@@ -226,6 +225,7 @@ function PostCardComponent({ post, onCommentPress }: Props) {
             {author.is_verified && (
               <BadgeCheck size={14} color={c.brand} fill={c.brandSubtle} />
             )}
+            <RoleBadge role={author.role} size={14} />
           </View>
           {author.headline ? (
             <Text numberOfLines={1} style={[styles.headline, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
@@ -400,6 +400,17 @@ function PostCardComponent({ post, onCommentPress }: Props) {
           </View>
         </ScaleBtn>
       </View>
+
+      <ConfirmModal
+        visible={showDeleteConfirm}
+        emoji="🗑️"
+        title="Postni o'chirish"
+        message="Bu post butunlay o'chirib tashlanadi."
+        confirmText="O'chirish"
+        danger
+        onConfirm={doDeletePost}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </View>
   )
 }
