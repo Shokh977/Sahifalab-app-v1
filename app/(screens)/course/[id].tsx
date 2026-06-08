@@ -55,9 +55,22 @@ function buildSections(ls: Lesson[]): Section[] {
   }))
 }
 
+function isYouTubeUrl(url: string) {
+  return /youtube\.com|youtu\.be/i.test(url)
+}
+
+// Returns a directly-streamable URI (HLS or MP4). Skips YouTube URLs — those
+// cannot be played by expo-video and must go through EmbedWebPlayer instead.
 function getVideoUri(lesson: Lesson): string | null {
-  if (lesson.hls_url)   return lesson.hls_url
-  if (lesson.video_url) return lesson.video_url
+  if (lesson.hls_url   && !isYouTubeUrl(lesson.hls_url))   return lesson.hls_url
+  if (lesson.video_url && !isYouTubeUrl(lesson.video_url)) return lesson.video_url
+  return null
+}
+
+// Returns a WebView-embeddable URL: Bunny embed_url, or a YouTube video_url.
+function getEmbedUrl(lesson: Lesson): string | null {
+  if (lesson.embed_url) return lesson.embed_url
+  if (lesson.video_url && isYouTubeUrl(lesson.video_url)) return lesson.video_url
   return null
 }
 
@@ -783,19 +796,19 @@ export default function CourseDetailScreen() {
         if (!cancelled) { setVideoUri(uri); setEmbedUrl(null); setVideoLoading(false) }
         return
       }
-      // 3. Bunny embed URL from list response (WebView player)
-      if (currentLesson.embed_url) {
-        if (!cancelled) { setVideoUri(null); setEmbedUrl(currentLesson.embed_url); setVideoLoading(false) }
+      // 3. Embed URL (Bunny iframe or YouTube video_url)
+      const listEmbed = getEmbedUrl(currentLesson)
+      if (listEmbed) {
+        if (!cancelled) { setVideoUri(null); setEmbedUrl(listEmbed); setVideoLoading(false) }
         return
       }
-      // 4. Fetch individual lesson — backend may compute URL dynamically
+      // 4. Fetch individual lesson — backend signs Bunny URLs dynamically
       try {
         const full    = await lessonsApi.get(currentLesson.id)
         const fullUri = getVideoUri(full)
         if (!cancelled) {
-          // Keep both: VideoPlayer tries expo-video (HLS) first, WebView embed as fallback
           setVideoUri(fullUri)
-          setEmbedUrl(full.embed_url ?? null)
+          setEmbedUrl(getEmbedUrl(full))
           setVideoLoading(false)
         }
       } catch {

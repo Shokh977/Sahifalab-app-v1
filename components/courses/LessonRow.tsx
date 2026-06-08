@@ -37,7 +37,7 @@ export function LessonRow({
       : `${Math.floor(lesson.duration_minutes / 60)}s ${lesson.duration_minutes % 60}d`
     : null
 
-  const showDownload = canDownload && lesson.lesson_type === 'video'
+  const showDownload = canDownload && lesson.lesson_type === 'video' && lesson.video_source !== 'youtube'
 
   return (
     <>

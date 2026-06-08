@@ -33,18 +33,22 @@ interface DownloadState {
 // In-memory map of active DownloadResumable objects (for cancel support)
 const resumables = new Map<number, FileSystem.DownloadResumable>()
 
+function isYouTubeUrl(url: string) {
+  return /youtube\.com|youtu\.be/i.test(url)
+}
+
 /** Derive a direct MP4 URL from lesson fields (fallback only — prefer /download-url API) */
 export function getDownloadUrl(lesson: Lesson): string | null {
-  if (lesson.video_url) {
+  if (lesson.video_url && !isYouTubeUrl(lesson.video_url)) {
     // Match .mp4/.mov anywhere in the URL (before optional query string)
     if (/\.(mp4|mov)(\?|$)/i.test(lesson.video_url)) return lesson.video_url
   }
-  if (lesson.hls_url) {
+  if (lesson.hls_url && !isYouTubeUrl(lesson.hls_url)) {
     // Keep the token query params — Bunny CDN signs by video_id, not by path,
     // so the same token that covers playlist.m3u8 also covers play_720p.mp4.
     return lesson.hls_url.replace('playlist.m3u8', 'play_720p.mp4')
   }
-  if (lesson.video_url) {
+  if (lesson.video_url && !isYouTubeUrl(lesson.video_url)) {
     return lesson.video_url
   }
   return null
@@ -108,7 +112,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     const resumable = FileSystem.createDownloadResumable(
       url,
       fileUri,
-      {},
+      { headers: { Referer: 'https://sahifalab.uz' } },
       ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
         if (totalBytesExpectedToWrite > 0) {
           set(s => ({
@@ -122,14 +126,18 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     try {
       const result = await resumable.downloadAsync()
       if (result) {
+        const httpStatus = result.status ?? 0
         const info    = await FileSystem.getInfoAsync(result.uri)
         const fileSize = (info as any).size ?? 0
-        if (fileSize < 100_000) {
-          // Too small — server returned an error page (Bunny CDN auth required)
+        if (httpStatus !== 200 || fileSize < 100_000) {
+          // CDN returned an error (403/404) or a small error-page body
           try { await FileSystem.deleteAsync(result.uri, { idempotent: true }) } catch {}
+          const reason = httpStatus && httpStatus !== 200
+            ? `Server javobi: ${httpStatus}`
+            : "Fayl hajmi juda kichik"
           Alert.alert(
             'Yuklab bo\'lmadi',
-            'Bu dars uchun oflayn yuklab olish hozircha mavjud emas.',
+            `Bu dars uchun oflayn yuklab olish hozircha mavjud emas. (${reason})`,
           )
         } else {
           const sizeMb = fileSize / (1024 * 1024)

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, Component } from 'react'
+import React, { useEffect, useRef, useState, Component } from 'react'
 import { Linking, View, Text, Pressable, StyleSheet } from 'react-native'
 import { Slot, useRouter, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
@@ -16,6 +16,9 @@ import { useOfflineQueueStore } from '../stores/offlineQueueStore'
 import { useOnline } from '../hooks/useOnline'
 import { OfflineBanner } from '../components/ui/OfflineBanner'
 import { NotifToast } from '../components/ui/NotifToast'
+import { AppIntroModal } from '../components/onboarding/AppIntroModal'
+
+const APP_INTRO_KEY = 'sahifalab_app_intro_v1'
 
 // expo-notifications and expo-constants are lazy-required so their module
 // initialisation (which calls addPushTokenListener) cannot throw and crash
@@ -143,6 +146,8 @@ export default function RootLayout() {
   const isOnline = useOnline()
   const wasOnlineRef = useRef(false)
 
+  const [showAppIntro, setShowAppIntro] = useState(false)
+
   const [fontsLoaded] = useFonts({
     'PlusJakartaSans-Regular':       require('../assets/fonts/PlusJakartaSans-Regular.ttf'),
     'PlusJakartaSans-Medium':        require('../assets/fonts/PlusJakartaSans-Medium.ttf'),
@@ -264,6 +269,19 @@ export default function RootLayout() {
     }
   }, [isAuthenticated, isLoading])
 
+  // ── App intro: show once on first launch after successful auth ────────────
+  useEffect(() => {
+    if (!isAuthenticated || isLoading || !fontsLoaded || needsOnboarding) return
+    AsyncStorage.getItem(APP_INTRO_KEY).then(seen => {
+      if (!seen) setShowAppIntro(true)
+    }).catch(() => {})
+  }, [isAuthenticated, isLoading, fontsLoaded, needsOnboarding])
+
+  async function dismissAppIntro() {
+    setShowAppIntro(false)
+    await AsyncStorage.setItem(APP_INTRO_KEY, '1').catch(() => {})
+  }
+
   // ── Offline queue: load on mount, flush when network restores ─────────────
   useEffect(() => {
     useOfflineQueueStore.getState().loadFromStorage()
@@ -315,6 +333,7 @@ export default function RootLayout() {
         <Slot />
         <OfflineBanner />
         <NotifToast />
+        <AppIntroModal visible={showAppIntro} onFinish={dismissAppIntro} />
       </GestureHandlerRootView>
     </AppErrorBoundary>
   )
