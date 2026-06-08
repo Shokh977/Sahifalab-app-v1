@@ -130,14 +130,11 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
         const info    = await FileSystem.getInfoAsync(result.uri)
         const fileSize = (info as any).size ?? 0
         if (httpStatus !== 200 || fileSize < 100_000) {
-          // CDN returned an error (403/404) or a small error-page body
+          // CDN returned an error or a small error-page body
           try { await FileSystem.deleteAsync(result.uri, { idempotent: true }) } catch {}
-          const reason = httpStatus && httpStatus !== 200
-            ? `Server javobi: ${httpStatus}`
-            : "Fayl hajmi juda kichik"
           Alert.alert(
             'Yuklab bo\'lmadi',
-            `Bu dars uchun oflayn yuklab olish hozircha mavjud emas. (${reason})`,
+            'Bu dars uchun oflayn yuklab olish hozircha mavjud emas.',
           )
         } else {
           const sizeMb = fileSize / (1024 * 1024)
