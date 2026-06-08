@@ -291,8 +291,9 @@ export default function StreakDetailScreen() {
   const stage  = treeStageFromStreak(streakDays)
   const health = data ? (data.is_active ? 'healthy' : 'frost') : 'healthy'
 
-  // Calendar: today string for comparison
-  const todayStr = new Date().toISOString().split('T')[0]
+  // Calendar: today in device-local time (not UTC) so "today" highlight matches sessions
+  const _d = new Date()
+  const todayStr = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`
 
   // Group calendar by week rows (7 cells per row), padded to Monday alignment
   const calRows: (StreakCalendarDay | null)[][] = []

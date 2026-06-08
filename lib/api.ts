@@ -13,6 +13,12 @@ import type {
 
 export const TOKEN_KEY = 'sahifalab_jwt'
 
+/** Returns the device's local calendar date as YYYY-MM-DD. */
+function localDate(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 async function getToken(): Promise<string | null> {
   try { return await SecureStore.getItemAsync(TOKEN_KEY) }
   catch { return null }
@@ -831,11 +837,11 @@ export const focus = {
       achievements_earned: Array<{ id: string; name: string; description: string; xp: number }>
     }>(
       '/api/focus/complete',
-      { method: 'POST', body: JSON.stringify({ minutes }), auth: true },
+      { method: 'POST', body: JSON.stringify({ minutes, local_date: localDate() }), auth: true },
     ),
 
   weekly: () =>
-    request<WeeklyStudyDay[]>('/api/focus/weekly', { auth: true })
+    request<WeeklyStudyDay[]>(`/api/focus/weekly?local_date=${localDate()}`, { auth: true })
       .catch(() => [] as WeeklyStudyDay[]),
 
   weeklyReport: () =>
@@ -853,7 +859,7 @@ export const focus = {
       best_day:      string | null
       best_minutes:  number
       days: Array<{ date: string; minutes: number; goal_met: boolean }>
-    }>('/api/focus/weekly-report', { auth: true }),
+    }>(`/api/focus/weekly-report?local_date=${localDate()}`, { auth: true }),
 }
 
 // ── Account actions ───────────────────────────────────────────────────────────
@@ -1076,7 +1082,7 @@ export interface FocusStats {
 
 export const focusStats = {
   get: () =>
-    request<FocusStats>('/api/focus/stats', { auth: true })
+    request<FocusStats>(`/api/focus/stats?local_date=${localDate()}`, { auth: true })
       .catch(() => ({
         today_minutes:       0,
         today_sessions:      0,
@@ -1379,7 +1385,7 @@ export interface StreakDetail {
 
 export const streaks = {
   detail: (telegramId?: number | null) =>
-    request<StreakDetail>('/api/streaks/detail', { auth: true }),
+    request<StreakDetail>(`/api/streaks/detail?local_date=${localDate()}`, { auth: true }),
 
   purchaseFreeze: (count: number) =>
     request<{ ok: boolean; xp_spent: number; freezes_added: number; total_xp: number; freeze_count: number }>(
@@ -1389,7 +1395,7 @@ export const streaks = {
 
   useFreeze: () =>
     request<{ ok: boolean; freeze_count: number; streak_days: number; frozen_date: string }>(
-      '/api/streaks/freeze/use',
+      `/api/streaks/freeze/use?local_date=${localDate()}`,
       { method: 'POST', auth: true },
     ),
 }
