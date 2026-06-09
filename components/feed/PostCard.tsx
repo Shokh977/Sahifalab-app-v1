@@ -225,7 +225,7 @@ function PostCardComponent({ post, onCommentPress }: Props) {
             {author.is_verified && (
               <BadgeCheck size={14} color={c.brand} fill={c.brandSubtle} />
             )}
-            <RoleBadge role={author.role} size={14} />
+            <RoleBadge role={author.role} accountType={author.account_type} size={14} />
           </View>
           {author.headline ? (
             <Text numberOfLines={1} style={[styles.headline, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>

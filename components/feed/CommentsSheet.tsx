@@ -172,7 +172,7 @@ function CommentRow({ thread, myId, onLike, onReply, onDelete, c }: {
             <Text numberOfLines={1} style={[styles.authorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
               {comment.author.full_name}
             </Text>
-            <RoleBadge role={comment.author.role} size={13} />
+            <RoleBadge role={comment.author.role} accountType={comment.author.account_type} size={13} />
             <Text style={[styles.timeText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
               {formatTime(comment.created_at)}
             </Text>
@@ -226,7 +226,7 @@ function CommentRow({ thread, myId, onLike, onReply, onDelete, c }: {
                     <Text numberOfLines={1} style={[styles.authorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold, fontSize: typography.size.xs }]}>
                       {r.author.full_name}
                     </Text>
-                    <RoleBadge role={r.author.role} size={12} />
+                    <RoleBadge role={r.author.role} accountType={r.author.account_type} size={12} />
                     <Text style={[styles.timeText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
                       {formatTime(r.created_at)}
                     </Text>
@@ -426,7 +426,7 @@ export function CommentsSheet({ post, visible, onClose }: Props) {
                   <Text numberOfLines={1} style={[styles.previewAuthor, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
                     {post.author.full_name}
                   </Text>
-                  <RoleBadge role={post.author.role} size={12} />
+                  <RoleBadge role={post.author.role} accountType={post.author.account_type} size={12} />
                 </View>
                 <Text numberOfLines={1} style={[styles.previewText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
                   {post.content}

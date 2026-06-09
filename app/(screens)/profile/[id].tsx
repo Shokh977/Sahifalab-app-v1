@@ -599,7 +599,7 @@ export default function PublicProfileScreen() {
 
   const profileData = cache[Number(id)]?.data ?? null
   const isOwn       = !!authUser && authUser.telegram_id === Number(id)
-  const isTeacher   = profileData?.account_type === 'teacher'
+  const isTeacher   = profileData?.account_type === 'teacher' || profileData?.account_type === 'admin' || profileData?.role === 'admin'
 
   // Redirect to own profile tab instead of showing public view
   useEffect(() => {
@@ -861,8 +861,8 @@ export default function PublicProfileScreen() {
             totalFocusMinutes={Math.round((p.focus_hours ?? 0) * 60)}
           />
 
-          {/* Completed courses (students + teachers) */}
-          {topCerts.length > 0 && (
+          {/* Completed courses (students only — teachers/admins show created courses above) */}
+          {!isTeacher && topCerts.length > 0 && (
             <>
               <Text style={[styles.subLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.semibold }]}>
                 Tugatilgan kurslar

@@ -43,7 +43,7 @@ export interface ProfileData {
   bio:               string | null
   location_city:     string | null
   website_url:       string | null
-  account_type:      'student' | 'teacher' | 'company'
+  account_type:      'student' | 'teacher' | 'company' | 'admin'
   role?:             string
   is_verified:       boolean
   joined_at:         string | null
@@ -102,14 +102,15 @@ export interface TeacherProfileData {
 // ── Posts ────────────────────────────────────────────────────────────────────
 
 export interface PostAuthor {
-  telegram_id: number
-  full_name:   string
-  username:    string | null
-  photo_url:   string | null
-  role:        string
-  level:       number
-  headline:    string | null
-  is_verified: boolean
+  telegram_id:  number
+  full_name:    string
+  username:     string | null
+  photo_url:    string | null
+  role:         string
+  account_type: string
+  level:        number
+  headline:     string | null
+  is_verified:  boolean
 }
 
 export interface Post {

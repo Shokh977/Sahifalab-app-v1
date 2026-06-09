@@ -11,8 +11,7 @@ interface Props {
 }
 
 export function RoleBadge({ role, accountType, size = 15 }: Props) {
-  // Admin always takes priority over teacher
-  if (role === 'admin')                                   return <BadgeCheck size={size} color={ADMIN_COLOR}   fill={`${ADMIN_COLOR}22`} />
-  if (role === 'teacher' || accountType === 'teacher')    return <BadgeCheck size={size} color={TEACHER_COLOR} fill={`${TEACHER_COLOR}22`} />
+  if (role === 'admin' || accountType === 'admin')        return <BadgeCheck size={size} color={ADMIN_COLOR}   fill={`${ADMIN_COLOR}22`} style={{ marginTop: 4 }} />
+  if (role === 'teacher' || accountType === 'teacher')    return <BadgeCheck size={size} color={TEACHER_COLOR} fill={`${TEACHER_COLOR}22`} style={{ marginTop: 4 }} />
   return null
 }
