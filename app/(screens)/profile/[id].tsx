@@ -590,8 +590,9 @@ export default function PublicProfileScreen() {
   const [showUnfollowConfirm, setShowUnfollowConfirm] = useState(false)
 
   // Teacher-specific state
-  const [teacherData,    setTeacherData]    = useState<TeacherProfileData | null>(null)
-  const [teacherCourses, setTeacherCourses] = useState<Course[]>([])
+  const [teacherData,       setTeacherData]       = useState<TeacherProfileData | null>(null)
+  const [teacherCourses,    setTeacherCourses]     = useState<Course[]>([])
+  const [teacherLoading,    setTeacherLoading]     = useState(false)
 
   // Mutual connections
   const [mutualUsers,        setMutualUsers]        = useState<MutualUser[]>([])
@@ -600,7 +601,7 @@ export default function PublicProfileScreen() {
 
   const profileData = cache[Number(id)]?.data ?? null
   const isOwn       = !!authUser && authUser.telegram_id === Number(id)
-  const isTeacher   = profileData?.account_type === 'teacher' || profileData?.account_type === 'admin' || profileData?.role === 'admin'
+  const isTeacher   = profileData?.account_type === 'teacher' || profileData?.role === 'teacher' || profileData?.account_type === 'admin' || profileData?.role === 'admin'
 
   // Redirect to own profile tab instead of showing public view
   useEffect(() => {
@@ -633,13 +634,14 @@ export default function PublicProfileScreen() {
   useEffect(() => {
     if (!isTeacher || !id) return
     const tid = Number(id)
+    setTeacherLoading(true)
     Promise.all([
       profileApi.getTeacherProfile(tid).catch(() => null),
       coursesApi.list({ teacher_id: tid, limit: 20 }).catch(() => null),
     ]).then(([td, cr]) => {
       if (td) setTeacherData(td)
-      if (cr) setTeacherCourses(cr.courses ?? [])
-    })
+      setTeacherCourses(cr?.courses ?? [])
+    }).finally(() => setTeacherLoading(false))
   }, [isTeacher, id])
 
   const handleRefresh = useCallback(async () => {
@@ -837,24 +839,33 @@ export default function PublicProfileScreen() {
               {/* Detailed bio / experience / education */}
               {teacherData && <TeacherInfoCard td={teacherData} c={c} />}
 
+              {/* Social links */}
+              {teacherData && <SocialLinks td={teacherData} c={c} />}
 
               {/* Teacher's courses */}
-              {teacherCourses.length > 0 && (
-                <>
-                  <Text style={[styles.sectionLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.bold }]}>
-                    KURSLAR
+              <Text style={[styles.sectionLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.bold }]}>
+                KURSLAR
+              </Text>
+              {teacherLoading ? (
+                <ActivityIndicator color={c.accentPrimary} style={{ marginTop: 8, marginBottom: 8 }} />
+              ) : teacherCourses.length > 0 ? (
+                <View style={styles.coursesList}>
+                  {teacherCourses.map(course => (
+                    <TeacherCourseCard
+                      key={course.id}
+                      course={course}
+                      c={c}
+                      onPress={() => router.push(`/(screens)/course/${course.id}` as any)}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <View style={[styles.emptyCoursesCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+                  <BookOpen size={22} color={c.textMuted} />
+                  <Text style={[styles.emptyCoursesText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                    Hali kurs yaratilmagan
                   </Text>
-                  <View style={styles.coursesList}>
-                    {teacherCourses.map(course => (
-                      <TeacherCourseCard
-                        key={course.id}
-                        course={course}
-                        c={c}
-                        onPress={() => router.push(`/(screens)/course/${course.id}` as any)}
-                      />
-                    ))}
-                  </View>
-                </>
+                </View>
               )}
 
               {/* Divider before stats */}
@@ -1021,6 +1032,17 @@ const styles = StyleSheet.create({
   subLabel:     { fontSize: 14 },
 
   coursesList: { gap: 8 },
+
+  emptyCoursesCard: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    gap:            10,
+    borderRadius:   radius.md,
+    borderWidth:    StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.base,
+    paddingVertical:   spacing.base,
+  },
+  emptyCoursesText: { fontSize: typography.size.sm },
 
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 4 },
 

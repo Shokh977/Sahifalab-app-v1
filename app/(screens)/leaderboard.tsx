@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, Image, Pressable,
-  ActivityIndicator, RefreshControl, Alert, ScrollView,
+  ActivityIndicator, RefreshControl, ScrollView,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, useRouter } from 'expo-router'
@@ -11,6 +11,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { useAuthStore } from '../../stores/authStore'
 import { leaderboard, type LeaderboardEntry, type LeaderboardPeriod } from '../../lib/api'
 import { typography, spacing, radius, getLevelTier } from '../../lib/constants'
+import { InfoModal } from '../../components/ui/InfoModal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -241,6 +242,7 @@ export default function LeaderboardScreen() {
   const [myRank,     setMyRank]     = useState<number | null>(null)
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [infoModal,  setInfoModal]  = useState<{ title: string; body: string } | null>(null)
 
   const authId = authUser?.telegram_id ?? null
 
@@ -284,15 +286,13 @@ export default function LeaderboardScreen() {
 
   const handleInfoPress = () => {
     if (activeTab === 'friends') {
-      Alert.alert(
-        "Do'stlar reytingi",
-        "Siz kuzatayotgan foydalanuvchilarning XP reytingi. Ularni profilingizdan kuzatish orqali shu yerda ko'rasiz.",
-        [{ text: 'Tushunarli' }],
-      )
+      setInfoModal({
+        title: "Do'stlar reytingi",
+        body:  "Siz kuzatayotgan foydalanuvchilarning XP reytingi. Ularni profilingizdan kuzatish orqali shu yerda ko'rasiz.",
+      })
       return
     }
-    const info = PERIOD_INFO[period]
-    Alert.alert(info.title, info.body, [{ text: 'Tushunarli' }])
+    setInfoModal(PERIOD_INFO[period])
   }
 
   // split top 3 and rest
@@ -448,6 +448,13 @@ export default function LeaderboardScreen() {
           />
         </View>
       )}
+
+      <InfoModal
+        visible={infoModal !== null}
+        title={infoModal?.title ?? ''}
+        body={infoModal?.body ?? ''}
+        onClose={() => setInfoModal(null)}
+      />
     </View>
   )
 }

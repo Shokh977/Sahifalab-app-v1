@@ -106,6 +106,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const res = await auth.emailLogin({ email, password })
     await saveToken(res.access_token)
     const me = await auth.me()
+    if (!me.email_verified) {
+      await clearToken()
+      throw new Error('EMAIL_NOT_VERIFIED')
+    }
     const needsOnboarding = await checkOnboarding()
     set({ token: res.access_token, user: mapToUser(me), isAuthenticated: true, needsOnboarding })
   },

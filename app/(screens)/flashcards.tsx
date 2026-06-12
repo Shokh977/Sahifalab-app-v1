@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, Pressable, ScrollView, TextInput,
   Modal, ActivityIndicator, Alert, Animated as RNAnimated,
+  Platform, KeyboardAvoidingView,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -35,11 +36,32 @@ interface DeckSheetProps {
 }
 
 function DeckSheet({ visible, editing, onClose, onSaved }: DeckSheetProps) {
-  const { c } = useTheme()
+  const { c }  = useTheme()
+  const insets = useSafeAreaInsets()
+
   const [title,  setTitle]  = useState('')
   const [desc,   setDesc]   = useState('')
   const [color,  setColor]  = useState(PRESET_COLORS[0])
   const [saving, setSaving] = useState(false)
+
+  const [rendered, setRendered] = useState(visible)
+  const backdropAnim = useRef(new RNAnimated.Value(0)).current
+  const sheetAnim    = useRef(new RNAnimated.Value(400)).current
+
+  useEffect(() => {
+    if (visible) {
+      setRendered(true)
+      RNAnimated.parallel([
+        RNAnimated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        RNAnimated.spring(sheetAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]).start()
+    } else {
+      RNAnimated.parallel([
+        RNAnimated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        RNAnimated.timing(sheetAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setRendered(false); sheetAnim.setValue(400) })
+    }
+  }, [visible])
 
   useEffect(() => {
     if (visible) {
@@ -67,90 +89,109 @@ function DeckSheet({ visible, editing, onClose, onSaved }: DeckSheetProps) {
     }
   }
 
+  if (!rendered) return null
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[styles.sheet, { backgroundColor: c.bgSecondary }]}>
-        <View style={[styles.sheetHandle, { backgroundColor: c.border }]} />
-        <View style={styles.sheetHeader}>
-          <Text style={[styles.sheetTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-            {editing ? "To'plamni tahrirlash" : "Yangi to'plam"}
-          </Text>
-          <Pressable onPress={onClose} hitSlop={12}>
-            <X size={22} color={c.textSecondary} />
-          </Pressable>
-        </View>
+    <Modal transparent visible={rendered} onRequestClose={onClose} statusBarTranslucent>
+      {/* Backdrop */}
+      <RNAnimated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </RNAnimated.View>
 
-        <ScrollView contentContainerStyle={{ gap: spacing.base, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
-          <View style={{ gap: 6 }}>
-            <Text style={[styles.inputLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-              To'plam nomi
+      {/* Sheet with keyboard avoidance */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetKav}>
+        <RNAnimated.View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: c.bgSecondary,
+              paddingBottom:   insets.bottom + spacing.base,
+              transform:       [{ translateY: sheetAnim }],
+            },
+          ]}
+        >
+          <View style={[styles.sheetHandle, { backgroundColor: c.border }]} />
+          <View style={styles.sheetHeader}>
+            <Text style={[styles.sheetTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+              {editing ? "To'plamni tahrirlash" : "Yangi to'plam"}
             </Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Masalan: Inglizcha so'zlar"
-              placeholderTextColor={c.textDisabled}
-              style={[styles.textInput, { backgroundColor: c.bgInput, color: c.textPrimary, borderColor: c.border, fontFamily: typography.fontFamily.regular }]}
-              maxLength={200}
-              autoFocus
-            />
+            <Pressable onPress={onClose} hitSlop={12}>
+              <X size={22} color={c.textSecondary} />
+            </Pressable>
           </View>
 
-          <View style={{ gap: 6 }}>
-            <Text style={[styles.inputLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-              Izoh (ixtiyoriy)
-            </Text>
-            <TextInput
-              value={desc}
-              onChangeText={setDesc}
-              placeholder="Bu to'plam haqida..."
-              placeholderTextColor={c.textDisabled}
-              style={[styles.textInput, { backgroundColor: c.bgInput, color: c.textPrimary, borderColor: c.border, fontFamily: typography.fontFamily.regular, minHeight: 72 }]}
-              multiline
-              maxLength={500}
-            />
-          </View>
-
-          <View style={{ gap: 10 }}>
-            <Text style={[styles.inputLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-              Rang
-            </Text>
-            <View style={styles.colorRow}>
-              {PRESET_COLORS.map(col => {
-                const sel = col === color
-                return (
-                  <Pressable
-                    key={col}
-                    onPress={() => setColor(col)}
-                    style={[
-                      styles.colorCircle,
-                      { backgroundColor: col, borderColor: sel ? '#fff' : 'transparent', borderWidth: sel ? 2 : 0 },
-                    ]}
-                  >
-                    {sel && <Check size={12} color="#fff" weight="bold" />}
-                  </Pressable>
-                )
-              })}
+          <ScrollView contentContainerStyle={{ gap: spacing.base, paddingBottom: 8 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <View style={{ gap: 6 }}>
+              <Text style={[styles.inputLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                To'plam nomi
+              </Text>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Masalan: Inglizcha so'zlar"
+                placeholderTextColor={c.textDisabled}
+                style={[styles.textInput, { backgroundColor: c.bgInput, color: c.textPrimary, borderColor: c.border, fontFamily: typography.fontFamily.regular }]}
+                maxLength={200}
+                autoFocus
+              />
             </View>
-          </View>
 
-          <Pressable
-            onPress={save}
-            disabled={saving || !title.trim()}
-            style={({ pressed }) => [
-              styles.saveBtn,
-              { backgroundColor: title.trim() ? c.accentPrimary : c.bgTertiary, opacity: pressed ? 0.85 : 1 },
-            ]}
-          >
-            {saving
-              ? <ActivityIndicator color={c.textInverse} size="small" />
-              : <Text style={[styles.saveBtnText, { color: title.trim() ? c.textInverse : c.textDisabled, fontFamily: typography.fontFamily.semibold }]}>
-                  {editing ? 'Saqlash' : 'Yaratish'}
-                </Text>
-            }
-          </Pressable>
-        </ScrollView>
-      </View>
+            <View style={{ gap: 6 }}>
+              <Text style={[styles.inputLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                Izoh (ixtiyoriy)
+              </Text>
+              <TextInput
+                value={desc}
+                onChangeText={setDesc}
+                placeholder="Bu to'plam haqida..."
+                placeholderTextColor={c.textDisabled}
+                style={[styles.textInput, { backgroundColor: c.bgInput, color: c.textPrimary, borderColor: c.border, fontFamily: typography.fontFamily.regular, minHeight: 72 }]}
+                multiline
+                maxLength={500}
+              />
+            </View>
+
+            <View style={{ gap: 10 }}>
+              <Text style={[styles.inputLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                Rang
+              </Text>
+              <View style={styles.colorRow}>
+                {PRESET_COLORS.map(col => {
+                  const sel = col === color
+                  return (
+                    <Pressable
+                      key={col}
+                      onPress={() => setColor(col)}
+                      style={[
+                        styles.colorCircle,
+                        { backgroundColor: col, borderColor: sel ? '#fff' : 'transparent', borderWidth: sel ? 2 : 0 },
+                      ]}
+                    >
+                      {sel && <Check size={12} color="#fff" weight="bold" />}
+                    </Pressable>
+                  )
+                })}
+              </View>
+            </View>
+
+            <Pressable
+              onPress={save}
+              disabled={saving || !title.trim()}
+              style={({ pressed }) => [
+                styles.saveBtn,
+                { backgroundColor: title.trim() ? c.accentPrimary : c.bgTertiary, opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              {saving
+                ? <ActivityIndicator color={c.textInverse} size="small" />
+                : <Text style={[styles.saveBtnText, { color: title.trim() ? c.textInverse : c.textDisabled, fontFamily: typography.fontFamily.semibold }]}>
+                    {editing ? 'Saqlash' : 'Yaratish'}
+                  </Text>
+              }
+            </Pressable>
+          </ScrollView>
+        </RNAnimated.View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -404,13 +445,26 @@ const styles = StyleSheet.create({
   emptyBtnText: { fontSize: typography.size.base },
 
   // Sheet
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+  },
+  sheetKav: {
+    flex:           1,
+    justifyContent: 'flex-end',
+  },
   sheet: {
-    flex:              1,
     borderTopLeftRadius:  20,
     borderTopRightRadius: 20,
-    padding:           spacing.screenMargin,
-    paddingTop:        12,
-    gap:               spacing.base,
+    padding:              spacing.screenMargin,
+    paddingTop:           12,
+    gap:                  spacing.base,
+    maxHeight:            '88%',
+    elevation:            20,
+    shadowColor:          '#000',
+    shadowOffset:         { width: 0, height: -3 },
+    shadowOpacity:        0.12,
+    shadowRadius:         14,
   },
   sheetHandle: {
     width:        40,

@@ -2,6 +2,21 @@ import { create } from 'zustand'
 import { courses as coursesApi, lessons as lessonsApi, enrollments as enrollmentsApi } from '../lib/api'
 import type { Course, Category, EnrollmentCheck } from '../lib/api'
 
+// ── Module-level course list cache (survives tab switches, cleared on app restart) ──
+const LIST_CACHE_TTL = 2 * 60 * 1000
+const _listCache = new Map<string, { courses: Course[]; total: number; fetchedAt: number }>()
+
+export function getCachedCourseList(key: string): { courses: Course[]; total: number } | null {
+  const entry = _listCache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.fetchedAt > LIST_CACHE_TTL) { _listCache.delete(key); return null }
+  return { courses: entry.courses, total: entry.total }
+}
+
+export function setCachedCourseList(key: string, courses: Course[], total: number) {
+  _listCache.set(key, { courses, total, fetchedAt: Date.now() })
+}
+
 interface CourseStore {
   // catalog
   catalog:      Course[]

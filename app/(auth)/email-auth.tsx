@@ -17,7 +17,7 @@ import Animated, {
 } from 'react-native-reanimated'
 
 import { useAuthStore } from '../../stores/authStore'
-import { auth } from '../../lib/api'
+import { auth as authApi } from '../../lib/api'
 import { useTheme } from '../../hooks/useTheme'
 import { TermsModal } from '../../components/ui/TermsModal'
 import { typography, spacing } from '../../lib/constants'
@@ -39,6 +39,8 @@ export default function EmailAuthScreen() {
   const [showTerms,   setShowTerms]   = useState(false)
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState<string | null>(null)
+  const [showResend,  setShowResend]  = useState(false)
+  const [resendSent,  setResendSent]  = useState(false)
 
   const pwRef   = useRef<TextInput>(null)
   const nameRef = useRef<TextInput>(null)
@@ -84,15 +86,11 @@ export default function EmailAuthScreen() {
       await loginEmail(email.trim(), password)
       // Auth guard in _layout.tsx handles navigation
     } catch (e: any) {
-      const msg: string = e.message ?? ''
-      // If user doesn't exist, offer registration
-      if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('invalid')) {
-        setStep('register')
-        setPassword('')
-        setError("Bu email topilmadi. Ro'yxatdan o'tmoqchimisiz?")
-        setTimeout(() => nameRef.current?.focus(), 200)
+      if (e.message === 'EMAIL_NOT_VERIFIED') {
+        setError("Email tasdiqlanmagan. Pochtangizni tekshiring.")
+        setShowResend(true)
       } else {
-        setError(msg || 'Kirish muvaffaqiyatsiz. Qayta urinib ko\'ring.')
+        setError("Email yoki parol noto'g'ri")
         shake()
       }
     } finally {
@@ -120,12 +118,26 @@ export default function EmailAuthScreen() {
     }
     setLoading(true)
     try {
-      await auth.emailRegister({ first_name: name.trim(), email: email.trim(), password })
+      await authApi.emailRegister({ first_name: name.trim(), email: email.trim(), password })
       // Immediately log in with the new credentials
       await loginEmail(email.trim(), password)
     } catch (e: any) {
       setError(e.message || 'Ro\'yxatdan o\'tishda xatolik')
       shake()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResend = async () => {
+    setLoading(true)
+    try {
+      await authApi.resendVerification(email.trim())
+      setResendSent(true)
+      setShowResend(false)
+      setError(null)
+    } catch {
+      setError("Yuborishda xatolik. Qayta urinib ko'ring.")
     } finally {
       setLoading(false)
     }
@@ -137,6 +149,8 @@ export default function EmailAuthScreen() {
       setPassword('')
       setName('')
       setError(null)
+      setShowResend(false)
+      setResendSent(false)
     } else {
       router.back()
     }
@@ -247,6 +261,28 @@ export default function EmailAuthScreen() {
           {error && (
             <Text style={[styles.error, { color: c.error, fontFamily: typography.fontFamily.regular }]}>
               {error}
+            </Text>
+          )}
+
+          {/* Resend verification */}
+          {showResend && (
+            <Pressable
+              onPress={handleResend}
+              disabled={loading}
+              style={[styles.resendBtn, { borderColor: c.accentPrimary }]}
+            >
+              {loading
+                ? <ActivityIndicator size="small" color={c.accentPrimary} />
+                : <Text style={[styles.resendText, { color: c.accentPrimary, fontFamily: typography.fontFamily.medium }]}>
+                    Tasdiqlash havolasini qayta yuborish
+                  </Text>
+              }
+            </Pressable>
+          )}
+
+          {resendSent && (
+            <Text style={[styles.resendSuccess, { color: c.success, fontFamily: typography.fontFamily.regular }]}>
+              Tasdiqlash havolasi yuborildi. Pochtangizni tekshiring.
             </Text>
           )}
         </Animated.View>
@@ -387,4 +423,14 @@ const styles = StyleSheet.create({
 
   forgot: { alignItems: 'center', paddingVertical: spacing.sm },
   forgotText: { fontSize: typography.size.sm },
+  resendBtn: {
+    alignItems:     'center',
+    justifyContent: 'center',
+    borderWidth:    1,
+    borderRadius:   10,
+    paddingVertical: spacing.sm,
+    marginTop:      spacing.xs,
+  },
+  resendText:    { fontSize: typography.size.sm },
+  resendSuccess: { fontSize: typography.size.sm, textAlign: 'center' },
 })

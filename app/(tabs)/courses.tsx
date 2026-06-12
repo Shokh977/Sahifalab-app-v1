@@ -11,7 +11,7 @@ import {
   MagnifyingGlass, Star, Clock, Users, BookOpen, X,
 } from 'phosphor-react-native'
 import { useTheme } from '../../hooks/useTheme'
-import { useCourseStore } from '../../stores/courseStore'
+import { useCourseStore, getCachedCourseList, setCachedCourseList } from '../../stores/courseStore'
 import { courses as coursesApi, type Course, type Category } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
 
@@ -38,6 +38,17 @@ function sortToParams(key: SortKey): { ordering?: string; is_paid?: boolean } {
     case 'top':     return { ordering: '-rating'          }
   }
 }
+
+function makeQueryKey(sort: SortKey, cat: string | null, search: string) {
+  return `${sort}|${cat ?? ''}|${search}`
+}
+
+// Featured slides cache — persists for the app session, populated once
+let _featuredCache: Course[] = []
+
+// Skeleton placeholder items — defined once outside component (stable reference)
+const SKELETON_DATA = [1, 2, 3, 4, 5].map(id => ({ __skeleton: true as const, id }))
+type ListItem = Course | typeof SKELETON_DATA[0]
 
 // ── Featured Hero (dumb — state lifted to parent) ─────────────────────────────
 
@@ -366,14 +377,15 @@ export default function CoursesTab() {
   const [sortKey,         setSortKey]         = useState<SortKey>('popular')
   const [searchQuery,     setSearchQuery]     = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [courseList,      setCourseList]      = useState<Course[]>([])
-  const [total,           setTotal]           = useState(0)
-  const [loading,         setLoading]         = useState(true)
+  // Initialize from cache so returning to the tab shows data instantly
+  const [courseList,      setCourseList]      = useState<Course[]>(() => getCachedCourseList(makeQueryKey('popular', null, ''))?.courses ?? [])
+  const [total,           setTotal]           = useState<number>(() => getCachedCourseList(makeQueryKey('popular', null, ''))?.total ?? 0)
+  const [loading,         setLoading]         = useState(() => getCachedCourseList(makeQueryKey('popular', null, '')) === null)
   const [loadingMore,     setLoadingMore]     = useState(false)
   const [refreshing,      setRefreshing]      = useState(false)
 
-  // Featured hero — fetched once, lifted here to survive FlatList switches
-  const [featuredSlides,  setFeaturedSlides]  = useState<Course[]>([])
+  // Featured hero — populated from main list result (no separate API call)
+  const [featuredSlides,  setFeaturedSlides]  = useState<Course[]>(_featuredCache)
   const [featuredActive,  setFeaturedActive]  = useState(0)
 
   const pageRef     = useRef(0)
@@ -381,12 +393,13 @@ export default function CoursesTab() {
 
   useEffect(() => { loadCategories() }, [])
 
-  // Fetch featured slides once on mount
+  // Derive featured slides from the popular list (eliminates a separate API call)
   useEffect(() => {
-    coursesApi.list({ ordering: '-enrolled_count', limit: 5 })
-      .then(r => setFeaturedSlides(r.courses.filter(co => !!co.thumbnail_url)))
-      .catch(() => {})
-  }, [])
+    if (_featuredCache.length > 0 || sortKey !== 'popular' || selectedCat || debouncedSearch) return
+    if (courseList.length === 0) return
+    const slides = courseList.filter(co => !!co.thumbnail_url).slice(0, 5)
+    if (slides.length > 0) { _featuredCache = slides; setFeaturedSlides(slides) }
+  }, [courseList, sortKey, selectedCat, debouncedSearch])
 
   // Debounced search input handler
   function handleSearchChange(text: string) {
@@ -401,8 +414,18 @@ export default function CoursesTab() {
     setDebouncedSearch('')
   }
 
-  // Main fetch — reruns whenever filters or debounced search change
+  // Main fetch — cache-aware: instant on cache hit, skeleton only on cache miss
   useEffect(() => {
+    const key = makeQueryKey(sortKey, selectedCat, debouncedSearch)
+    const cached = getCachedCourseList(key)
+    if (cached) {
+      setCourseList(cached.courses)
+      setTotal(cached.total)
+      setLoading(false)
+      pageRef.current = 1
+      return
+    }
+
     let cancelled = false
     setLoading(true)
     pageRef.current = 0
@@ -418,6 +441,7 @@ export default function CoursesTab() {
       if (sortKey === 'free') list = list.filter(c => !c.is_paid)
       setCourseList(list)
       setTotal(res.total)
+      setCachedCourseList(key, list, res.total)
       pageRef.current = 1
     }).catch(() => {}).finally(() => {
       if (!cancelled) setLoading(false)
@@ -454,8 +478,11 @@ export default function CoursesTab() {
         limit:  PAGE_SIZE,
         offset: 0,
       })
-      setCourseList(res.courses)
+      let list = res.courses
+      if (sortKey === 'free') list = list.filter(c => !c.is_paid)
+      setCourseList(list)
       setTotal(res.total)
+      setCachedCourseList(makeQueryKey(sortKey, selectedCat, debouncedSearch), list, res.total)
       pageRef.current = 1
     } catch {}
     finally { setRefreshing(false) }
@@ -510,56 +537,46 @@ export default function CoursesTab() {
         </View>
       </View>
 
-      {/* ── List ──────────────────────────────────────────────────────── */}
-      {loading ? (
-        <FlatList
-          data={[1, 2, 3, 4, 5]}
-          keyExtractor={i => String(i)}
-          ListHeaderComponent={listHeader}
-          renderItem={() => <SkeletonCard c={c} />}
-          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
-          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-        />
-      ) : (
-        <FlatList
-          data={courseList}
-          keyExtractor={item => String(item.id)}
-          ListHeaderComponent={listHeader}
-          renderItem={({ item }) => (
-            <CourseCard
-              course={item}
-              onPress={() => handleCoursePress(item.id)}
-              c={c}
-            />
-          )}
-          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
-          onEndReached={fetchMore}
-          onEndReachedThreshold={0.3}
-          ListFooterComponent={loadingMore
-            ? <ActivityIndicator color={c.accentPrimary} style={{ marginTop: spacing.base }} />
-            : null
-          }
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <BookOpen size={48} color={c.textDisabled} />
-              <Text style={[styles.emptyText, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-                {debouncedSearch
-                  ? `"${debouncedSearch}" bo'yicha kurs topilmadi`
-                  : 'Kurslar topilmadi'
-                }
-              </Text>
-            </View>
-          }
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={c.accentPrimary}
-            />
-          }
-        />
-      )}
+      {/* ── List — single FlatList avoids unmount/remount on loading toggle ── */}
+      <FlatList<ListItem>
+        data={loading ? SKELETON_DATA : courseList}
+        keyExtractor={item => '__skeleton' in item ? `sk-${item.id}` : String(item.id)}
+        ListHeaderComponent={listHeader}
+        renderItem={({ item }) =>
+          '__skeleton' in item
+            ? <SkeletonCard c={c} />
+            : <CourseCard course={item} onPress={() => handleCoursePress(item.id)} c={c} />
+        }
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
+        onEndReached={loading ? undefined : fetchMore}
+        onEndReachedThreshold={0.3}
+        removeClippedSubviews
+        windowSize={10}
+        maxToRenderPerBatch={10}
+        ListFooterComponent={loadingMore
+          ? <ActivityIndicator color={c.accentPrimary} style={{ marginTop: spacing.base }} />
+          : null
+        }
+        ListEmptyComponent={!loading ? (
+          <View style={styles.empty}>
+            <BookOpen size={48} color={c.textDisabled} />
+            <Text style={[styles.emptyText, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
+              {debouncedSearch
+                ? `"${debouncedSearch}" bo'yicha kurs topilmadi`
+                : 'Kurslar topilmadi'
+              }
+            </Text>
+          </View>
+        ) : null}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={c.accentPrimary}
+          />
+        }
+      />
     </View>
   )
 }

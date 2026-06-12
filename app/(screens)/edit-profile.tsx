@@ -1,8 +1,8 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TextInput, Pressable,
   ScrollView, Image, ActivityIndicator, Alert,
-  KeyboardAvoidingView, Platform, ActionSheetIOS,
+  KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -11,6 +11,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { profile as profileApi, uploadProfileImage, onboarding } from '../../lib/api'
 import { useProfileStore } from '../../stores/profileStore'
 import { typography, spacing, radius } from '../../lib/constants'
+import { AvatarPickerModal } from '../../components/ui/AvatarPickerModal'
 
 export default function EditProfileScreen() {
   const { c }    = useTheme()
@@ -23,6 +24,7 @@ export default function EditProfileScreen() {
   const [avatarUri,    setAvatarUri]    = useState<string | null>(ownProfile?.photo_url ?? null)
   const [uploading,    setUploading]    = useState(false)
   const [saving,       setSaving]       = useState(false)
+  const [showPicker,   setShowPicker]   = useState(false)
 
   // Track if anything changed
   const isDirty = (
@@ -66,22 +68,8 @@ export default function EditProfileScreen() {
   }, [ownProfile, patchOwnProfile])
 
   const handleAvatarPress = useCallback(() => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Bekor', 'Galereyadan tanlash', 'Rasmga olish'], cancelButtonIndex: 0 },
-        (idx) => {
-          if (idx === 1) launchPicker(false)
-          if (idx === 2) launchPicker(true)
-        },
-      )
-    } else {
-      Alert.alert('Rasm tanlash', '', [
-        { text: 'Galereyadan tanlash', onPress: () => launchPicker(false) },
-        { text: 'Rasmga olish',        onPress: () => launchPicker(true)  },
-        { text: 'Bekor', style: 'cancel' },
-      ])
-    }
-  }, [launchPicker])
+    setShowPicker(true)
+  }, [])
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -228,6 +216,13 @@ export default function EditProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AvatarPickerModal
+        visible={showPicker}
+        onClose={() => setShowPicker(false)}
+        onCamera={() => launchPicker(true)}
+        onGallery={() => launchPicker(false)}
+      />
     </SafeAreaView>
   )
 }
