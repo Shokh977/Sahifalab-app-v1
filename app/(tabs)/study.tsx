@@ -832,6 +832,58 @@ function TimerScreen() {
   )
 }
 
+// ── Info bottom sheet (animated backdrop + independent slide) ────────────────
+
+function InfoSheetModal({ visible, onClose, children }: {
+  visible:  boolean
+  onClose:  () => void
+  children: React.ReactNode
+}) {
+  const { c }  = useTheme()
+  const insets = useSafeAreaInsets()
+
+  const [rendered, setRendered] = useState(visible)
+  const backdropAnim = useRef(new RNAnimated.Value(0)).current
+  const sheetAnim    = useRef(new RNAnimated.Value(600)).current
+
+  useEffect(() => {
+    if (visible) {
+      setRendered(true)
+      RNAnimated.parallel([
+        RNAnimated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        RNAnimated.spring(sheetAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]).start()
+    } else {
+      RNAnimated.parallel([
+        RNAnimated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        RNAnimated.timing(sheetAnim,    { toValue: 600, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setRendered(false); sheetAnim.setValue(600) })
+    }
+  }, [visible])
+
+  if (!rendered) return null
+
+  return (
+    <Modal transparent visible={rendered} statusBarTranslucent onRequestClose={onClose}>
+      <RNAnimated.View style={[styles.fcInfoOverlay, { opacity: backdropAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </RNAnimated.View>
+      <RNAnimated.View
+        style={[
+          styles.fcInfoSheet,
+          {
+            backgroundColor: c.bgSecondary,
+            paddingBottom:   Math.max(spacing.xl, insets.bottom),
+            transform:       [{ translateY: sheetAnim }],
+          },
+        ]}
+      >
+        {children}
+      </RNAnimated.View>
+    </Modal>
+  )
+}
+
 // ── Flashcards inline view (deck list within the tab) ────────────────────────
 
 function FlashcardsView() {
