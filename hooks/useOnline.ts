@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { AppState, AppStateStatus } from 'react-native'
-import { API_URL } from '../lib/constants'
+
+// Same URL Android's ConnectivityManager uses — returns 204 in milliseconds, never sleeps.
+// Do NOT ping the Railway backend here: it has a cold-start delay that triggers false offline.
+const CONNECTIVITY_URL = 'https://clients3.google.com/generate_204'
 
 export function useOnline() {
   const [isOnline, setIsOnline] = useState(true)
@@ -9,10 +12,8 @@ export function useOnline() {
   const check = async () => {
     try {
       const ctrl = new AbortController()
-      const t    = setTimeout(() => ctrl.abort(), 5000)
-      // Any HTTP response (even 4xx/5xx) means the network and server are reachable.
-      // Only a network-level failure or timeout (AbortError) means we're offline.
-      await fetch(`${API_URL}/api/health/`, { method: 'HEAD', signal: ctrl.signal })
+      const t    = setTimeout(() => ctrl.abort(), 6000)
+      await fetch(CONNECTIVITY_URL, { method: 'HEAD', signal: ctrl.signal })
       clearTimeout(t)
       setIsOnline(true)
     } catch {
