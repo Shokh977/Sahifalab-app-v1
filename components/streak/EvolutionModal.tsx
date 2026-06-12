@@ -6,7 +6,7 @@
    Beat 4  2400ms+    Keepsake: stage name, blurb, action buttons
    ============================================================ */
 import React, { useEffect, useCallback } from 'react'
-import { View, Text, StyleSheet, Pressable, Modal, Share } from 'react-native'
+import { View, Text, StyleSheet, Pressable, Modal } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, {
@@ -19,6 +19,7 @@ import { MagicTree } from './MagicTree'
 import { TREE_STAGES } from '../../lib/treeTheme'
 import type { StageNumber } from '../../lib/treeTheme'
 import { typography, spacing, radius } from '../../lib/constants'
+import { shareTreeEvolution } from '../../lib/share'
 
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
@@ -166,13 +167,11 @@ export function EvolutionModal({ visible, toStage, onClose, onShare }: Evolution
   }))
 
   async function handleShare() {
-    try {
-      if (onShare) { onShare(); return }
-      await Share.share({
-        message: `Sahifalab seriyam ${TREE_STAGES[toStage-1].name} bosqichiga yetdi! 🌳 Siz ham boshlang: sahifalab.uz`,
-        title:   'Mening daraxtim',
-      })
-    } catch {}
+    if (onShare) { onShare(); return }
+    shareTreeEvolution({
+      stageName:  stageMeta.name,
+      streakDays: stageMeta.days,
+    })
   }
 
   return (

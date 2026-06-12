@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, FlatList, Pressable,
-  Image, ActivityIndicator, Alert, Linking, Share, Animated,
+  Image, ActivityIndicator, Alert, Linking, Animated,
   TextInput, Dimensions,
 } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
@@ -22,6 +22,7 @@ import { useCourseStore } from '../../../stores/courseStore'
 import { useDownloadStore, getDownloadUrl } from '../../../stores/downloadStore'
 import { courses as coursesApi, lessons as lessonsApi, profile } from '../../../lib/api'
 import { typography, spacing, radius, WEB_URL } from '../../../lib/constants'
+import { shareCertificate } from '../../../lib/share'
 import type { Course, Lesson, CourseReview, CourseCertificate } from '../../../lib/api'
 import type { ProfileData } from '../../../lib/types'
 import { ComingSoonModal } from '../../../components/ui/ComingSoonModal'
@@ -533,8 +534,7 @@ function EnrolledInfoTab({
 
   async function shareCert() {
     if (!certUrl) return
-    try { await Share.share({ message: `${course.title} kursini tugatdim! ${certUrl}` }) }
-    catch {}
+    shareCertificate({ courseTitle: course.title, certUrl })
   }
 
   return (

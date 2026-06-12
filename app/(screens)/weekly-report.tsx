@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Animated, ActivityIndicator, Share,
+  Animated, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft, Share2 } from 'lucide-react-native'
+import { shareWeeklyReport } from '../../lib/share'
 import { useTheme } from '../../hooks/useTheme'
 import { focus as focusApi } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
@@ -191,11 +192,11 @@ export default function WeeklyReportScreen() {
 
   const handleShare = async () => {
     if (!data) return
-    try {
-      await Share.share({
-        message: `📊 Bu hafta SAHIFALAB'da:\n⏱ ${fmtTime(data.total_minutes)}\n⚡ +${data.week_xp.toLocaleString()} XP\n🔥 ${data.streak_days} kunlik seriya\n\nO'qish — kelajakka investitsiya!`,
-      })
-    } catch {}
+    shareWeeklyReport({
+      totalMinutes: data.total_minutes,
+      weekXp:       data.week_xp,
+      streakDays:   data.streak_days,
+    })
   }
 
   // ── Accent colour ─────────────────────────────────────────────────────────

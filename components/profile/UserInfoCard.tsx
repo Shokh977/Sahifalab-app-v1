@@ -5,7 +5,7 @@
  */
 import React, { useState, useCallback, useEffect } from 'react'
 import {
-  View, Text, StyleSheet, Pressable, ActivityIndicator, Share, Linking,
+  View, Text, StyleSheet, Pressable, ActivityIndicator, Linking,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { BadgeCheck, Pencil, Share2, UserPlus, UserCheck, UserX, MessageSquare, MapPin, Globe } from 'lucide-react-native'
@@ -13,7 +13,8 @@ import { RoleBadge } from '../ui/RoleBadge'
 import { useTheme } from '../../hooks/useTheme'
 import { connections as connApi, follows as followApi } from '../../lib/api'
 import { useProfileStore } from '../../stores/profileStore'
-import { typography, spacing, radius, WEB_URL } from '../../lib/constants'
+import { typography, spacing, radius } from '../../lib/constants'
+import { shareProfile } from '../../lib/share'
 import type { ProfileData, ConnectionStatus } from '../../lib/types'
 
 interface Props {
@@ -251,7 +252,13 @@ export function UserInfoCard({ data, isOwnProfile, onEditPress, onMessagePress, 
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => Share.share({ message: `${WEB_URL}/profile/${data.telegram_id}` })}
+            onPress={() => shareProfile({
+              telegramId: data.telegram_id,
+              firstName:  data.first_name,
+              level:      data.level,
+              streakDays: data.streak_days,
+              isOwn:      true,
+            })}
             style={[styles.actionBtnIcon, { backgroundColor: c.bgTertiary, borderColor: c.borderStrong }]}
           >
             <Share2 size={16} color={c.textSecondary} />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator,
-  Share, Linking, Alert, Image,
+  Linking, Alert, Image,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
@@ -9,6 +9,7 @@ import * as FileSystem from 'expo-file-system'
 import { useTheme } from '../../../hooks/useTheme'
 import { certificates, type CertificateDetail } from '../../../lib/api'
 import { typography, spacing, radius } from '../../../lib/constants'
+import { shareCertificate, shareCertificateImage } from '../../../lib/share'
 
 function fmtDate(iso: string): string {
   try {
@@ -109,11 +110,10 @@ export default function CertificateScreen() {
     try {
       const dest = FileSystem.cacheDirectory + `cert_${code}.png`
       const { uri } = await FileSystem.downloadAsync(cert.image_url, dest)
-      // Share the downloaded image (expo-media-library not available, use Share instead)
-      await Share.share({
-        url:     uri,
-        message: `Men ${cert.course_title} kursini sahifalab.uz da muvaffaqiyatli tamomladim! #sahifalab\nhttps://sahifalab.uz/cert/${cert.certificate_id}`,
-        title:   'Sahifalab Sertifikat',
+      await shareCertificateImage({
+        imageUri:    uri,
+        courseTitle: cert.course_title,
+        certUrl:     `https://sahifalab.uz/cert/${cert.certificate_id}`,
       })
     } catch (e: any) {
       if (e?.message !== 'User did not share') {
@@ -126,12 +126,10 @@ export default function CertificateScreen() {
 
   const shareCard = useCallback(async () => {
     if (!cert) return
-    try {
-      await Share.share({
-        message: `Men ${cert.course_title} kursini sahifalab.uz da muvaffaqiyatli tamomladim! #sahifalab\nTasdiqlash: https://sahifalab.uz/cert/${cert.certificate_id}`,
-        title:   'Sahifalab Sertifikat',
-      })
-    } catch {}
+    shareCertificate({
+      courseTitle: cert.course_title,
+      certUrl:     `https://sahifalab.uz/cert/${cert.certificate_id}`,
+    })
   }, [cert])
 
   const openPdf = useCallback(() => {

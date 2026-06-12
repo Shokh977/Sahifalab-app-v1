@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
   ActivityIndicator, RefreshControl, Modal, FlatList,
-  Share, Image, Animated, Dimensions,
+  Image, Animated, Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { Settings, Share2, ChevronRight, X, GraduationCap } from 'lucide-react-native'
+import { shareProfile } from '../../lib/share'
 import { useTheme } from '../../hooks/useTheme'
 import { useProfileStore } from '../../stores/profileStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -355,12 +356,16 @@ export default function ProfileTab() {
   }, [load])
 
   const handleShare = useCallback(async () => {
-    const handle = (ownProfile as ProfileData)?.username ?? String(authUser?.telegram_id ?? '')
-    await Share.share({
-      message: `SAHIFALAB platformasidagi mening profilim: https://sahifalab.uz/u/${handle}`,
-      url: `https://sahifalab.uz/u/${handle}`,
+    const id = authUser?.telegram_id ?? (ownProfile as ProfileData)?.telegram_id
+    if (!id) return
+    shareProfile({
+      telegramId: id,
+      firstName:  authUser?.first_name ?? (ownProfile as ProfileData)?.first_name,
+      level:      authUser?.level,
+      streakDays: streak,
+      isOwn:      true,
     })
-  }, [ownProfile, authUser])
+  }, [authUser, ownProfile, streak])
 
   if (loading && !ownProfile) {
     return (

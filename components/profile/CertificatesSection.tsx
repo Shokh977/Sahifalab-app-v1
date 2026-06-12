@@ -1,9 +1,9 @@
 import React from 'react'
-import { View, Text, StyleSheet, Pressable, Share, Linking } from 'react-native'
+import { View, Text, StyleSheet, Pressable, Linking } from 'react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { formatTime } from '../../lib/utils'
-import { WEB_URL } from '../../lib/constants'
-import { typography, spacing, radius } from '../../lib/constants'
+import { WEB_URL, typography, spacing, radius } from '../../lib/constants'
+import { shareCertificate } from '../../lib/share'
 import type { ProfileCertificate } from '../../lib/types'
 
 interface Props {
@@ -17,13 +17,10 @@ export function CertificatesSection({ certificates }: Props) {
 
   async function handleShare(cert: ProfileCertificate) {
     if (!cert.share_token) return
-    const url = `${WEB_URL}/certificates/${cert.share_token}`
-    try {
-      await Share.share({
-        message: `Sahifalab sertifikatim: ${cert.course_title}\n${url}`,
-        url,
-      })
-    } catch {}
+    shareCertificate({
+      courseTitle: cert.course_title,
+      certUrl:     `${WEB_URL}/certificates/${cert.share_token}`,
+    })
   }
 
   async function handleView(cert: ProfileCertificate) {

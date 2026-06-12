@@ -39,6 +39,10 @@ function parseDeepLink(url: string): string | null {
   const seg2  = parts[2]
   const seg3  = parts[3]
 
+  // Dynamic profile must be checked before tabRoutes swallows bare "profile"
+  if (seg0 === 'profile' && seg1) return `/(screens)/profile/${seg1}`
+  if (seg0 === 'streak-detail')   return '/(screens)/streak-detail'
+
   const tabRoutes: Record<string, string> = {
     '':            '/(tabs)',
     home:          '/(tabs)',

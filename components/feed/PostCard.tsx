@@ -1,6 +1,6 @@
 import React, { useState, useCallback, memo, useRef } from 'react'
 import {
-  View, Text, StyleSheet, Pressable, Image, Share,
+  View, Text, StyleSheet, Pressable, Image,
   Modal, TextInput, Animated,
 } from 'react-native'
 import {
@@ -20,6 +20,7 @@ import { LinkText } from '../ui/LinkText'
 import { typography, spacing, radius } from '../../lib/constants'
 import { ConfirmModal } from '../ui/ConfirmModal'
 import { RoleBadge } from '../ui/RoleBadge'
+import { sharePost } from '../../lib/share'
 import type { Post } from '../../lib/types'
 
 interface Props {
@@ -188,12 +189,7 @@ function PostCardComponent({ post, onCommentPress }: Props) {
   }, [saving, post.id, post.is_saved, toggleSave])
 
   const handleShare = useCallback(async () => {
-    try {
-      await Share.share({
-        message: post.content ?? 'Sahifalabdagi post',
-        url:     `https://sahifalab.uz/posts/${post.id}`,
-      })
-    } catch {}
+    sharePost({ id: post.id, content: post.content })
   }, [post.id, post.content])
 
   const author = post.repost_by ?? post.author

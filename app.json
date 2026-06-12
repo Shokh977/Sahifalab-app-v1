@@ -45,10 +45,10 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "autoVerify": true,
           "data": [
             {
-              "scheme": "sahifalab"
+              "scheme": "sahifalab",
+              "host": "*"
             }
           ],
           "category": [

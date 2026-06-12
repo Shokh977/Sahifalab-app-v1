@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react'
 import {
   View, Text, StyleSheet, ActivityIndicator, Pressable,
-  ScrollView, Modal, FlatList, Image, Share, RefreshControl, Linking,
+  ScrollView, Modal, FlatList, Image, RefreshControl, Linking,
 } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react-native'
 import { RoleBadge } from '../../../components/ui/RoleBadge'
 import { useTheme } from '../../../hooks/useTheme'
+import { shareProfile } from '../../../lib/share'
 import { useAuthStore } from '../../../stores/authStore'
 import { useProfileStore } from '../../../stores/profileStore'
 import { profile as profileApi, follows, courses as coursesApi, type SocialUser, type MutualUser, type Course } from '../../../lib/api'
@@ -674,10 +675,11 @@ export default function PublicProfileScreen() {
 
   const handleShare = useCallback(async () => {
     if (!profileData) return
-    const handle = profileData.username ?? String(profileData.telegram_id)
-    await Share.share({
-      message: `SAHIFALAB platformasidagi ${profileData.first_name} profili: https://sahifalab.uz/u/${handle}`,
-      url: `https://sahifalab.uz/u/${handle}`,
+    shareProfile({
+      telegramId: profileData.telegram_id,
+      firstName:  profileData.first_name,
+      level:      profileData.level,
+      streakDays: profileData.streak_days,
     })
   }, [profileData])
 
