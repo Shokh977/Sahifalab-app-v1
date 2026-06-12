@@ -118,33 +118,54 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   },
 
   toggleLike: (postId) => {
-    const mutate = (items: Post[]) =>
-      applyMutation(items, postId, p => ({
-        ...p,
-        is_liked:    !p.is_liked,
-        likes_count: p.is_liked ? p.likes_count - 1 : p.likes_count + 1,
-      }))
-    set(s => ({ feedItems: mutate(s.feedItems), exploreItems: mutate(s.exploreItems) }))
+    set(s => {
+      const inFeed    = s.feedItems.some(p => p.id === postId)
+      const inExplore = s.exploreItems.some(p => p.id === postId)
+      const mutate = (items: Post[]) =>
+        applyMutation(items, postId, p => ({
+          ...p,
+          is_liked:    !p.is_liked,
+          likes_count: p.is_liked ? p.likes_count - 1 : p.likes_count + 1,
+        }))
+      return {
+        ...(inFeed    && { feedItems:    mutate(s.feedItems) }),
+        ...(inExplore && { exploreItems: mutate(s.exploreItems) }),
+      }
+    })
   },
 
   toggleRepost: (postId) => {
-    const mutate = (items: Post[]) =>
-      applyMutation(items, postId, p => ({
-        ...p,
-        is_reposted:   !p.is_reposted,
-        reposts_count: p.is_reposted ? p.reposts_count - 1 : p.reposts_count + 1,
-      }))
-    set(s => ({ feedItems: mutate(s.feedItems), exploreItems: mutate(s.exploreItems) }))
+    set(s => {
+      const inFeed    = s.feedItems.some(p => p.id === postId)
+      const inExplore = s.exploreItems.some(p => p.id === postId)
+      const mutate = (items: Post[]) =>
+        applyMutation(items, postId, p => ({
+          ...p,
+          is_reposted:   !p.is_reposted,
+          reposts_count: p.is_reposted ? p.reposts_count - 1 : p.reposts_count + 1,
+        }))
+      return {
+        ...(inFeed    && { feedItems:    mutate(s.feedItems) }),
+        ...(inExplore && { exploreItems: mutate(s.exploreItems) }),
+      }
+    })
   },
 
   toggleSave: (postId) => {
-    const mutate = (items: Post[]) =>
-      applyMutation(items, postId, p => ({
-        ...p,
-        is_saved:    !p.is_saved,
-        saves_count: p.is_saved ? p.saves_count - 1 : p.saves_count + 1,
-      }))
-    set(s => ({ feedItems: mutate(s.feedItems), exploreItems: mutate(s.exploreItems) }))
+    set(s => {
+      const inFeed    = s.feedItems.some(p => p.id === postId)
+      const inExplore = s.exploreItems.some(p => p.id === postId)
+      const mutate = (items: Post[]) =>
+        applyMutation(items, postId, p => ({
+          ...p,
+          is_saved:    !p.is_saved,
+          saves_count: p.is_saved ? p.saves_count - 1 : p.saves_count + 1,
+        }))
+      return {
+        ...(inFeed    && { feedItems:    mutate(s.feedItems) }),
+        ...(inExplore && { exploreItems: mutate(s.exploreItems) }),
+      }
+    })
   },
 
   prependPost: (post) =>

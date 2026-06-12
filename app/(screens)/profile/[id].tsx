@@ -637,7 +637,7 @@ export default function PublicProfileScreen() {
       coursesApi.list({ teacher_id: tid, limit: 20 }).catch(() => null),
     ]).then(([td, cr]) => {
       if (td) setTeacherData(td)
-      if (cr) setTeacherCourses((cr.courses ?? []).filter(c => c.is_published))
+      if (cr) setTeacherCourses(cr.courses ?? [])
     })
   }, [isTeacher, id])
 
@@ -813,6 +813,22 @@ export default function PublicProfileScreen() {
             </View>
           )}
 
+          {/* ── TROPHY ROOM ── */}
+          <Text style={[styles.sectionLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.bold }]}>
+            TROFEY XONASI
+          </Text>
+          <HeroLevelCard
+            variant="public"
+            level={p.level ?? 1}
+            xp={p.total_xp ?? 0}
+            nextXp={p.next_level_xp ?? 100}
+            xpPercent={p.xp_percent ?? 0}
+            rank={null}
+            streakDays={p.streak_days ?? 0}
+            longestStreak={p.longest_streak ?? 0}
+            totalFocusMinutes={Math.round((p.focus_hours ?? 0) * 60)}
+          />
+
           {/* ── TEACHER-SPECIFIC SECTIONS ── */}
           {isTeacher && (
             <>
@@ -844,22 +860,6 @@ export default function PublicProfileScreen() {
             </>
           )}
 
-          {/* ── TROPHY ROOM (both roles) ── */}
-          <Text style={[styles.sectionLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.bold }]}>
-            TROFEY XONASI
-          </Text>
-
-          <HeroLevelCard
-            variant="public"
-            level={p.level ?? 1}
-            xp={p.total_xp ?? 0}
-            nextXp={p.next_level_xp ?? 100}
-            xpPercent={p.xp_percent ?? 0}
-            rank={null}
-            coursesCompleted={p.courses_completed ?? 0}
-            followersCount={p.followers_count ?? 0}
-            totalFocusMinutes={Math.round((p.focus_hours ?? 0) * 60)}
-          />
 
           {/* Completed courses (students only — teachers/admins show created courses above) */}
           {!isTeacher && topCerts.length > 0 && (

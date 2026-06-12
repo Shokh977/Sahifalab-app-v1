@@ -334,6 +334,9 @@ export default function NotificationsScreen() {
               renderItem={({ item }) => <NotifCard item={item} onPress={markRead} />}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              removeClippedSubviews={true}
+              windowSize={10}
+              maxToRenderPerBatch={10}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}

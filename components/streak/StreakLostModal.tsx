@@ -166,10 +166,11 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
   },
   btn: {
-    flex:            1,
-    paddingVertical: spacing.md,
-    borderRadius:    radius.lg,
-    alignItems:      'center',
+    flex:               1,
+    paddingVertical:    spacing.md,
+    paddingHorizontal:  spacing.lg,
+    borderRadius:       radius.lg,
+    alignItems:         'center',
   },
   btnText: {
     fontSize: typography.size.base,

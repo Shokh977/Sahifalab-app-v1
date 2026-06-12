@@ -10,6 +10,7 @@ import { ChevronLeft, Search, X, UserCircle2 } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { profile as profileApi, connections as connApi } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
+import { RoleBadge } from '../../components/ui/RoleBadge'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -24,11 +25,13 @@ const TABS: { key: Tab; label: string }[] = [
 const W = Dimensions.get('window').width
 
 interface PersonRow {
-  id:       number
-  name:     string
-  username: string | null
-  photoUrl: string | null
-  headline: string | null
+  id:          number
+  name:        string
+  username:    string | null
+  photoUrl:    string | null
+  headline:    string | null
+  role:        string | null
+  accountType: string | null
 }
 
 // ── Normalise raw API shapes ──────────────────────────────────────────────────
@@ -37,19 +40,23 @@ function normalise(raw: any, tab: Tab, isOwnConns = false): PersonRow[] {
   if (!Array.isArray(raw)) return []
   if (tab === 'connections' && isOwnConns) {
     return raw.map((item: any) => ({
-      id:       item.user?.id         ?? 0,
-      name:     item.user?.name       ?? '',
-      username: item.user?.username   ?? null,
-      photoUrl: item.user?.avatar_url ?? null,
-      headline: item.user?.headline   ?? null,
+      id:          item.user?.id           ?? 0,
+      name:        item.user?.name         ?? '',
+      username:    item.user?.username     ?? null,
+      photoUrl:    item.user?.avatar_url   ?? null,
+      headline:    item.user?.headline     ?? null,
+      role:        item.user?.role         ?? null,
+      accountType: item.user?.account_type ?? null,
     }))
   }
   return raw.map((item: any) => ({
-    id:       item.user?.telegram_id ?? 0,
-    name:     item.user?.full_name   ?? '',
-    username: item.user?.username    ?? null,
-    photoUrl: item.user?.photo_url   ?? null,
-    headline: item.user?.headline    ?? null,
+    id:          item.user?.telegram_id  ?? 0,
+    name:        item.user?.full_name    ?? '',
+    username:    item.user?.username     ?? null,
+    photoUrl:    item.user?.photo_url    ?? null,
+    headline:    item.user?.headline     ?? null,
+    role:        item.user?.role         ?? null,
+    accountType: item.user?.account_type ?? null,
   }))
 }
 
@@ -76,9 +83,12 @@ function PersonRow({ person, onPress }: { person: PersonRow; onPress: () => void
         </View>
       )}
       <View style={{ flex: 1 }}>
-        <Text numberOfLines={1} style={[styles.name, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-          {person.name}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text numberOfLines={1} style={[styles.name, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold, flexShrink: 1 }]}>
+            {person.name}
+          </Text>
+          <RoleBadge role={person.role} accountType={person.accountType} size={14} />
+        </View>
         {person.username ? (
           <Text numberOfLines={1} style={[styles.sub, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
             @{person.username}
@@ -139,6 +149,9 @@ function TabPage({
           renderItem={({ item }) => <PersonRow person={item} onPress={() => onPressPerson(item)} />}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          windowSize={10}
+          maxToRenderPerBatch={10}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <UserCircle2 size={40} color={c.textMuted} />

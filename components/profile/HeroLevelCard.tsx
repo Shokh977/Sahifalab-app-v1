@@ -3,6 +3,8 @@ import { View, Text, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { typography } from '../../lib/constants'
 import { getLevelInfo, getLevelEmoji } from '../../lib/levelTitles'
+import { MagicTree } from '../streak/MagicTree'
+import { stageFromStreak } from '../../lib/treeTheme'
 
 export interface PrivateHeroProps {
   variant: 'private'
@@ -21,8 +23,8 @@ export interface PublicHeroProps {
   nextXp: number
   xpPercent: number
   rank: number | null
-  coursesCompleted: number
-  followersCount: number
+  streakDays: number
+  longestStreak: number
   totalFocusMinutes?: number
 }
 
@@ -96,17 +98,22 @@ export function HeroLevelCard(props: HeroLevelCardProps) {
         </>
       ) : (
         <>
-          {/* Public: emoji tile left + text right */}
+          {/* Public: tree left + text right */}
           <View style={styles.pubTop}>
-            <View style={styles.emojiTile}>
-              <Text style={{ fontSize: 30 }}>{emoji}</Text>
+            <View style={styles.treeTile}>
+              <MagicTree
+                stage={stageFromStreak((props as PublicHeroProps).streakDays)}
+                state="alive"
+                size="thumb"
+                uid={`hero_pub_${(props as PublicHeroProps).streakDays}`}
+              />
             </View>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={[styles.pubDaraja, { fontFamily: typography.fontFamily.bold }]}>
                 DARAJA {level}
               </Text>
               <Text style={[styles.pubName, { fontFamily: typography.fontFamily.extrabold }]}>
-                {info.title}
+                {emoji} {info.title}
               </Text>
               <Text style={[styles.pubXP, { fontFamily: typography.fontFamily.medium }]}>
                 {xp.toLocaleString()} / {nextXp.toLocaleString()} XP
@@ -125,16 +132,16 @@ export function HeroLevelCard(props: HeroLevelCardProps) {
             <View style={styles.stripDiv} />
             <View style={styles.stripItem}>
               <Text style={[styles.stripNum, { fontFamily: typography.fontFamily.extrabold }]}>
-                {(props as PublicHeroProps).coursesCompleted}
+                {(props as PublicHeroProps).streakDays}
               </Text>
-              <Text style={[styles.stripLbl, { fontFamily: typography.fontFamily.regular }]}>Kurslar</Text>
+              <Text style={[styles.stripLbl, { fontFamily: typography.fontFamily.regular }]}>kun seriya</Text>
             </View>
             <View style={styles.stripDiv} />
             <View style={styles.stripItem}>
               <Text style={[styles.stripNum, { fontFamily: typography.fontFamily.extrabold }]}>
-                {(props as PublicHeroProps).followersCount}
+                {(props as PublicHeroProps).longestStreak}
               </Text>
-              <Text style={[styles.stripLbl, { fontFamily: typography.fontFamily.regular }]}>Kuzatuvchi</Text>
+              <Text style={[styles.stripLbl, { fontFamily: typography.fontFamily.regular }]}>eng uzun</Text>
             </View>
           </View>
         </>
@@ -203,10 +210,9 @@ const styles = StyleSheet.create({
   xpText:    { fontSize: 11, color: 'rgba(255,255,255,0.88)' },
 
   // Public
-  pubTop:    { flexDirection: 'row', gap: 14, alignItems: 'center' },
-  emojiTile: {
-    width: 64, height: 64, borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.20)',
+  pubTop:   { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  treeTile: {
+    width: 80, height: 100,
     alignItems: 'center', justifyContent: 'center',
   },
   pubDaraja: { fontSize: 10, color: 'rgba(255,255,255,0.80)', letterSpacing: 1, textTransform: 'uppercase' },

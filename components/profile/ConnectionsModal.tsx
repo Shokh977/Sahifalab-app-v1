@@ -9,6 +9,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { profile as profileApi, connections as connApi } from '../../lib/api'
 import type { SocialUser } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
+import { RoleBadge } from '../ui/RoleBadge'
 
 type Tab = 'connections' | 'followers' | 'following'
 
@@ -23,35 +24,38 @@ interface Props {
 
 /** Normalised row — same shape regardless of which endpoint we called */
 interface PersonRow {
-  id:       number
-  name:     string
-  username: string | null
-  photoUrl: string | null
-  headline: string | null
+  id:          number
+  name:        string
+  username:    string | null
+  photoUrl:    string | null
+  headline:    string | null
+  role:        string | null
+  accountType: string | null
 }
 
 function normalize(raw: any, tab: Tab, isOwnConnections = false): PersonRow[] {
   if (!Array.isArray(raw)) return []
 
   if (tab === 'connections' && isOwnConnections) {
-    // GET /api/connections/ (own) → [{ connection_id, user: { id, name, username, avatar_url, headline } }]
     return raw.map((item: any) => ({
-      id:       item.user?.id        ?? 0,
-      name:     item.user?.name      ?? '',
-      username: item.user?.username  ?? null,
-      photoUrl: item.user?.avatar_url ?? null,
-      headline: item.user?.headline  ?? null,
+      id:          item.user?.id           ?? 0,
+      name:        item.user?.name         ?? '',
+      username:    item.user?.username     ?? null,
+      photoUrl:    item.user?.avatar_url   ?? null,
+      headline:    item.user?.headline     ?? null,
+      role:        item.user?.role         ?? null,
+      accountType: item.user?.account_type ?? null,
     }))
   }
 
-  // GET /api/v1/social/users/{id}/connections → [{ user: SocialUser, connected_at }]
-  // followers / following → [{ user: SocialUser, created_at }]
   return raw.map((item: any) => ({
-    id:       item.user?.telegram_id ?? 0,
-    name:     item.user?.full_name   ?? '',
-    username: item.user?.username    ?? null,
-    photoUrl: item.user?.photo_url   ?? null,
-    headline: item.user?.headline    ?? null,
+    id:          item.user?.telegram_id  ?? 0,
+    name:        item.user?.full_name    ?? '',
+    username:    item.user?.username     ?? null,
+    photoUrl:    item.user?.photo_url    ?? null,
+    headline:    item.user?.headline     ?? null,
+    role:        item.user?.role         ?? null,
+    accountType: item.user?.account_type ?? null,
   }))
 }
 
@@ -71,9 +75,12 @@ function PersonItem({ person, onPress }: { person: PersonRow; onPress: () => voi
         </View>
       )}
       <View style={styles.personInfo}>
-        <Text numberOfLines={1} style={[styles.personName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-          {person.name}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text numberOfLines={1} style={[styles.personName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold, flexShrink: 1 }]}>
+            {person.name}
+          </Text>
+          <RoleBadge role={person.role} accountType={person.accountType} size={14} />
+        </View>
         {person.username && (
           <Text style={[styles.personSub, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
             @{person.username}

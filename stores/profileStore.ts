@@ -39,7 +39,9 @@ interface ProfileState {
   ) => void
 }
 
-const CACHE_TTL = 60_000 // 1 min
+const CACHE_TTL = 300_000 // 5 min
+
+const _inflight = new Map<number, Promise<ProfileData>>()
 
 export const useProfileStore = create<ProfileState>((set, get) => ({
   ownProfile: null,
@@ -55,15 +57,23 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     finally { set({ ownLoading: false }) }
   },
 
-  loadPublicProfile: async (id) => {
+  loadPublicProfile: (id) => {
     const key = Number(id)
     const cached = get().cache[key]
-    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) return cached.data
+    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) return Promise.resolve(cached.data)
 
-    const raw  = await profileApi.getPublic(id)
-    const data = normalizeProfile(raw)
-    set(s => ({ cache: { ...s.cache, [key]: { data, fetchedAt: Date.now() } } }))
-    return data
+    if (_inflight.has(key)) return _inflight.get(key)!
+
+    const p = profileApi.getPublic(id)
+      .then(raw => {
+        const data = normalizeProfile(raw)
+        set(s => ({ cache: { ...s.cache, [key]: { data, fetchedAt: Date.now() } } }))
+        return data
+      })
+      .finally(() => _inflight.delete(key))
+
+    _inflight.set(key, p)
+    return p
   },
 
   patchOwnProfile: (patch) =>

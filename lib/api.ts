@@ -13,6 +13,9 @@ import type {
 
 export const TOKEN_KEY = 'sahifalab_jwt'
 
+// Deduplicates concurrent identical GET requests — same URL returns same Promise
+const _inflight = new Map<string, Promise<any>>()
+
 /** Returns the device's local calendar date as YYYY-MM-DD. */
 function localDate(): string {
   const d = new Date()
@@ -29,27 +32,41 @@ export async function request<T>(
   options: RequestInit & { auth?: boolean } = {},
 ): Promise<T> {
   const { auth = false, ...init } = options
+  const method = (init.method ?? 'GET').toUpperCase()
 
-  const fullUrl = `${API_URL}${path}`
-  if (!fullUrl.startsWith('https://') && !fullUrl.startsWith('http://localhost') && !fullUrl.startsWith('http://127.')) {
-    throw new Error('Only HTTPS connections are allowed')
+  // Return the in-flight promise for identical concurrent GETs
+  if (method === 'GET' && _inflight.has(path)) {
+    return _inflight.get(path) as Promise<T>
   }
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(init.headers as Record<string, string> | undefined),
+  const run = async (): Promise<T> => {
+    const fullUrl = `${API_URL}${path}`
+    if (!fullUrl.startsWith('https://') && !fullUrl.startsWith('http://localhost') && !fullUrl.startsWith('http://127.')) {
+      throw new Error('Only HTTPS connections are allowed')
+    }
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(init.headers as Record<string, string> | undefined),
+    }
+    if (auth) {
+      const token = await getToken()
+      if (token) headers['Authorization'] = `Bearer ${token}`
+    }
+    const res  = await fetch(fullUrl, { ...init, headers })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const message = data?.detail ?? `HTTP ${res.status}`
+      throw new Error(typeof message === 'string' ? message : JSON.stringify(message))
+    }
+    return data as T
   }
-  if (auth) {
-    const token = await getToken()
-    if (token) headers['Authorization'] = `Bearer ${token}`
+
+  if (method === 'GET') {
+    const p = run().finally(() => _inflight.delete(path))
+    _inflight.set(path, p)
+    return p
   }
-  const res = await fetch(fullUrl, { ...init, headers })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    const message = data?.detail ?? `HTTP ${res.status}`
-    throw new Error(typeof message === 'string' ? message : JSON.stringify(message))
-  }
-  return data as T
+  return run()
 }
 
 // ── Auth responses ────────────────────────────────────────────────────────────

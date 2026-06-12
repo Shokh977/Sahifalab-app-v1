@@ -109,7 +109,7 @@ function ActiveUsersBadge() {
   useEffect(() => {
     const fetch = () => focusChallenges.activeCount().then(r => setCount(r.count))
     fetch()
-    const id = setInterval(fetch, 30_000)
+    const id = setInterval(fetch, 120_000)
     return () => clearInterval(id)
   }, [])
 

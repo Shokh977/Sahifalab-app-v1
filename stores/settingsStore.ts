@@ -11,7 +11,7 @@ interface SettingsState {
   loadSettings:      () => Promise<void>
 }
 
-export const useSettingsStore = create<SettingsState>((set) => ({
+export const useSettingsStore = create<SettingsState>((set, get) => ({
   soundEnabled:   true,
   vibrateEnabled: true,
 
@@ -30,21 +30,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
   setSoundEnabled: (v) => {
     set({ soundEnabled: v })
-    AsyncStorage.getItem(KEY)
-      .then(raw => {
-        const cur = raw ? JSON.parse(raw) : {}
-        return AsyncStorage.setItem(KEY, JSON.stringify({ ...cur, soundEnabled: v }))
-      })
-      .catch(() => {})
+    AsyncStorage.setItem(KEY, JSON.stringify({ soundEnabled: v, vibrateEnabled: get().vibrateEnabled })).catch(() => {})
   },
 
   setVibrateEnabled: (v) => {
     set({ vibrateEnabled: v })
-    AsyncStorage.getItem(KEY)
-      .then(raw => {
-        const cur = raw ? JSON.parse(raw) : {}
-        return AsyncStorage.setItem(KEY, JSON.stringify({ ...cur, vibrateEnabled: v }))
-      })
-      .catch(() => {})
+    AsyncStorage.setItem(KEY, JSON.stringify({ soundEnabled: get().soundEnabled, vibrateEnabled: v })).catch(() => {})
   },
 }))

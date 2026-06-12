@@ -8,7 +8,8 @@ import {
   View, Text, StyleSheet, Pressable, ActivityIndicator, Share, Linking,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
-import { BadgeCheck, Shield, Pencil, Share2, UserPlus, UserCheck, UserX, MessageSquare, MapPin, Globe } from 'lucide-react-native'
+import { BadgeCheck, Pencil, Share2, UserPlus, UserCheck, UserX, MessageSquare, MapPin, Globe } from 'lucide-react-native'
+import { RoleBadge } from '../ui/RoleBadge'
 import { useTheme } from '../../hooks/useTheme'
 import { connections as connApi, follows as followApi } from '../../lib/api'
 import { useProfileStore } from '../../stores/profileStore'
@@ -166,13 +167,7 @@ export function UserInfoCard({ data, isOwnProfile, onEditPress, onMessagePress, 
         <Text style={[styles.name, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]} numberOfLines={1}>
           {data.first_name}
         </Text>
-        {data.account_type === 'teacher' && (
-          <View style={[styles.rolePill, { backgroundColor: c.brandSubtle, borderColor: 'rgba(232,121,47,0.3)' }]}>
-            <Text style={[styles.rolePillText, { color: c.brand, fontFamily: typography.fontFamily.semibold }]}>
-              O'qituvchi
-            </Text>
-          </View>
-        )}
+        <RoleBadge role={(data as any).role} accountType={data.account_type} size={17} />
         {data.account_type === 'company' && (
           <View style={[styles.rolePill, { backgroundColor: 'rgba(96,165,250,0.12)', borderColor: 'rgba(96,165,250,0.3)' }]}>
             <Text style={[styles.rolePillText, { color: '#60a5fa', fontFamily: typography.fontFamily.semibold }]}>
@@ -182,9 +177,6 @@ export function UserInfoCard({ data, isOwnProfile, onEditPress, onMessagePress, 
         )}
         {data.is_verified && data.account_type === 'student' && (
           <BadgeCheck size={17} color="#60a5fa" />
-        )}
-        {(data as any).role === 'admin' && (
-          <Shield size={16} color={c.brand} />
         )}
       </View>
 

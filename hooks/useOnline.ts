@@ -9,12 +9,12 @@ export function useOnline() {
   const check = async () => {
     try {
       const ctrl = new AbortController()
-      const t    = setTimeout(() => ctrl.abort(), 4000)
-      // Any HTTP response (even 404) means the server is reachable.
-      // Only a network-level failure or timeout means we're offline.
-      const res = await fetch(`${API_URL}/api/connections/`, { method: 'HEAD', signal: ctrl.signal })
+      const t    = setTimeout(() => ctrl.abort(), 5000)
+      // Any HTTP response (even 4xx/5xx) means the network and server are reachable.
+      // Only a network-level failure or timeout (AbortError) means we're offline.
+      await fetch(`${API_URL}/api/health/`, { method: 'HEAD', signal: ctrl.signal })
       clearTimeout(t)
-      setIsOnline(res.status < 500)
+      setIsOnline(true)
     } catch {
       setIsOnline(false)
     }

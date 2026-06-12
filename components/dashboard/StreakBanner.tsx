@@ -9,8 +9,9 @@ import React, { useEffect, useRef } from 'react'
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native'
 import { useRouter } from 'expo-router'
 import Svg, { Defs, LinearGradient as SvgGradient, Stop, Path } from 'react-native-svg'
-import { TreeStage, treeStageFromStreak } from '../ui/TreeStage'
-import type { TreeHealth } from '../ui/TreeStage'
+import { MagicTree } from '../streak/MagicTree'
+import { stageFromStreak } from '../../lib/treeTheme'
+import type { TreeState } from '../../lib/treeTheme'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import type { FocusStats } from '../../lib/api'
@@ -92,8 +93,8 @@ export function StreakBanner({ stats, goalDone }: Props) {
     ? Math.min(100, Math.round((stats.today_minutes / stats.daily_goal) * 100))
     : 0
 
-  const stage    = treeStageFromStreak(stats.streak_days)
-  const health: TreeHealth = state === 'done' ? 'healthy' : frost ? 'frost' : state === 'start' ? 'healthy' : 'healthy'
+  const stage      = stageFromStreak(stats.streak_days)
+  const treeState: TreeState = frost ? 'frozen' : 'alive'
 
   // ── Animated progress bar ─────────────────────────────────────────────────
   const barAnim = useRef(new Animated.Value(0)).current
@@ -186,7 +187,7 @@ export function StreakBanner({ stats, goalDone }: Props) {
       </View>
 
       {/* ── Right: tree ───────────────────────────────────────────────────── */}
-      <TreeStage stage={stage} health={health} size={85} />
+      <MagicTree stage={stage} state={treeState} size="thumb" uid="sb" />
 
       {/* ── Bottom: progress bar spanning full width ─────────────────────── */}
       <View style={styles.barWrap}>

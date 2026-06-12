@@ -12,8 +12,9 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { ChevronRight } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius, getLevelTier } from '../../lib/constants'
-import { TreeStage, treeStageFromStreak } from '../ui/TreeStage'
-import type { TreeHealth } from '../ui/TreeStage'
+import { MagicTree } from '../streak/MagicTree'
+import { stageFromStreak } from '../../lib/treeTheme'
+import type { TreeState } from '../../lib/treeTheme'
 import type { FocusStats } from '../../lib/api'
 
 // ── XP helpers ────────────────────────────────────────────────────────────────
@@ -97,7 +98,6 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
   const todayM  = stats.today_minutes ?? 0
   const goalM   = stats.daily_goal    > 0 ? stats.daily_goal : 20
   const goalDone = todayM >= goalM
-  const pct      = Math.min(1, todayM / goalM)
 
   const bannerState = getBannerState(stats, goalDone)
   const { text: msgText, colorKey: msgColorKey } = getMessage(stats, bannerState)
@@ -106,9 +106,12 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
   const isLost    = bannerState === 'lost'
   const isDone    = bannerState === 'done'
 
-  // Tree
-  const stage:      ReturnType<typeof treeStageFromStreak> = treeStageFromStreak(streak)
-  const health: TreeHealth = isDone ? 'healthy' : isAtRisk ? 'frost' : isLost ? 'wilting' : 'healthy'
+  // Tree + stage
+  const stage        = stageFromStreak(streak)
+  const treeState: TreeState = isAtRisk ? 'frozen' : isLost ? 'dead' : 'alive'
+
+  // Daily goal progress
+  const goalPct = goalM > 0 ? Math.min(1, todayM / goalM) : 0
 
   // Level — use absolute threshold to match profile screen
   const tier     = getLevelTier(level)
@@ -116,14 +119,13 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
   const xpPct    = xpTarget > 0 ? Math.min(1, totalXP / xpTarget) : 0
 
   // ── Animations ───────────────────────────────────────────────────────────
-  const barAnim     = useRef(new Animated.Value(0)).current
+  const goalBarAnim = useRef(new Animated.Value(0)).current
   const xpBarAnim   = useRef(new Animated.Value(0)).current
   const shimmerAnim = useRef(new Animated.Value(-30)).current
-  const swayAnim    = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    Animated.timing(barAnim, { toValue: pct, duration: 600, easing: Easing.out(Easing.quad), useNativeDriver: false }).start()
-  }, [pct])
+    Animated.timing(goalBarAnim, { toValue: goalPct, duration: 600, delay: 200, easing: Easing.out(Easing.quad), useNativeDriver: false }).start()
+  }, [goalPct])
 
   useEffect(() => {
     Animated.timing(xpBarAnim, { toValue: xpPct, duration: 600, delay: 200, easing: Easing.out(Easing.quad), useNativeDriver: false }).start()
@@ -141,18 +143,6 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
     loop.start()
     return () => loop.stop()
   }, [isDone])
-
-  // Tree sway
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(swayAnim, { toValue: 1,  duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(swayAnim, { toValue: -1, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    )
-    loop.start()
-    return () => loop.stop()
-  }, [])
 
   // ── Color derivations ─────────────────────────────────────────────────────
   const FROST = '#7FB8D8'
@@ -176,12 +166,9 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
                                       : isAtRisk ? [FROST, '#5A9AB5']
                                       : [c.accentPrimary, '#FFD700']
 
-  // Unfilled portion overlay (inverse of filled)
-  const unfilledWidth = barAnim.interpolate({ inputRange: [0, 1], outputRange: ['100%', '0%'] })
-  const xpUnfilled    = xpBarAnim.interpolate({ inputRange: [0, 1], outputRange: ['100%', '0%'] })
-
-  // Tree sway
-  const treeRotate = swayAnim.interpolate({ inputRange: [-1, 1], outputRange: ['-2deg', '2deg'] })
+  // Progress unfilled masks
+  const goalUnfilled = goalBarAnim.interpolate({ inputRange: [0, 1], outputRange: ['100%', '0%'] })
+  const xpUnfilled   = xpBarAnim.interpolate({ inputRange: [0, 1], outputRange: ['100%', '0%'] })
 
   // Background state gradient
   const stateGradColors: [string, string] = isDone
@@ -240,22 +227,22 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
               {/* Row 2: contextual message */}
               <Text
                 style={[styles.message, { color: msgColor, fontFamily: typography.fontFamily.medium }]}
-                numberOfLines={2}
+                numberOfLines={1}
               >
                 {msgText}
               </Text>
 
-              {/* Row 3: daily progress */}
+              {/* Row 3: daily goal progress */}
               <View style={styles.progressSection}>
                 <View style={styles.progressMeta}>
                   <Text style={[styles.progressLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                    Bugun: {todayM}/{goalM} daq
+                    {goalDone ? 'Bugungi maqsad ✓' : `Bugun: ${todayM}/${goalM} daq`}
                   </Text>
                   <Text style={[styles.progressPct, {
-                    color: isDone ? c.success : isAtRisk ? FROST : c.textSecondary,
+                    color: isDone ? c.success : isAtRisk ? FROST : c.accentPrimary,
                     fontFamily: typography.fontFamily.semibold,
                   }]}>
-                    {Math.round(pct * 100)}%
+                    {Math.min(100, Math.round(goalPct * 100))}%
                   </Text>
                 </View>
                 <View style={[styles.barTrack, { backgroundColor: c.bgTertiary }]}>
@@ -265,9 +252,7 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
                     end={{ x: 1, y: 0 }}
                     style={StyleSheet.absoluteFillObject}
                   />
-                  {/* Unfilled mask from right */}
-                  <Animated.View style={[styles.barUnfilled, { width: unfilledWidth, backgroundColor: c.bgTertiary }]} />
-                  {/* Shimmer when goal done */}
+                  <Animated.View style={[styles.barUnfilled, { width: goalUnfilled, backgroundColor: c.bgTertiary }]} />
                   {isDone && (
                     <Animated.View style={[styles.shimmer, { transform: [{ translateX: shimmerAnim }] }]} />
                   )}
@@ -275,10 +260,10 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
               </View>
             </View>
 
-            {/* Right: tree */}
-            <Animated.View style={[styles.treeWrap, { transform: [{ rotate: treeRotate }] }]}>
-              <TreeStage stage={stage} health={health} size={85} />
-            </Animated.View>
+            {/* Right: tree — MagicTree handles sway internally now */}
+            <View style={styles.treeWrap}>
+              <MagicTree stage={stage} state={treeState} size="thumb" uid="ub" />
+            </View>
           </View>
 
           {/* Separator */}
@@ -387,8 +372,8 @@ const styles = StyleSheet.create({
 
   // Tree
   treeWrap: {
-    width:          85,
-    height:         90,
+    width:          80,
+    height:         100,
     alignItems:     'center',
     justifyContent: 'center',
     flexShrink:     0,

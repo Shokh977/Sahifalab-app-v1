@@ -29,7 +29,7 @@ const LEVELS: LevelOption[] = [
   {
     key:   'beginner',
     label: 'Boshlang\'ich',
-    sub:   'Yangi boshlanaman, asoslardan boshlayman',
+    sub:   'Yangiman, boshidan boshlayman',
     Icon:  Plant as any,
     color: c => c.success,
   },
@@ -95,7 +95,7 @@ export default function ExperienceScreen() {
       <View style={[styles.header, { paddingTop: insets.top + spacing.xl }]}>
         <OnboardingProgress step={2} total={5} />
         <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-          Qaysi darajadamisiz?
+          Qaysi darajadasiz?
         </Text>
         <Text style={[styles.subtitle, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
           Siz uchun mos kurslar ko'rsatiladi

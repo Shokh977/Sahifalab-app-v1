@@ -7,7 +7,7 @@ import {
 import { useAuthStore } from './authStore'
 
 const CACHE_KEY = 'sahifalab_dashboard_cache'
-const CACHE_TTL = 60_000 // 60 seconds
+const CACHE_TTL = 300_000 // 5 min
 
 export interface EnrolledCourse {
   course_id:   number
