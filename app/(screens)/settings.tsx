@@ -619,20 +619,6 @@ export default function SettingsScreen() {
           />
         </SettingGroup>
 
-        {/* DEV */}
-        {__DEV__ && (
-          <>
-            <SectionHeader title="DEV" />
-            <SettingGroup>
-              <SettingRow
-                label="🌳 Tree Preview"
-                isLast
-                onPress={() => router.push('/(screens)/tree-test' as any)}
-              />
-            </SettingGroup>
-          </>
-        )}
-
         {/* HISOB */}
         <SectionHeader title="HISOB" />
         <SettingGroup>
