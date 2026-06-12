@@ -47,19 +47,85 @@ const CAL = {
 
 // ── Calendar cell ─────────────────────────────────────────────────────────────
 function CalCell({
-  day, c, isToday, connectLeft, connectRight,
+  day, c, isToday, connectLeft, connectRight, wide,
 }: {
   day:          StreakCalendarDay | null
   c:            ReturnType<typeof useTheme>['c']
   isToday:      boolean
   connectLeft:  boolean
   connectRight: boolean
+  wide?:        boolean
 }) {
-  if (!day) return <View style={styles.calSlot} />
+  if (!day) return <View style={wide ? styles.wideSlot : styles.calSlot} />
 
-  const dayNum = new Date(day.date).getDate()
-  const status = day.status as keyof typeof CAL
+  const dayNum    = new Date(day.date).getDate()
+  const status    = day.status as keyof typeof CAL
   const connColor = CAL[status]?.connColor ?? 'transparent'
+
+  // ── Wide mode (7-day view) ───────────────────────────────────────────────────
+  if (wide) {
+    if (status === 'future') {
+      return (
+        <View style={styles.wideSlot}>
+          <View style={[styles.calCellWide, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', margin: 2 }]}>
+            <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255,255,255,0.13)' }} />
+          </View>
+        </View>
+      )
+    }
+    if (status === 'studied') {
+      return (
+        <View style={styles.wideSlot}>
+          {connectLeft  && <View style={[styles.connWide, { left: 0, right: '50%', backgroundColor: connColor }]} />}
+          {connectRight && <View style={[styles.connWide, { left: '50%', right: 0,  backgroundColor: connColor }]} />}
+          <View style={[styles.cellGlowWide, { shadowColor: '#22c55e' }, isToday && styles.todayGlowRing]}>
+            <LinearGradient colors={['#86efac', '#15803d']} start={{ x: 0.15, y: 0 }} end={{ x: 0.85, y: 1 }} style={styles.calCellWide}>
+              <View style={styles.cellGloss} />
+              {isToday && <View style={[styles.todayInnerRing, { borderRadius: 12 }]} />}
+              <Text style={[styles.calNumWide, { color: '#fff', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
+              <Text style={styles.studiedCheckWide}>✓</Text>
+            </LinearGradient>
+          </View>
+        </View>
+      )
+    }
+    if (status === 'frozen') {
+      return (
+        <View style={styles.wideSlot}>
+          {connectLeft  && <View style={[styles.connWide, { left: 0, right: '50%', backgroundColor: connColor }]} />}
+          {connectRight && <View style={[styles.connWide, { left: '50%', right: 0,  backgroundColor: connColor }]} />}
+          <View style={[styles.cellGlowWide, { shadowColor: '#60a5fa' }, isToday && styles.todayGlowRing]}>
+            <LinearGradient colors={['#bae6fd', '#0c4a6e']} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={[styles.calCellWide, styles.frozenBorder]}>
+              <View style={styles.iceGloss} />
+              {isToday && <View style={[styles.todayInnerRing, { borderRadius: 12 }]} />}
+              <Snowflake size={13} color="rgba(224,242,254,0.75)" strokeWidth={2.5} style={styles.snowflakeIconWide} />
+              <Text style={[styles.calNumWide, { color: '#e0f2fe', fontFamily: typography.fontFamily.bold, marginTop: 6 }]}>{dayNum}</Text>
+            </LinearGradient>
+          </View>
+        </View>
+      )
+    }
+    // missed (wide)
+    if (isToday) {
+      return (
+        <View style={styles.wideSlot}>
+          <View style={[styles.calCellWide, { margin: 2, backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#f97316' }]}>
+            <Text style={[styles.calNumWide, { color: '#f97316', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
+          </View>
+        </View>
+      )
+    }
+    return (
+      <View style={styles.wideSlot}>
+        <View style={[styles.calCellWide, styles.missedCell, { margin: 2 }]}>
+          <Text style={[styles.calNumWide, { color: '#7f1d1d', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
+          <Text style={styles.missedXWide}>✕</Text>
+        </View>
+      </View>
+    )
+  }
+
+  // ── Narrow mode (30-day grid) ────────────────────────────────────────────────
 
   // ── future ──────────────────────────────────────────────────────────────────
   if (status === 'future') {
@@ -127,11 +193,22 @@ function CalCell({
     )
   }
 
-  // ── missed ───────────────────────────────────────────────────────────────────
+  // ── missed (narrow) ──────────────────────────────────────────────────────────
+  if (isToday) {
+    return (
+      <View style={styles.calSlot}>
+        <View style={{ flex: 1 }} />
+        <View style={[styles.calCell, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#f97316' }]}>
+          <Text style={[styles.calNum, { color: '#f97316', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
+        </View>
+        <View style={{ flex: 1 }} />
+      </View>
+    )
+  }
   return (
     <View style={styles.calSlot}>
       <View style={{ flex: 1 }} />
-      <View style={[styles.calCell, styles.missedCell, isToday && { borderColor: c.accentPrimary, borderWidth: 2 }]}>
+      <View style={[styles.calCell, styles.missedCell]}>
         <Text style={[styles.calNum, { color: '#7f1d1d', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
         <Text style={styles.missedX}>✕</Text>
       </View>
@@ -165,13 +242,15 @@ export default function StreakDetailScreen() {
   const [localFreeze, setLocalFreeze] = useState(
     () => dashData?.focusStats.freeze_count ?? 0
   )
+  const [calDays, setCalDays]   = useState<7 | 30>(7)
+  const calDaysRef              = useRef<7 | 30>(7)
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true)
     setLoadError(null)
     try {
       const telegramId = useAuthStore.getState().user?.telegram_id
-      const res = await streaksApi.detail(telegramId)
+      const res = await streaksApi.detail(telegramId, calDaysRef.current)
       setLocalFreeze(res.freeze_count)
       // Show streak-lost modal once per session when streak is broken
       if (!isRefresh && !hasShownLostRef.current && !res.is_active && res.streak_days > 0) {
@@ -253,19 +332,27 @@ export default function StreakDetailScreen() {
   const _d = new Date()
   const todayStr = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`
 
-  // Group calendar by week rows (7 cells per row), padded to Monday alignment
+  // Calendar rows — 7-day: single flat row; 30-day: Monday-aligned grid
   const calRows: (StreakCalendarDay | null)[][] = []
+  const cal7 = data?.calendar ? data.calendar.slice(-7) : []
+  const calWeekLabels = calDays === 7 && cal7.length
+    ? cal7.map(d => WEEKDAY_LABELS[(new Date(d.date).getDay() + 6) % 7])
+    : WEEKDAY_LABELS
   if (data?.calendar.length) {
-    const firstDate = new Date(data.calendar[0].date)
-    const firstDow  = (firstDate.getDay() + 6) % 7   // 0=Mon … 6=Sun
-    const padded: (StreakCalendarDay | null)[] = [
-      ...Array(firstDow).fill(null),
-      ...data.calendar,
-    ]
-    for (let i = 0; i < padded.length; i += 7) {
-      const row = padded.slice(i, i + 7)
-      while (row.length < 7) row.push(null)
-      calRows.push(row)
+    if (calDays === 7) {
+      calRows.push(cal7)
+    } else {
+      const firstDate = new Date(data.calendar[0].date)
+      const firstDow  = (firstDate.getDay() + 6) % 7
+      const padded: (StreakCalendarDay | null)[] = [
+        ...Array(firstDow).fill(null),
+        ...data.calendar,
+      ]
+      for (let i = 0; i < padded.length; i += 7) {
+        const row = padded.slice(i, i + 7)
+        while (row.length < 7) row.push(null)
+        calRows.push(row)
+      }
     }
   }
 
@@ -410,17 +497,35 @@ export default function StreakDetailScreen() {
 
         {/* ── Calendar ──────────────────────────────────────────────────── */}
         <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-          <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            So'nggi 30 kun
-          </Text>
-
-          {/* Day-of-week header */}
-          <View style={styles.calRow}>
-            {WEEKDAY_LABELS.map(d => (
-              <Text key={d} style={[styles.calDayLabel, { color: c.textMuted, fontFamily: typography.fontFamily.medium }]}>
-                {d}
-              </Text>
-            ))}
+          <View style={styles.calHeader}>
+            <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+              So'nggi {calDays} kun
+            </Text>
+            <View style={styles.calToggle}>
+              {([7, 30] as const).map(d => (
+                <Pressable
+                  key={d}
+                  style={[
+                    styles.calToggleBtn,
+                    calDays === d && { backgroundColor: c.brand },
+                    { borderColor: calDays === d ? c.brand : c.border },
+                  ]}
+                  onPress={() => {
+                    if (calDays === d) return
+                    setCalDays(d)
+                    calDaysRef.current = d
+                    load(true)
+                  }}
+                >
+                  <Text style={[
+                    styles.calToggleTxt,
+                    { color: calDays === d ? '#fff' : c.textMuted, fontFamily: typography.fontFamily.medium },
+                  ]}>
+                    {d} kun
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
 
           {/* Legend */}
@@ -445,6 +550,15 @@ export default function StreakDetailScreen() {
             </View>
           </View>
 
+          {/* Day-of-week header */}
+          <View style={styles.calRow}>
+            {calWeekLabels.map((d, i) => (
+              <Text key={i} style={[styles.calDayLabel, { color: c.textMuted, fontFamily: typography.fontFamily.medium }]}>
+                {d}
+              </Text>
+            ))}
+          </View>
+
           {/* Calendar grid */}
           {calRows.map((row, ri) => (
             <View key={ri} style={styles.calRow}>
@@ -459,6 +573,7 @@ export default function StreakDetailScreen() {
                     isToday={day?.date === todayStr}
                     connectLeft={active(day) && i > 0 && active(row[i - 1])}
                     connectRight={active(day) && i < row.length - 1 && active(row[i + 1])}
+                    wide={calDays === 7}
                   />
                 )
               })}
@@ -488,7 +603,7 @@ export default function StreakDetailScreen() {
           </Text>
 
           <View style={styles.freezeBtnRow}>
-            {!data?.is_active && freezeCount > 0 && (
+            {data?.can_freeze && (
               <Pressable
                 style={[styles.freezeUseBtn, { borderColor: '#60a5fa88' }]}
                 onPress={handleUseFreeze}
@@ -555,7 +670,7 @@ export default function StreakDetailScreen() {
         prevStreak={prevStreakDays}
         freezeCount={freezeCount}
         onClose={() => setShowLostModal(false)}
-        onUseFreeze={freezeCount > 0 ? handleUseFreeze : undefined}
+        onUseFreeze={data?.can_freeze ? handleUseFreeze : undefined}
       />
 
       <EvolutionModal
@@ -664,6 +779,70 @@ const styles = StyleSheet.create({
     gap:               spacing.sm,
   },
   sectionTitle: { fontSize: typography.size.base },
+
+  // ── Wide cell (7-day view) ─────────────────────────────────────────────────
+  wideSlot: { flex: 1 },
+  cellGlowWide: {
+    margin:        2,
+    borderRadius:  12,
+    shadowOffset:  { width: 0, height: 2 },
+    shadowOpacity: 0.55,
+    shadowRadius:  7,
+    elevation:     5,
+  },
+  calCellWide: {
+    aspectRatio:    1,
+    borderRadius:   12,
+    alignItems:     'center',
+    justifyContent: 'center',
+    overflow:       'hidden',
+  },
+  connWide: {
+    position:  'absolute',
+    top:       '50%' as any,
+    marginTop: -2,
+    height:    4,
+  },
+  calNumWide: { fontSize: 13, lineHeight: 15 },
+  studiedCheckWide: {
+    position:   'absolute',
+    bottom:     3,
+    right:      6,
+    fontSize:   10,
+    color:      'rgba(255,255,255,0.75)',
+    fontWeight: '800',
+  },
+  missedXWide: {
+    position:   'absolute',
+    bottom:     3,
+    right:      6,
+    fontSize:   10,
+    color:      'rgba(239,68,68,0.45)',
+    fontWeight: '800',
+  },
+  snowflakeIconWide: {
+    position: 'absolute',
+    top:      4,
+    right:    4,
+  },
+
+  // Calendar header row (title + toggle)
+  calHeader: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+  },
+  calToggle: {
+    flexDirection: 'row',
+    gap:           4,
+  },
+  calToggleBtn: {
+    paddingHorizontal: 10,
+    paddingVertical:   4,
+    borderRadius:      radius.full,
+    borderWidth:       1,
+  },
+  calToggleTxt: { fontSize: typography.size.xs },
 
   // Calendar
   calDayLabel: {

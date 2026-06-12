@@ -988,7 +988,7 @@ export const flashcards = {
 
   completeSession: (deckId: number, body: { total_time_ms: number; cards_reviewed: number }) =>
     request<CompleteSessionResult>(`/api/flashcards/decks/${deckId}/complete`, {
-      method: 'POST', body: JSON.stringify(body), auth: true,
+      method: 'POST', body: JSON.stringify({ ...body, local_date: localDate() }), auth: true,
     }),
 
   getStats: () =>
@@ -1413,6 +1413,7 @@ export interface FreezePackage {
 export interface StreakDetail {
   streak_days:     number
   is_active:       boolean
+  can_freeze:      boolean
   longest_streak:  number
   week_days:       number
   freeze_count:    number
@@ -1422,8 +1423,8 @@ export interface StreakDetail {
 }
 
 export const streaks = {
-  detail: (telegramId?: number | null) =>
-    request<StreakDetail>(`/api/streaks/detail?local_date=${localDate()}`, { auth: true }),
+  detail: (telegramId?: number | null, days: 7 | 30 = 7) =>
+    request<StreakDetail>(`/api/streaks/detail?local_date=${localDate()}&days=${days}`, { auth: true }),
 
   purchaseFreeze: (count: number) =>
     request<{ ok: boolean; xp_spent: number; freezes_added: number; total_xp: number; freeze_count: number }>(
@@ -1432,15 +1433,10 @@ export const streaks = {
     ),
 
   useFreeze: () => {
-    // The freeze must target the MISSED day, which is always yesterday when
-    // is_active is false. Sending today causes the backend to freeze today
-    // instead of the missed day, which leaves the streak break unrepaired and
-    // corrupts the calendar for all preceding studied days.
     const d = new Date()
-    d.setDate(d.getDate() - 1)
-    const missedDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     return request<{ ok: boolean; freeze_count: number; streak_days: number; frozen_date: string }>(
-      `/api/streaks/freeze/use?local_date=${missedDate}`,
+      `/api/streaks/freeze/use?local_date=${today}`,
       { method: 'POST', auth: true },
     )
   },
