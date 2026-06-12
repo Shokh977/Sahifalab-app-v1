@@ -345,6 +345,9 @@ function TimerScreen() {
   const pendingResult = useRef<Awaited<ReturnType<typeof completeSession>> | null>(null)
   const heartbeatRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const totalMinRef   = useRef(0)
+  // Shared guard: prevents the tick loop and the AppState foreground listener
+  // from both calling completionHandlerRef.current() for the same timer expiry.
+  const completionFiredRef = useRef(false)
 
   // Heartbeat while studying (focus phase only)
   useEffect(() => {
@@ -411,11 +414,15 @@ function TimerScreen() {
 
   // ── Tick loop (re-runs when status OR phase changes) ──────────────────────
   useEffect(() => {
+    // Each new phase/status cycle starts fresh — reset the shared guard so the
+    // upcoming expiry can fire exactly once across both this effect and the
+    // AppState foreground listener below.
+    completionFiredRef.current = false
+
     if (status !== 'active') {
       setRemainingMs(getRemainingMs())
       return
     }
-    let fired = false
     const id = setInterval(() => {
       const ms      = getRemainingMs()
       const curPhase = phaseRef.current
@@ -429,8 +436,8 @@ function TimerScreen() {
         else                        setStrokeColor(FOCUS_COLOR)
       }
 
-      if (ms <= 0 && !fired) {
-        fired = true
+      if (ms <= 0 && !completionFiredRef.current) {
+        completionFiredRef.current = true
         clearInterval(id)
         completionHandlerRef.current()
       }
@@ -444,7 +451,12 @@ function TimerScreen() {
       if (next === 'active' && useTimerStore.getState().status === 'active') {
         const ms = useTimerStore.getState().getRemainingMs()
         setRemainingMs(ms)
-        if (ms <= 0) completionHandlerRef.current()
+        // Guard: tick loop may have already fired completion while in background.
+        // Without this check, coming back to foreground triggers a second API call.
+        if (ms <= 0 && !completionFiredRef.current) {
+          completionFiredRef.current = true
+          completionHandlerRef.current()
+        }
       }
     })
     return () => sub.remove()

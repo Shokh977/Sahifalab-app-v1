@@ -1431,11 +1431,19 @@ export const streaks = {
       { method: 'POST', body: JSON.stringify({ count }), auth: true },
     ),
 
-  useFreeze: () =>
-    request<{ ok: boolean; freeze_count: number; streak_days: number; frozen_date: string }>(
-      `/api/streaks/freeze/use?local_date=${localDate()}`,
+  useFreeze: () => {
+    // The freeze must target the MISSED day, which is always yesterday when
+    // is_active is false. Sending today causes the backend to freeze today
+    // instead of the missed day, which leaves the streak break unrepaired and
+    // corrupts the calendar for all preceding studied days.
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    const missedDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return request<{ ok: boolean; freeze_count: number; streak_days: number; frozen_date: string }>(
+      `/api/streaks/freeze/use?local_date=${missedDate}`,
       { method: 'POST', auth: true },
-    ),
+    )
+  },
 }
 
 // ── Teacher wallet ─────────────────────────────────────────────────────────────

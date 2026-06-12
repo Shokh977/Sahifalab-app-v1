@@ -191,6 +191,12 @@ export default function StreakDetailScreen() {
           prevStageRef.current = newStage
         }
       }
+      // Sync fresh data to dashboardStore so banner/hero on the home tab stay consistent
+      useDashboardStore.getState().patchFocusStats({
+        streak_days:    res.is_active ? res.streak_days : 0,
+        longest_streak: res.longest_streak,
+        freeze_count:   res.freeze_count,
+      })
     } catch (e: any) {
       const msg = e?.message ?? "Serverdan ma'lumot olishda xatolik"
       console.error('[StreakDetail] load error:', e)
@@ -205,6 +211,7 @@ export default function StreakDetailScreen() {
     setLocalXp(newXp)
     setLocalFreeze(newFreezeCount)
     if (data) setData({ ...data, freeze_count: newFreezeCount })
+    useDashboardStore.getState().patchFocusStats({ freeze_count: newFreezeCount })
   }
 
   async function handleUseFreeze() {
@@ -212,7 +219,11 @@ export default function StreakDetailScreen() {
       const res = await streaksApi.useFreeze()
       Haptics?.notificationAsync(Haptics?.NotificationFeedbackType?.Success)
       setLocalFreeze(res.freeze_count)
-      if (data) setData({ ...data, freeze_count: res.freeze_count, is_active: true })
+      if (data) setData({ ...data, streak_days: res.streak_days, freeze_count: res.freeze_count, is_active: true })
+      useDashboardStore.getState().patchFocusStats({
+        streak_days:  res.streak_days,
+        freeze_count: res.freeze_count,
+      })
       setShowLostModal(false)
       load(true)
     } catch {
