@@ -1302,6 +1302,29 @@ export const hero = {
       .catch(() => null),
 }
 
+// ── Announcements ─────────────────────────────────────────────────────────────
+
+export interface Announcement {
+  id:         number
+  title:      string
+  body:       string
+  image_url:  string | null
+  cta_text:   string | null
+  cta_link:   string | null
+  starts_at:  string | null
+  expires_at: string | null
+  is_active:  boolean
+  created_at: string
+}
+
+export const announcements = {
+  getActive: (): Promise<Announcement[]> =>
+    request<Announcement[]>('/api/announcements/active', { auth: true }),
+
+  markSeen: (id: number): Promise<void> =>
+    request<void>(`/api/announcements/${id}/seen`, { method: 'POST', auth: true }),
+}
+
 // ── Ambient sounds ────────────────────────────────────────────────────────────
 
 export interface AmbientSound {

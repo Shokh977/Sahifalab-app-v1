@@ -17,6 +17,8 @@ import { useOnline } from '../hooks/useOnline'
 import { OfflineBanner } from '../components/ui/OfflineBanner'
 import { NotifToast } from '../components/ui/NotifToast'
 import { AppIntroModal } from '../components/onboarding/AppIntroModal'
+import { AnnouncementModal } from '../components/ui/AnnouncementModal'
+import { useAnnouncementStore } from '../stores/announcementStore'
 
 const APP_INTRO_KEY = 'sahifalab_app_intro_v1'
 
@@ -267,12 +269,13 @@ export default function RootLayout() {
     }
   }, [isLoading, isAuthenticated, needsOnboarding, fontsLoaded, segments])
 
-  // ── After auth: register push token, unread count, streak reminder ──────────
+  // ── After auth: register push token, unread count, streak reminder, announcements ──
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       registerPushToken()
       fetchUnreadCount()
       syncStreakReminderWithPrefs()
+      useAnnouncementStore.getState().fetch()
     }
   }, [isAuthenticated, isLoading])
 
@@ -341,6 +344,7 @@ export default function RootLayout() {
         <OfflineBanner />
         <NotifToast />
         <AppIntroModal visible={showAppIntro} onFinish={dismissAppIntro} />
+        <AnnouncementModal />
       </GestureHandlerRootView>
     </AppErrorBoundary>
   )
