@@ -12,8 +12,7 @@ const TEXT_MAX_HEIGHT = 220
 export function AnnouncementModal() {
   const { c } = useTheme()
   const current = useAnnouncementStore(s => s.current)
-  const dismiss = useAnnouncementStore(s => s.dismiss)
-  const snooze  = useAnnouncementStore(s => s.snooze)
+  const snooze = useAnnouncementStore(s => s.snooze)
   const [textScrollable, setTextScrollable] = useState(false)
 
   if (!current) return null
@@ -36,7 +35,7 @@ export function AnnouncementModal() {
       statusBarTranslucent
     >
       <Pressable style={styles.backdrop} onPress={() => snooze(current.id)}>
-        <Pressable style={[styles.card, { backgroundColor: c.bgSecondary }]} onPress={() => {}}>
+        <Pressable style={[styles.card, { backgroundColor: c.bgElevated, borderColor: c.border }]} onPress={() => {}}>
 
           {/* ── Top: image or emoji placeholder ─────────────────────────── */}
           {hasImage ? (
@@ -93,11 +92,10 @@ export function AnnouncementModal() {
             </Pressable>
           )}
 
-          {/* ── Single close button (permanent dismiss) ─────────────────── */}
-          {/* Backdrop tap = snooze (shows again tomorrow) */}
+          {/* ── Single close button (snooze — shows again tomorrow) ────── */}
           <View style={[styles.actionRow, { borderTopColor: c.border }]}>
             <Pressable
-              onPress={() => dismiss(current.id)}
+              onPress={() => snooze(current.id)}
               style={({ pressed }) => [
                 styles.dismissBtn,
                 { backgroundColor: c.bgTertiary, opacity: pressed ? 0.7 : 1 },
@@ -124,18 +122,18 @@ const styles = StyleSheet.create({
     padding:         spacing.xl,
   },
 
-  // No border — shadow gives depth without the border artefact around images
   card: {
     width:        '100%',
     maxWidth:     340,
     borderRadius: radius['2xl'],
+    borderWidth:  StyleSheet.hairlineWidth,
     overflow:     'hidden',
     ...Platform.select({
       ios: {
         shadowColor:   '#000',
         shadowOffset:  { width: 0, height: 8 },
-        shadowOpacity: 0.22,
-        shadowRadius:  20,
+        shadowOpacity: 0.18,
+        shadowRadius:  24,
       },
       android: { elevation: 12 },
     }),
