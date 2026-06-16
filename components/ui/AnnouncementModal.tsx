@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
-  Modal, View, Text, Pressable, StyleSheet, Linking, ScrollView,
+  Modal, View, Text, Pressable, StyleSheet, Linking, ScrollView, Platform,
 } from 'react-native'
 import { Image } from 'expo-image'
 import { X } from 'lucide-react-native'
@@ -8,19 +8,24 @@ import { useTheme } from '../../hooks/useTheme'
 import { useAnnouncementStore } from '../../stores/announcementStore'
 import { typography, spacing, radius } from '../../lib/constants'
 
+const TEXT_MAX_HEIGHT = 220
+
 export function AnnouncementModal() {
   const { c } = useTheme()
-  const current  = useAnnouncementStore(s => s.current)
-  const dismiss  = useAnnouncementStore(s => s.dismiss)
-  const snooze   = useAnnouncementStore(s => s.snooze)
+  const current = useAnnouncementStore(s => s.current)
+  const dismiss = useAnnouncementStore(s => s.dismiss)
+  const snooze  = useAnnouncementStore(s => s.snooze)
+  const [textScrollable, setTextScrollable] = useState(false)
 
   if (!current) return null
 
+  const hasImage = !!current.image_url
+  const hasCta   = !!(current.cta_text && current.cta_link)
+
   const handleCta = () => {
-    if (current.cta_link) {
-      Linking.openURL(current.cta_link).catch(() => {})
-    }
-    dismiss(current.id)
+    if (current.cta_link) Linking.openURL(current.cta_link).catch(() => {})
+    // CTA just opens the link + hides for today — NOT forever
+    snooze(current.id)
   }
 
   return (
@@ -32,68 +37,75 @@ export function AnnouncementModal() {
       statusBarTranslucent
     >
       <Pressable style={styles.backdrop} onPress={() => snooze(current.id)}>
-        {/* inner card — stop propagation so tapping inside doesn't dismiss */}
-        <Pressable
-          style={[styles.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}
-          onPress={() => {}}
-        >
-          {/* Close X */}
-          <Pressable
-            onPress={() => snooze(current.id)}
-            hitSlop={12}
-            style={styles.closeBtn}
-          >
-            <X size={18} color={c.textDisabled} strokeWidth={2} />
-          </Pressable>
+        <Pressable style={[styles.card, { backgroundColor: c.bgSecondary }]} onPress={() => {}}>
 
-          {/* Optional image */}
-          {current.image_url ? (
-            <Image
-              source={{ uri: current.image_url }}
-              style={[styles.image, { backgroundColor: c.bgTertiary }]}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-            />
+          {/* ── Top: image or emoji placeholder ─────────────────────────── */}
+          {hasImage ? (
+            <View style={styles.imageWrap}>
+              <Image
+                source={{ uri: current.image_url! }}
+                style={styles.image}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
+              {/* X overlaid on image */}
+              <Pressable onPress={() => snooze(current.id)} hitSlop={12} style={styles.closeBtnOnImage}>
+                <X size={15} color="#fff" strokeWidth={2.5} />
+              </Pressable>
+            </View>
           ) : (
-            <View style={[styles.iconPlaceholder, { backgroundColor: c.brandSubtle }]}>
+            <View style={[styles.iconWrap, { backgroundColor: c.brandSubtle }]}>
               <Text style={styles.iconEmoji}>📢</Text>
+              <Pressable onPress={() => snooze(current.id)} hitSlop={12} style={[styles.closeBtnPlain, { backgroundColor: c.bgTertiary }]}>
+                <X size={15} color={c.textDisabled} strokeWidth={2} />
+              </Pressable>
             </View>
           )}
 
-          {/* Text */}
-          <ScrollView
-            style={styles.textScroll}
-            contentContainerStyle={styles.textContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-              {current.title}
-            </Text>
-            <Text style={[styles.body, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-              {current.body}
-            </Text>
-          </ScrollView>
+          {/* ── Body text ────────────────────────────────────────────────── */}
+          <View style={styles.textWrap}>
+            <ScrollView
+              style={styles.textScroll}
+              contentContainerStyle={styles.textContent}
+              showsVerticalScrollIndicator={textScrollable}
+              nestedScrollEnabled
+              scrollIndicatorInsets={{ right: 2 }}
+              onContentSizeChange={(_w, h) => setTextScrollable(h > TEXT_MAX_HEIGHT)}
+            >
+              <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+                {current.title}
+              </Text>
+              <Text style={[styles.body, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                {current.body}
+              </Text>
+            </ScrollView>
+            {textScrollable && (
+              <View style={styles.fadeOverlay} pointerEvents="none">
+                <View style={[styles.fadeBar, { backgroundColor: c.bgSecondary }]} />
+              </View>
+            )}
+          </View>
 
-          {/* CTA button — only show when both text AND link are provided */}
-          {current.cta_text && current.cta_link ? (
+          {/* ── CTA button (only when both text + link set) ──────────────── */}
+          {hasCta && (
             <Pressable
               onPress={handleCta}
               style={({ pressed }) => [
                 styles.ctaBtn,
-                { backgroundColor: c.brand, opacity: pressed ? 0.85 : 1 },
+                { backgroundColor: c.brand, opacity: pressed ? 0.82 : 1 },
               ]}
             >
-              <Text style={[styles.ctaBtnText, { fontFamily: typography.fontFamily.semibold }]}>
+              <Text style={[styles.ctaText, { fontFamily: typography.fontFamily.semibold }]}>
                 {current.cta_text}
               </Text>
             </Pressable>
-          ) : null}
+          )}
 
-          {/* Action row */}
+          {/* ── Action row ───────────────────────────────────────────────── */}
           <View style={[styles.actionRow, { borderTopColor: c.border }]}>
             <Pressable
               onPress={() => snooze(current.id)}
-              style={({ pressed }) => [styles.snoozeBtn, { opacity: pressed ? 0.6 : 1 }]}
+              style={({ pressed }) => [styles.snoozeBtn, { opacity: pressed ? 0.55 : 1 }]}
             >
               <Text style={[styles.snoozeTxt, { color: c.textDisabled, fontFamily: typography.fontFamily.medium }]}>
                 Bugun ko'rsatma
@@ -112,6 +124,7 @@ export function AnnouncementModal() {
               </Text>
             </Pressable>
           </View>
+
         </Pressable>
       </Pressable>
     </Modal>
@@ -121,44 +134,81 @@ export function AnnouncementModal() {
 const styles = StyleSheet.create({
   backdrop: {
     flex:            1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     alignItems:      'center',
     justifyContent:  'center',
     padding:         spacing.xl,
   },
+
+  // No border — shadow gives depth without the border artefact around images
   card: {
     width:        '100%',
     maxWidth:     340,
     borderRadius: radius['2xl'],
-    borderWidth:  1,
     overflow:     'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor:   '#000',
+        shadowOffset:  { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius:  20,
+      },
+      android: { elevation: 12 },
+    }),
   },
-  closeBtn: {
-    position: 'absolute',
-    top:      14,
-    right:    14,
-    zIndex:   10,
-    padding:  4,
+
+  // ── Image / placeholder ─────────────────────────────────────────────────────
+  imageWrap: {
+    width:  '100%',
+    height: 180,
   },
   image: {
     width:  '100%',
-    height: 160,
+    height: '100%',
   },
-  iconPlaceholder: {
+  closeBtnOnImage: {
+    position:        'absolute',
+    top:             12,
+    right:           12,
+    width:           28,
+    height:          28,
+    borderRadius:    14,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  iconWrap: {
     width:          '100%',
-    height:         110,
+    height:         100,
     alignItems:     'center',
     justifyContent: 'center',
   },
   iconEmoji: {
-    fontSize: 44,
+    fontSize: 40,
+  },
+  closeBtnPlain: {
+    position:     'absolute',
+    top:          12,
+    right:        12,
+    width:        28,
+    height:       28,
+    borderRadius: 14,
+    alignItems:   'center',
+    justifyContent: 'center',
+  },
+
+  // ── Text ────────────────────────────────────────────────────────────────────
+  textWrap: {
+    position: 'relative',
   },
   textScroll: {
-    maxHeight: 200,
+    maxHeight: TEXT_MAX_HEIGHT,
   },
   textContent: {
-    padding: spacing.lg,
-    gap:     spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingTop:        spacing.md,
+    paddingBottom:     spacing.lg,
+    gap:               spacing.xs,
   },
   title: {
     fontSize:   typography.size.lg,
@@ -167,8 +217,23 @@ const styles = StyleSheet.create({
   body: {
     fontSize:   typography.size.sm,
     lineHeight: 22,
-    marginTop:  spacing.xs,
+    marginTop:  4,
   },
+  fadeOverlay: {
+    position:       'absolute',
+    bottom:         0,
+    left:           0,
+    right:          0,
+    height:         28,
+    justifyContent: 'flex-end',
+    pointerEvents:  'none',
+  },
+  fadeBar: {
+    height:  14,
+    opacity: 0.9,
+  },
+
+  // ── CTA ─────────────────────────────────────────────────────────────────────
   ctaBtn: {
     marginHorizontal: spacing.lg,
     marginBottom:     spacing.sm,
@@ -177,18 +242,20 @@ const styles = StyleSheet.create({
     alignItems:       'center',
     justifyContent:   'center',
   },
-  ctaBtnText: {
+  ctaText: {
     color:    '#fff',
     fontSize: typography.size.base,
   },
+
+  // ── Action row ───────────────────────────────────────────────────────────────
   actionRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'space-between',
+    borderTopWidth:    StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
-    gap:            spacing.sm,
+    gap:               spacing.sm,
   },
   snoozeBtn: {
     flex: 1,

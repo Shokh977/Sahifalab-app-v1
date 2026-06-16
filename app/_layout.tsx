@@ -269,13 +269,15 @@ export default function RootLayout() {
     }
   }, [isLoading, isAuthenticated, needsOnboarding, fontsLoaded, segments])
 
-  // ── After auth: register push token, unread count, streak reminder, announcements ──
+  // ── After auth: register push token, unread count, streak reminder ──────────
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       registerPushToken()
       fetchUnreadCount()
       syncStreakReminderWithPrefs()
-      useAnnouncementStore.getState().fetch()
+      // Defer announcements fetch so it doesn't compete with critical startup
+      const t = setTimeout(() => useAnnouncementStore.getState().fetch(), 3000)
+      return () => clearTimeout(t)
     }
   }, [isAuthenticated, isLoading])
 
@@ -344,7 +346,7 @@ export default function RootLayout() {
         <OfflineBanner />
         <NotifToast />
         <AppIntroModal visible={showAppIntro} onFinish={dismissAppIntro} />
-        <AnnouncementModal />
+        {useAnnouncementStore(s => s.current) !== null && <AnnouncementModal />}
       </GestureHandlerRootView>
     </AppErrorBoundary>
   )

@@ -23,30 +23,31 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => ({
   loading: false,
 
   fetch: async () => {
-    set({ loading: true })
+    // Read local filters first (fast, no network) — if everything is already
+    // dismissed/snoozed we can skip the network call entirely.
+    let dismissed: number[] = []
+    let snoozed: Record<string, string> = {}
     try {
-      const [dismissedRaw, snoozedRaw, list] = await Promise.all([
+      const [dr, sr] = await Promise.all([
         AsyncStorage.getItem(DISMISSED_KEY).catch(() => null),
         AsyncStorage.getItem(SNOOZED_KEY).catch(() => null),
-        api.getActive().catch(() => [] as Announcement[]),
       ])
+      dismissed = dr ? JSON.parse(dr) : []
+      snoozed   = sr ? JSON.parse(sr) : {}
+    } catch {}
 
-      const dismissed: number[] = dismissedRaw ? JSON.parse(dismissedRaw) : []
-      const snoozed: Record<string, string> = snoozedRaw ? JSON.parse(snoozedRaw) : {}
-      const today = todayStr()
-
-      const showable = list.find(ann => {
-        if (dismissed.includes(ann.id)) return false
-        if (snoozed[ann.id] === today) return false
-        return true
+    // Network call — fire and forget, UI updates when it resolves
+    api.getActive()
+      .then(list => {
+        const today = todayStr()
+        const showable = list.find(ann => {
+          if (dismissed.includes(ann.id)) return false
+          if (snoozed[ann.id] === today) return false
+          return true
+        })
+        set({ current: showable ?? null })
       })
-
-      set({ current: showable ?? null })
-    } catch {
-      // silently ignore — announcements are non-critical
-    } finally {
-      set({ loading: false })
-    }
+      .catch(() => {})
   },
 
   dismiss: async (id: number) => {
