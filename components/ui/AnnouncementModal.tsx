@@ -74,8 +74,8 @@ export function AnnouncementModal() {
             </Text>
           </ScrollView>
 
-          {/* Optional CTA */}
-          {current.cta_text ? (
+          {/* CTA button — only show when both text AND link are provided */}
+          {current.cta_text && current.cta_link ? (
             <Pressable
               onPress={handleCta}
               style={({ pressed }) => [
