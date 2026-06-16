@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react'
-import { View, Text, Pressable, Image, StyleSheet, Animated } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
+import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { Menu, Search, Bell } from 'lucide-react-native'
@@ -99,7 +100,7 @@ export function NavHeader({ translateY, onHeightMeasured }: NavHeaderProps = {})
 
       <Pressable onPress={openAvatarMenu} hitSlop={8}>
         {photoUrl ? (
-          <Image source={{ uri: photoUrl }} style={styles.avatar} />
+          <Image source={{ uri: photoUrl }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" />
         ) : (
           <View style={[styles.avatar, { backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }]}>
             <Text style={{ color: c.brand, fontSize: 13, fontFamily: typography.fontFamily.bold }}>

@@ -244,13 +244,17 @@ export default function StreakDetailScreen() {
   )
   const [calDays, setCalDays]   = useState<7 | 30>(7)
   const calDaysRef              = useRef<7 | 30>(7)
+  const loadGenRef              = useRef(0)   // generation counter — stale responses are discarded
 
   const load = useCallback(async (isRefresh = false) => {
+    const gen = ++loadGenRef.current
     if (!isRefresh) setLoading(true)
     setLoadError(null)
     try {
       const telegramId = useAuthStore.getState().user?.telegram_id
       const res = await streaksApi.detail(telegramId, calDaysRef.current)
+      // A newer load() has already started — discard this stale response
+      if (gen !== loadGenRef.current) return
       setLocalFreeze(res.freeze_count)
       // Show streak-lost modal once per session when streak is broken
       if (!isRefresh && !hasShownLostRef.current && !res.is_active && res.streak_days > 0) {
@@ -277,10 +281,16 @@ export default function StreakDetailScreen() {
         freeze_count:   res.freeze_count,
       })
     } catch (e: any) {
+      if (gen !== loadGenRef.current) return
       const msg = e?.message ?? "Serverdan ma'lumot olishda xatolik"
       console.error('[StreakDetail] load error:', e)
       setLoadError(msg)
-    } finally { setLoading(false); setRefreshing(false) }
+    } finally {
+      if (gen === loadGenRef.current) {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    }
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -312,12 +322,18 @@ export default function StreakDetailScreen() {
 
   // Prefer API data; fall back to dashboardStore → authStore for key fields
   const streakDays    = data?.streak_days    ?? dashData?.focusStats.streak_days    ?? user?.streak_days ?? 0
-  const longestStreak = data?.longest_streak ?? dashData?.focusStats.longest_streak ?? streakDays
+  const longestStreak = data?.longest_streak ?? dashData?.focusStats.longest_streak ?? 0
   const weekDays      = data?.week_days      ?? 0
   const freezeCount   = data?.freeze_count   ?? localFreeze
 
   const stage      = stageFromStreak(streakDays)
-  const treeState: TreeState = data ? (data.is_active ? 'alive' : 'frozen') : 'alive'
+  // Match the dashboard: show frozen when past 20:00 and daily goal not yet met
+  const todayM    = dashData?.focusStats?.today_minutes ?? 0
+  const goalM     = dashData?.focusStats?.daily_goal ?? 20
+  const isAtRisk  = !!(data?.is_active) && todayM < goalM && new Date().getHours() >= 20
+  const treeState: TreeState = data
+    ? (!data.is_active ? 'frozen' : isAtRisk ? 'frozen' : 'alive')
+    : 'alive'
 
   // Next-stage progress
   const stageMeta     = TREE_STAGES[stage - 1]

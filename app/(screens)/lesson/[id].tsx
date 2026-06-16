@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native'
 import { useTheme } from '../../../hooks/useTheme'
 import { useCourseStore } from '../../../stores/courseStore'
+import { useDownloadStore } from '../../../stores/downloadStore'
 import { lessons as lessonsApi, courses as coursesApi } from '../../../lib/api'
 import { VideoPlayer } from '../../../components/courses/VideoPlayer'
 import { typography, spacing, radius } from '../../../lib/constants'
@@ -47,8 +48,9 @@ type LiveState =
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function posKey(id: number)   { return `lesson_pos_${id}` }
-function notesKey(id: number) { return `lesson_notes_${id}` }
+function posKey(id: number)     { return `lesson_pos_${id}` }
+function notesKey(id: number)   { return `lesson_notes_${id}` }
+function lessonCacheKey(id: number) { return `lesson_cache_${id}` }
 
 async function loadPosition(id: number): Promise<number> {
   try { const v = await AsyncStorage.getItem(posKey(id)); return v ? Number(v) : 0 }
@@ -531,12 +533,13 @@ export default function LessonPlayerScreen() {
     setLoading(true)
     try {
       const l = await lessonsApi.get(lessonId)
+      // Cache lesson metadata for offline use
+      AsyncStorage.setItem(lessonCacheKey(lessonId), JSON.stringify(l)).catch(() => {})
       setLesson(l)
 
       const [siblings, courseData, pos, storedNotes] = await Promise.all([
         lessonsApi.listByCourse(l.course_id).catch(() => [] as Lesson[]),
         coursesApi.get(l.course_id).catch(() => null as Course | null),
-        // Try API first (synced across devices), fall back to local cache
         lessonsApi.getVideoPosition(lessonId)
           .then(r => { savePosition(lessonId, r.position); return r.position })
           .catch(() => loadPosition(lessonId)),
@@ -552,8 +555,23 @@ export default function LessonPlayerScreen() {
         setResumePos(pos)
         setShowResumeBanner(true)
       }
-    } catch (e: any) {
-      Alert.alert('Xatolik', e?.message ?? 'Dars yuklanmadi')
+    } catch {
+      // Network failed — try cached lesson + downloaded video
+      const cachedRaw = await AsyncStorage.getItem(lessonCacheKey(lessonId)).catch(() => null)
+      const downloadEntry = useDownloadStore.getState().entries[lessonId]
+      if (cachedRaw && downloadEntry) {
+        try {
+          const cached: Lesson = JSON.parse(cachedRaw)
+          const pos = await loadPosition(lessonId)
+          const storedNotes = await loadNotes(lessonId)
+          setLesson(cached)
+          setNotes(storedNotes)
+          if (storedNotes.length > 0) setIzohActive(true)
+          if (pos > 10) { setResumePos(pos); setShowResumeBanner(true) }
+          return
+        } catch {}
+      }
+      Alert.alert('Xatolik', 'Dars yuklanmadi. Internet aloqasini tekshiring.')
       router.back()
     } finally {
       setLoading(false)
@@ -691,7 +709,8 @@ export default function LessonPlayerScreen() {
 
   // "finished" (status 4) = ready; anything else = still encoding
   const encodingReady = !lesson.encoding_status || lesson.encoding_status === 'finished'
-  const videoUri = encodingReady ? (lesson.hls_url || lesson.video_url || null) : null
+  const localFile = useDownloadStore.getState().entries[lessonId]?.fileUri ?? null
+  const videoUri  = localFile ?? (encodingReady ? (lesson.hls_url || lesson.video_url || null) : null)
 
   // If teacher stored a YouTube watch URL in video_url instead of an embed URL,
   // synthesise the embed URL so EmbedWebPlayer can handle it.

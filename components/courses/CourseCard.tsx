@@ -1,5 +1,6 @@
 import React from 'react'
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { Image } from 'expo-image'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import type { Course } from '../../lib/api'
@@ -32,7 +33,7 @@ export function CourseCard({ course, onPress, compact = false, delayPressIn = 0 
     return (
       <Pressable onPress={onPress} unstable_pressDelay={delayPressIn} style={[styles.compact, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
         {course.thumbnail_url ? (
-          <Image source={{ uri: course.thumbnail_url }} style={styles.compactThumb} />
+          <Image source={{ uri: course.thumbnail_url }} style={styles.compactThumb} contentFit="cover" cachePolicy="memory-disk" />
         ) : (
           <View style={[styles.compactThumb, { backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }]}>
             <Text style={{ fontSize: 28 }}>📚</Text>
@@ -65,7 +66,7 @@ export function CourseCard({ course, onPress, compact = false, delayPressIn = 0 
     <Pressable onPress={onPress} unstable_pressDelay={delayPressIn} style={[styles.card, { backgroundColor: c.bgSecondary }]}>
       {/* Thumbnail */}
       {course.thumbnail_url ? (
-        <Image source={{ uri: course.thumbnail_url }} style={styles.thumb} resizeMode="cover" />
+        <Image source={{ uri: course.thumbnail_url }} style={styles.thumb} contentFit="cover" cachePolicy="memory-disk" />
       ) : (
         <View style={[styles.thumb, { backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }]}>
           <Text style={{ fontSize: 48 }}>📚</Text>

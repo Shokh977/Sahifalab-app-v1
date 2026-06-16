@@ -1,5 +1,6 @@
 import React from 'react'
-import { View, Text, Image, StyleSheet, Pressable } from 'react-native'
+import { View, Text, StyleSheet, Pressable } from 'react-native'
+import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { Trophy, Crown } from 'phosphor-react-native'
 import { useTheme } from '../../hooks/useTheme'
@@ -13,7 +14,7 @@ interface Props {
   myRank:   number | null
 }
 
-function EntryRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
+const EntryRow = React.memo(function EntryRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
   const { c } = useTheme()
   const medalColor = MEDAL_COLORS[index]
   const isTop3 = index < 3
@@ -32,7 +33,7 @@ function EntryRow({ entry, index }: { entry: LeaderboardEntry; index: number }) 
         }
       </View>
       {entry.photo_url ? (
-        <Image source={{ uri: entry.photo_url }} style={styles.avatar} />
+        <Image source={{ uri: entry.photo_url }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" />
       ) : (
         <View style={[styles.avatar, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
           <Text style={{ color: c.textSecondary, fontSize: 11, fontFamily: typography.fontFamily.medium }}>
@@ -56,9 +57,9 @@ function EntryRow({ entry, index }: { entry: LeaderboardEntry; index: number }) 
       </Text>
     </View>
   )
-}
+})
 
-export function LeaderboardCard({ entries, myRank }: Props) {
+export const LeaderboardCard = React.memo(function LeaderboardCard({ entries, myRank }: Props) {
   const { c } = useTheme()
   const router = useRouter()
   const top5 = entries.slice(0, 5)
@@ -100,7 +101,7 @@ export function LeaderboardCard({ entries, myRank }: Props) {
       </Pressable>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   card: {

@@ -4,6 +4,38 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { auth, TOKEN_KEY, type AuthResponse, type MeResponse } from '../lib/api'
 
 const ONBOARDING_KEY = 'sahifalab_onboarding_done'
+const USER_CACHE_KEY  = 'sahifalab_user_cache_v1'
+
+// Only stable identity fields are persisted — gamification counters (streak,
+// XP, level, goal) are intentionally excluded so stale values never flash.
+type UserIdentityCache = Pick<AppUser,
+  'telegram_id' | 'first_name' | 'username' | 'photo_url' |
+  'email' | 'email_verified' | 'has_password' | 'role' | 'status'
+>
+
+function toIdentityCache(u: AppUser): UserIdentityCache {
+  return {
+    telegram_id:    u.telegram_id,
+    first_name:     u.first_name,
+    username:       u.username,
+    photo_url:      u.photo_url,
+    email:          u.email,
+    email_verified: u.email_verified,
+    has_password:   u.has_password,
+    role:           u.role,
+    status:         u.status,
+  }
+}
+
+function fromIdentityCache(c: UserIdentityCache): AppUser {
+  return {
+    ...c,
+    level:               1,
+    total_xp:            0,
+    streak_days:         0,
+    daily_goal_minutes:  20,
+  }
+}
 
 export interface AppUser {
   telegram_id:         number
@@ -91,12 +123,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const token = await getToken()
       if (!token) { set({ isLoading: false }); return }
       set({ token })
+
+      // Serve stable identity fields immediately — unlocks the UI (avatar, name,
+      // auth guard) without a network round-trip. Gamification counters (streak,
+      // XP, level) are NOT restored from cache; they arrive with auth.me() below
+      // so we never flash yesterday's streak count or a stale level badge.
+      const cachedRaw = await AsyncStorage.getItem(USER_CACHE_KEY).catch(() => null)
+      if (cachedRaw) {
+        try {
+          const identity: UserIdentityCache = JSON.parse(cachedRaw)
+          const needsOnboarding = await checkOnboarding()
+          set({ user: fromIdentityCache(identity), isAuthenticated: true, needsOnboarding, isLoading: false })
+        } catch {}
+      }
+
       const me = await auth.me()
+      const fresh = mapToUser(me)
       const needsOnboarding = await checkOnboarding()
-      set({ user: mapToUser(me), isAuthenticated: true, needsOnboarding })
-    } catch {
-      await clearToken()
-      set({ token: null, user: null, isAuthenticated: false, needsOnboarding: false })
+      AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(toIdentityCache(fresh))).catch(() => {})
+      set({ user: fresh, isAuthenticated: true, needsOnboarding, isLoading: false })
+    } catch (err: any) {
+      // Keep cached user alive on transient network failures.
+      // Only force-logout on explicit auth rejection (401/403).
+      const msg: string = err?.message ?? ''
+      const isAuthError  = /HTTP 40[13]/.test(msg)
+      if (isAuthError || !get().isAuthenticated) {
+        await clearToken()
+        AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {})
+        set({ token: null, user: null, isAuthenticated: false, needsOnboarding: false })
+      }
     } finally {
       set({ isLoading: false })
     }
@@ -110,43 +165,54 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await clearToken()
       throw new Error('EMAIL_NOT_VERIFIED')
     }
+    const fresh = mapToUser(me)
     const needsOnboarding = await checkOnboarding()
-    set({ token: res.access_token, user: mapToUser(me), isAuthenticated: true, needsOnboarding })
+    AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(toIdentityCache(fresh))).catch(() => {})
+    set({ token: res.access_token, user: fresh, isAuthenticated: true, needsOnboarding })
   },
 
   loginGoogle: async (idToken) => {
     const res = await auth.googleLogin(idToken)
     await saveToken(res.access_token)
     const me = await auth.me()
+    const fresh = mapToUser(me)
     const needsOnboarding = await checkOnboarding()
-    set({ token: res.access_token, user: mapToUser(me), isAuthenticated: true, needsOnboarding })
+    AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(toIdentityCache(fresh))).catch(() => {})
+    set({ token: res.access_token, user: fresh, isAuthenticated: true, needsOnboarding })
   },
 
   loginTelegram: async (data) => {
     const res = await auth.telegramLogin(data)
     await saveToken(res.access_token)
     const me = await auth.me()
+    const fresh = mapToUser(me)
     const needsOnboarding = await checkOnboarding()
-    set({ token: res.access_token, user: mapToUser(me), isAuthenticated: true, needsOnboarding })
+    AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(toIdentityCache(fresh))).catch(() => {})
+    set({ token: res.access_token, user: fresh, isAuthenticated: true, needsOnboarding })
   },
 
   loginWithToken: async (token) => {
     await saveToken(token)
     const me = await auth.me()
+    const fresh = mapToUser(me)
     const needsOnboarding = await checkOnboarding()
-    set({ token, user: mapToUser(me), isAuthenticated: true, needsOnboarding })
+    AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(toIdentityCache(fresh))).catch(() => {})
+    set({ token, user: fresh, isAuthenticated: true, needsOnboarding })
   },
 
   logout: async () => {
     try { await auth.logout() } catch {}
     await clearToken()
+    AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {})
     set({ token: null, user: null, isAuthenticated: false, needsOnboarding: false })
   },
 
   refreshUser: async () => {
     try {
       const me = await auth.me()
-      set({ user: mapToUser(me) })
+      const fresh = mapToUser(me)
+      AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(toIdentityCache(fresh))).catch(() => {})
+      set({ user: fresh })
     } catch {}
   },
 

@@ -125,7 +125,10 @@ async function registerPushToken() {
     }
     if (finalStatus !== 'granted') return
 
-    const tokenData = await Notifications.getExpoPushTokenAsync().catch(() => null)
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId
+    const tokenData = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined
+    ).catch(() => null)
     const token: string | null = tokenData?.data ?? null
     if (!token) return
 

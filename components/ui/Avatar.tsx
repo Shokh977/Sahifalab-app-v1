@@ -1,5 +1,6 @@
 import React from 'react'
-import { View, Text, StyleSheet, Image } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
+import { Image } from 'expo-image'
 import { useTheme } from '../../hooks/useTheme'
 import { getLevelTier, typography } from '../../lib/constants'
 
@@ -11,7 +12,7 @@ interface Props {
   borderWidth?: number
 }
 
-export function Avatar({ uri, name, size = 32, level, borderWidth = 2 }: Props) {
+export const Avatar = React.memo(function Avatar({ uri, name, size = 32, level, borderWidth = 2 }: Props) {
   const { c } = useTheme()
 
   const tier        = level ? getLevelTier(level) : null
@@ -36,7 +37,8 @@ export function Avatar({ uri, name, size = 32, level, borderWidth = 2 }: Props) 
         <Image
           source={{ uri }}
           style={{ width: size - borderWidth * 2, height: size - borderWidth * 2, borderRadius: size / 2 }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
         />
       ) : (
         <Text style={[styles.initials, { fontSize, color: c.textSecondary, fontFamily: typography.fontFamily.semibold }]}>
@@ -45,7 +47,7 @@ export function Avatar({ uri, name, size = 32, level, borderWidth = 2 }: Props) 
       )}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

@@ -5,7 +5,8 @@
  * Avatar sits exactly at the colour boundary, left-aligned.
  */
 import React from 'react'
-import { View, Text, Image, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
+import { Image } from 'expo-image'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing } from '../../lib/constants'
 import type { ProfileData } from '../../lib/types'
@@ -41,6 +42,8 @@ export function ProfileHeroCard({ data }: Props) {
           <Image
             source={{ uri: data.photo_url }}
             style={[styles.avatar, { borderColor: c.bgSecondary }]}
+            contentFit="cover"
+            cachePolicy="memory-disk"
           />
         ) : (
           <View style={[styles.avatar, { backgroundColor: c.brandSubtle, borderColor: c.bgSecondary, alignItems: 'center', justifyContent: 'center' }]}>

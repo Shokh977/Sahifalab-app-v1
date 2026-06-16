@@ -1,8 +1,6 @@
-/**
- * Vertical (full-width) course card for the Recommended section.
- */
 import React from 'react'
-import { View, Text, Image, StyleSheet, Pressable } from 'react-native'
+import { View, Text, StyleSheet, Pressable } from 'react-native'
+import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { Star, Clock, Users } from 'phosphor-react-native'
 import { useTheme } from '../../hooks/useTheme'
@@ -13,7 +11,7 @@ interface Props {
   course: Course
 }
 
-export function CourseVCard({ course }: Props) {
+export const CourseVCard = React.memo(function CourseVCard({ course }: Props) {
   const { c }  = useTheme()
   const router = useRouter()
 
@@ -26,7 +24,7 @@ export function CourseVCard({ course }: Props) {
       ]}
     >
       {course.thumbnail_url ? (
-        <Image source={{ uri: course.thumbnail_url }} style={styles.thumb} />
+        <Image source={{ uri: course.thumbnail_url }} style={styles.thumb} contentFit="cover" cachePolicy="memory-disk" />
       ) : (
         <View style={[styles.thumb, { backgroundColor: c.bgTertiary }]} />
       )}
@@ -72,7 +70,7 @@ export function CourseVCard({ course }: Props) {
       </View>
     </Pressable>
   )
-}
+})
 
 const styles = StyleSheet.create({
   card: {

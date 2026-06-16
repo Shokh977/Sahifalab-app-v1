@@ -19,7 +19,7 @@ import { VideoPlayer } from '../../../components/courses/VideoPlayer'
 import { useTheme } from '../../../hooks/useTheme'
 import { useAuthStore } from '../../../stores/authStore'
 import { useCourseStore } from '../../../stores/courseStore'
-import { useDownloadStore, getDownloadUrl } from '../../../stores/downloadStore'
+import { useDownloadStore } from '../../../stores/downloadStore'
 import { courses as coursesApi, lessons as lessonsApi, profile } from '../../../lib/api'
 import { typography, spacing, radius, WEB_URL } from '../../../lib/constants'
 import { shareCertificate } from '../../../lib/share'
@@ -936,42 +936,8 @@ export default function CourseDetailScreen() {
   }
 
   // ── Download lesson ────────────────────────────────────────────────────────
-  async function handleDownload(lesson: Lesson) {
-    if (isDownloaded(lesson.id)) {
-      setConfirm({
-        visible:   true,
-        title:     "Yuklamani o'chirish",
-        message:   `"${lesson.title}" oflayn fayli o'chiriladi.`,
-        onConfirm: () => {
-          setConfirm(s => ({ ...s, visible: false }))
-          deleteDownload(lesson.id)
-        },
-      })
-      return
-    }
-    if (isDownloading(lesson.id) || !course) return
-
-    // Always fetch a fresh signed download URL — tokens expire in 1 hour
-    let downloadUrl: string | null = null
-    try {
-      const res = await lessonsApi.getDownloadUrl(lesson.id)
-      downloadUrl = res.download_url
-    } catch {
-      // Backend endpoint failed — fall back to constructing URL from cached lesson fields
-      let lessonForDl = lesson
-      if (!getDownloadUrl(lesson)) {
-        try { lessonForDl = await lessonsApi.get(lesson.id) }
-        catch { Alert.alert('Xatolik', 'Yuklab olish URL topilmadi'); return }
-      }
-      downloadUrl = getDownloadUrl(lessonForDl)
-    }
-
-    if (!downloadUrl) {
-      Alert.alert('Xatolik', "Bu dars uchun yuklab olish mumkin emas")
-      return
-    }
-
-    startDownload({ ...lesson, video_url: downloadUrl, hls_url: null }, courseId, course.title)
+  function handleDownload(_lesson: Lesson) {
+    Alert.alert('Tez Kunda', 'Oflayn yuklab olish funksiyasi tez orada ishga tushadi.')
   }
 
   // ── Refresh reviews after submission ──────────────────────────────────────

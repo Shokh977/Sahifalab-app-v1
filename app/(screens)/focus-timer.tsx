@@ -9,7 +9,8 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { playFocusSound, playBreakSound } from '../../lib/timerSounds'
-import { rescheduleStreakReminderForTomorrow } from '../../lib/streakNotifications'
+import { cancelStreakReminder } from '../../lib/streakNotifications'
+import { useDashboardStore } from '../../stores/dashboardStore'
 
 // expo modules lazy-required for Expo Go compatibility
 let Notifications: any = null
@@ -216,6 +217,14 @@ export default function FocusTimerScreen() {
       setLevelUp(result.levelUp)
       setShowXP(true)
 
+      // Patch today_minutes and cancel the 20:00 reminder if goal is now met
+      const dashState = useDashboardStore.getState()
+      const prevMinutes = dashState.data?.focusStats?.today_minutes ?? 0
+      const dailyGoal   = dashState.data?.focusStats?.daily_goal ?? 20
+      const newMinutes  = prevMinutes + plannedMinutes
+      dashState.patchFocusStats({ today_minutes: newMinutes })
+      if (newMinutes >= dailyGoal) cancelStreakReminder().catch(() => {})
+
       Animated.sequence([
         Animated.timing(xpAnim, { toValue: 1, duration: 400, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }),
         Animated.delay(2000),
@@ -243,7 +252,6 @@ export default function FocusTimerScreen() {
           }).catch(() => {})
         }
 
-        rescheduleStreakReminderForTomorrow().catch(() => {})
         setShowCompletion(true)
         Animated.spring(completionAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }).start()
 

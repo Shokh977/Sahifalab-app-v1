@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import {
-  View, Text, Pressable, StyleSheet, Image,
+  View, Text, Pressable, StyleSheet,
   Modal, ScrollView, Dimensions,
 } from 'react-native'
+import { Image } from 'expo-image'
 import ReAnimated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
   runOnJS, Easing,
@@ -313,7 +314,7 @@ export function DrawerMenu({ visible, onClose }: Props) {
               }]}
             >
               {user.photo_url ? (
-                <Image source={{ uri: user.photo_url }} style={styles.userAvatar} />
+                <Image source={{ uri: user.photo_url }} style={styles.userAvatar} contentFit="cover" cachePolicy="memory-disk" />
               ) : (
                 <View style={[styles.userAvatar, {
                   backgroundColor: c.brandSubtle,

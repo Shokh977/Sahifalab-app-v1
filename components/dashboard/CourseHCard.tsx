@@ -1,9 +1,6 @@
-/**
- * Horizontal course card for the "My Courses" scroll row.
- * Shows thumbnail, title, category, and a thin XP progress bar.
- */
 import React from 'react'
-import { View, Text, Image, StyleSheet, Pressable } from 'react-native'
+import { View, Text, StyleSheet, Pressable } from 'react-native'
+import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, radius, spacing } from '../../lib/constants'
@@ -14,7 +11,7 @@ interface Props {
   progress: number // 0-1
 }
 
-export function CourseHCard({ course, progress }: Props) {
+export const CourseHCard = React.memo(function CourseHCard({ course, progress }: Props) {
   const { c }  = useTheme()
   const router = useRouter()
   const pct    = Math.round(progress * 100)
@@ -28,7 +25,7 @@ export function CourseHCard({ course, progress }: Props) {
       ]}
     >
       {course.thumbnail_url ? (
-        <Image source={{ uri: course.thumbnail_url }} style={styles.thumb} />
+        <Image source={{ uri: course.thumbnail_url }} style={styles.thumb} contentFit="cover" cachePolicy="memory-disk" />
       ) : (
         <View style={[styles.thumb, { backgroundColor: c.bgTertiary }]} />
       )}
@@ -60,7 +57,7 @@ export function CourseHCard({ course, progress }: Props) {
       </View>
     </Pressable>
   )
-}
+})
 
 const styles = StyleSheet.create({
   card: {

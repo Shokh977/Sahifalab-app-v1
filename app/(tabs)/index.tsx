@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   View, Text, ScrollView, RefreshControl, StyleSheet,
-  Pressable, Image, Linking,
+  Pressable, Linking,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { Bell } from 'phosphor-react-native'
@@ -56,7 +57,7 @@ function TopBar() {
 
         <Pressable onPress={() => router.push('/(tabs)/profile' as any)}>
           {user?.photo_url ? (
-            <Image source={{ uri: user.photo_url }} style={[styles.avatar, { borderColor: tier.border }]} />
+            <Image source={{ uri: user.photo_url }} style={[styles.avatar, { borderColor: tier.border }]} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.accentPrimary }]}>
               <Text style={[styles.avatarInitials, { color: '#fff', fontFamily: typography.fontFamily.bold }]}>
@@ -143,7 +144,7 @@ function HeroBanner() {
       ]}
     >
       {content.image_url && (
-        <Image source={{ uri: content.image_url }} style={heroBannerStyles.image} />
+        <Image source={{ uri: content.image_url }} style={heroBannerStyles.image} contentFit="cover" cachePolicy="memory-disk" />
       )}
       <View style={heroBannerStyles.body}>
         <Text style={[heroBannerStyles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]} numberOfLines={2}>
@@ -243,17 +244,7 @@ export default function HomeTab() {
         {/* My Courses */}
         {(() => {
           const enrolled = data?.enrolled ?? []
-          if (loading && !data) {
-            return (
-              <>
-                <SectionHeader title="Mening kurslarim" />
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-                  {[0, 1].map(i => <SkeletonBlock key={i} width={200} height={170} borderRadius={radius.card} style={{ flexShrink: 0 }} />)}
-                </ScrollView>
-              </>
-            )
-          }
-          if (!data || enrolled.length === 0) return null
+          if (enrolled.length === 0) return null
           return (
             <>
               <SectionHeader
@@ -281,7 +272,7 @@ export default function HomeTab() {
         {/* Recommended */}
         {(() => {
           const rec = data?.recommended ?? []
-          if (loading && !data) {
+          if (loading && rec.length === 0) {
             return (
               <>
                 <SectionHeader title="Tavsiya etilgan" />
@@ -289,7 +280,7 @@ export default function HomeTab() {
               </>
             )
           }
-          if (!data || rec.length === 0) return null
+          if (rec.length === 0) return null
           return (
             <>
               <SectionHeader

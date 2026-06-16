@@ -1,8 +1,9 @@
 import React, { useState, useCallback, memo, useRef } from 'react'
 import {
-  View, Text, StyleSheet, Pressable, Image,
+  View, Text, StyleSheet, Pressable,
   Modal, TextInput, Animated,
 } from 'react-native'
+import { Image } from 'expo-image'
 import {
   Star, MessageCircle, Repeat2, Bookmark, BadgeCheck,
   Repeat, Eye, Share2, MoreHorizontal, Pencil, Trash2,
@@ -58,7 +59,7 @@ function Avatar({ uri, name, size = 36 }: { uri?: string | null; name: string; s
   const { c } = useTheme()
   const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   return uri ? (
-    <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+    <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" cachePolicy="memory-disk" />
   ) : (
     <View style={{
       width: size, height: size, borderRadius: size / 2,
@@ -306,7 +307,8 @@ function PostCardComponent({ post, onCommentPress }: Props) {
         <Image
           source={{ uri: post.image_url ?? post.image_urls[0] }}
           style={styles.image}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
         />
       )}
 
