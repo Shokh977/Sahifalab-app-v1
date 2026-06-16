@@ -3,7 +3,6 @@ import {
   Modal, View, Text, Pressable, StyleSheet, Linking, ScrollView, Platform,
 } from 'react-native'
 import { Image } from 'expo-image'
-import { X } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useAnnouncementStore } from '../../stores/announcementStore'
 import { typography, spacing, radius } from '../../lib/constants'
@@ -48,17 +47,10 @@ export function AnnouncementModal() {
                 contentFit="cover"
                 cachePolicy="memory-disk"
               />
-              {/* X overlaid on image */}
-              <Pressable onPress={() => snooze(current.id)} hitSlop={12} style={styles.closeBtnOnImage}>
-                <X size={15} color="#fff" strokeWidth={2.5} />
-              </Pressable>
             </View>
           ) : (
             <View style={[styles.iconWrap, { backgroundColor: c.brandSubtle }]}>
               <Text style={styles.iconEmoji}>📢</Text>
-              <Pressable onPress={() => snooze(current.id)} hitSlop={12} style={[styles.closeBtnPlain, { backgroundColor: c.bgTertiary }]}>
-                <X size={15} color={c.textDisabled} strokeWidth={2} />
-              </Pressable>
             </View>
           )}
 
@@ -101,17 +93,9 @@ export function AnnouncementModal() {
             </Pressable>
           )}
 
-          {/* ── Action row ───────────────────────────────────────────────── */}
+          {/* ── Single close button (permanent dismiss) ─────────────────── */}
+          {/* Backdrop tap = snooze (shows again tomorrow) */}
           <View style={[styles.actionRow, { borderTopColor: c.border }]}>
-            <Pressable
-              onPress={() => snooze(current.id)}
-              style={({ pressed }) => [styles.snoozeBtn, { opacity: pressed ? 0.55 : 1 }]}
-            >
-              <Text style={[styles.snoozeTxt, { color: c.textDisabled, fontFamily: typography.fontFamily.medium }]}>
-                Bugun ko'rsatma
-              </Text>
-            </Pressable>
-
             <Pressable
               onPress={() => dismiss(current.id)}
               style={({ pressed }) => [
@@ -166,17 +150,6 @@ const styles = StyleSheet.create({
     width:  '100%',
     height: '100%',
   },
-  closeBtnOnImage: {
-    position:        'absolute',
-    top:             12,
-    right:           12,
-    width:           28,
-    height:          28,
-    borderRadius:    14,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
   iconWrap: {
     width:          '100%',
     height:         100,
@@ -185,16 +158,6 @@ const styles = StyleSheet.create({
   },
   iconEmoji: {
     fontSize: 40,
-  },
-  closeBtnPlain: {
-    position:     'absolute',
-    top:          12,
-    right:        12,
-    width:        28,
-    height:       28,
-    borderRadius: 14,
-    alignItems:   'center',
-    justifyContent: 'center',
   },
 
   // ── Text ────────────────────────────────────────────────────────────────────
@@ -249,24 +212,15 @@ const styles = StyleSheet.create({
 
   // ── Action row ───────────────────────────────────────────────────────────────
   actionRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
     borderTopWidth:    StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
-    gap:               spacing.sm,
-  },
-  snoozeBtn: {
-    flex: 1,
-  },
-  snoozeTxt: {
-    fontSize: typography.size.sm,
   },
   dismissBtn: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.sm,
-    borderRadius:      radius.lg,
+    height:         44,
+    borderRadius:   radius.xl,
+    alignItems:     'center',
+    justifyContent: 'center',
   },
   dismissTxt: {
     fontSize: typography.size.sm,

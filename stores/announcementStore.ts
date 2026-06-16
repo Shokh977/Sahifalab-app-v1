@@ -23,9 +23,7 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => ({
   loading: false,
 
   fetch: async () => {
-    // Read local filters first (fast, no network) — if everything is already
-    // dismissed/snoozed we can skip the network call entirely.
-    let dismissed: number[] = []
+    let dismissed: string[] = []
     let snoozed: Record<string, string> = {}
     try {
       const [dr, sr] = await Promise.all([
@@ -36,13 +34,13 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => ({
       snoozed   = sr ? JSON.parse(sr) : {}
     } catch {}
 
-    // Network call — fire and forget, UI updates when it resolves
     api.getActive()
       .then(list => {
         const today = todayStr()
         const showable = list.find(ann => {
-          if (dismissed.includes(ann.id)) return false
-          if (snoozed[ann.id] === today) return false
+          const key = String(ann.id)
+          if (dismissed.includes(key)) return false
+          if (snoozed[key] === today) return false
           return true
         })
         set({ current: showable ?? null })
@@ -54,9 +52,10 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => ({
     set({ current: null })
     try {
       const raw = await AsyncStorage.getItem(DISMISSED_KEY).catch(() => null)
-      const dismissed: number[] = raw ? JSON.parse(raw) : []
-      if (!dismissed.includes(id)) {
-        dismissed.push(id)
+      const dismissed: string[] = raw ? JSON.parse(raw) : []
+      const key = String(id)
+      if (!dismissed.includes(key)) {
+        dismissed.push(key)
         await AsyncStorage.setItem(DISMISSED_KEY, JSON.stringify(dismissed))
       }
     } catch {}
@@ -68,7 +67,7 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => ({
     try {
       const raw = await AsyncStorage.getItem(SNOOZED_KEY).catch(() => null)
       const snoozed: Record<string, string> = raw ? JSON.parse(raw) : {}
-      snoozed[id] = todayStr()
+      snoozed[String(id)] = todayStr()
       await AsyncStorage.setItem(SNOOZED_KEY, JSON.stringify(snoozed))
     } catch {}
     api.markSeen(id).catch(() => {})

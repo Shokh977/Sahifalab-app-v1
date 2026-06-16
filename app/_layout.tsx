@@ -154,6 +154,7 @@ export default function RootLayout() {
   const segments = useSegments()
   const isOnline = useOnline()
   const wasOnlineRef = useRef(false)
+  const hasAnnouncement = useAnnouncementStore(s => s.current !== null)
 
   const [showAppIntro, setShowAppIntro] = useState(false)
 
@@ -346,7 +347,7 @@ export default function RootLayout() {
         <OfflineBanner />
         <NotifToast />
         <AppIntroModal visible={showAppIntro} onFinish={dismissAppIntro} />
-        {useAnnouncementStore(s => s.current) !== null && <AnnouncementModal />}
+        {hasAnnouncement && <AnnouncementModal />}
       </GestureHandlerRootView>
     </AppErrorBoundary>
   )
