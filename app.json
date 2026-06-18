@@ -128,8 +128,7 @@
           }
         }
       ],
-      "expo-sharing",
-      "react-native-android-widget"
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true
