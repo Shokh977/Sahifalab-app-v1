@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { View, Text, ScrollView, StyleSheet, Pressable, InteractionManager } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft, Lock } from 'lucide-react-native'
@@ -20,6 +20,12 @@ export default function TreeStagesScreen() {
   const streakDays   = dashData?.focusStats.streak_days ?? user?.streak_days ?? 0
   const currentStage = stageFromStreak(streakDays)
   const currentMeta  = TREE_STAGES[currentStage - 1]
+
+  const [treesReady, setTreesReady] = useState(false)
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => setTreesReady(true))
+    return () => task.cancel()
+  }, [])
 
   return (
     <View style={[styles.screen, { backgroundColor: c.bgPrimary }]}>
@@ -80,13 +86,17 @@ export default function TreeStagesScreen() {
                 </View>
 
                 <View style={[styles.treeBox, locked && styles.lockedTree]}>
-                  <MagicTree
-                    stage={s.id}
-                    state={locked ? 'dead' : 'alive'}
-                    size="thumb"
-                    uid={`ts_${s.id}`}
-                    animate={false}
-                  />
+                  {treesReady ? (
+                    <MagicTree
+                      stage={s.id}
+                      state={locked ? 'dead' : 'alive'}
+                      size="thumb"
+                      uid={`ts_${s.id}`}
+                      animate={false}
+                    />
+                  ) : (
+                    <View style={styles.treePlaceholder} />
+                  )}
                   {locked && (
                     <View style={styles.lockOverlay}>
                       <Lock size={16} color={c.textMuted} />
@@ -190,7 +200,8 @@ const styles = StyleSheet.create({
     height:   100,
     position: 'relative',
   },
-  lockedTree:  { opacity: 0.35 },
+  lockedTree:      { opacity: 0.35 },
+  treePlaceholder: { width: 80, height: 100 },
   lockOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems:     'center',

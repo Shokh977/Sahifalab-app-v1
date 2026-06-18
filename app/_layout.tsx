@@ -1,9 +1,16 @@
 import React, { useEffect, useRef, useState, Component } from 'react'
-import { Linking, View, Text, Pressable, StyleSheet } from 'react-native'
+import { Linking, View, Text, Pressable, StyleSheet, Platform } from 'react-native'
 import { Slot, useRouter, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts } from 'expo-font'
 import { StatusBar } from 'expo-status-bar'
+import * as NavigationBar from 'expo-navigation-bar'
+import { registerWidgetTaskHandler } from 'react-native-android-widget'
+import { widgetTaskHandler } from '../widgets/widgetTaskHandler'
+
+if (Platform.OS === 'android') {
+  registerWidgetTaskHandler(widgetTaskHandler)
+}
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../stores/authStore'
@@ -248,6 +255,13 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded && !isLoading) SplashScreen.hideAsync()
   }, [fontsLoaded, isLoading])
+
+  // ── Android nav bar — keep transparent + correct button colour ────────────
+  useEffect(() => {
+    if (Platform.OS !== 'android') return
+    NavigationBar.setBackgroundColorAsync('transparent').catch(() => {})
+    NavigationBar.setButtonStyleAsync(theme === 'dark' ? 'light' : 'dark').catch(() => {})
+  }, [theme])
 
   // ── Auth guard ────────────────────────────────────────────────────────────
   useEffect(() => {

@@ -1014,9 +1014,7 @@ function FlashcardsView() {
     </ScrollView>
 
     {/* ── Flashcards info modal ─────────────────────────────────────────── */}
-    <Modal transparent animationType="slide" visible={showInfo} statusBarTranslucent onRequestClose={() => setShowInfo(false)}>
-      <Pressable style={[styles.fcInfoOverlay, { backgroundColor: c.overlay }]} onPress={() => setShowInfo(false)} />
-      <View style={[styles.fcInfoSheet, { backgroundColor: c.bgSecondary, paddingBottom: Math.max(spacing.xl, insets.bottom) }]}>
+    <InfoSheetModal visible={showInfo} onClose={() => setShowInfo(false)}>
         <View style={[styles.fcInfoHandle, { backgroundColor: c.border }]} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 18, paddingBottom: 32 }}>
 
@@ -1083,8 +1081,7 @@ function FlashcardsView() {
             Tushunarli
           </Text>
         </Pressable>
-      </View>
-    </Modal>
+    </InfoSheetModal>
     </>
   )
 }
@@ -1358,9 +1355,7 @@ export default function StudyTab() {
       </View>
 
       {/* ── Timer info modal ───────────────────────────────────────────────── */}
-      <Modal transparent animationType="slide" visible={showTimerInfo} statusBarTranslucent onRequestClose={() => setShowTimerInfo(false)}>
-        <Pressable style={[styles.fcInfoOverlay, { backgroundColor: c.overlay }]} onPress={() => setShowTimerInfo(false)} />
-        <View style={[styles.fcInfoSheet, { backgroundColor: c.bgSecondary, paddingBottom: Math.max(spacing.xl, insets.bottom) }]}>
+      <InfoSheetModal visible={showTimerInfo} onClose={() => setShowTimerInfo(false)}>
           <View style={[styles.fcInfoHandle, { backgroundColor: c.border }]} />
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 18, paddingBottom: 8 }}>
 
@@ -1449,8 +1444,7 @@ export default function StudyTab() {
               Tushunarli
             </Text>
           </Pressable>
-        </View>
-      </Modal>
+      </InfoSheetModal>
     </View>
   )
 }
@@ -1682,7 +1676,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fcInfoOverlay: {
-    flex: 1,
+    flex:            1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   fcInfoSheet: {
     position:          'absolute',

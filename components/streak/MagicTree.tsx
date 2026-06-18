@@ -629,12 +629,18 @@ const SIZES: Record<TreeSize, { w: number; h: number }> = {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 export interface MagicTreeProps {
-  stage:    StageNumber
-  state?:   TreeState
-  mood?:    SkyMood
-  size?:    TreeSize
-  uid?:     string
-  animate?: boolean
+  stage:      StageNumber
+  state?:     TreeState
+  mood?:      SkyMood
+  size?:      TreeSize | 'auto'  // 'auto' scales with stage
+  uid?:       string
+  animate?:   boolean
+}
+
+// stage 1 → 90×112, stage 10 → 240×300  (viewBox 4:5 ratio maintained)
+function autoSize(stage: number): { w: number; h: number } {
+  const w = Math.round(90 + (stage - 1) * (240 - 90) / 9)
+  return { w, h: Math.round(w * 1.25) }
 }
 
 export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp, animate = true }: MagicTreeProps) {
@@ -642,7 +648,7 @@ export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp,
   const id      = Math.max(1, Math.min(10, stage)) as StageNumber
   const pal     = stagePalettes[id]
   const geom    = getGeom(id)
-  const dims    = SIZES[size]
+  const dims    = size === 'auto' ? autoSize(id) : SIZES[size]
   const dead    = state === 'dead'
   const frozen  = state === 'frozen'
   const reduced = useReducedMotion()

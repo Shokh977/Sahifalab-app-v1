@@ -96,6 +96,25 @@
           ]
         }
       ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "Streak",
+              "label": "Seriya — Sahifalab",
+              "description": "Kunlik seriya va daraxt bosqichini ko'rsatadi",
+              "previewImage": "./assets/images/adaptive-icon.png",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ],
       "expo-asset",
       "expo-audio",
       [
@@ -108,7 +127,9 @@
             "usesCleartextTraffic": false
           }
         }
-      ]
+      ],
+      "expo-sharing",
+      "react-native-android-widget"
     ],
     "experiments": {
       "typedRoutes": true

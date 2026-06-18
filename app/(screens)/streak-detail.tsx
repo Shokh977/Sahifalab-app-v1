@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, Modal, Animated, Dimensions,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronLeft, Snowflake, Map } from 'lucide-react-native'
+import { ChevronLeft, Snowflake, Map, Info, X, Share2 } from 'lucide-react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import ViewShot from 'react-native-view-shot'
+import * as Sharing from 'expo-sharing'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { streaks as streaksApi } from '../../lib/api'
@@ -19,6 +21,7 @@ import { stageFromStreak, TREE_STAGES } from '../../lib/treeTheme'
 import type { TreeState, StageNumber } from '../../lib/treeTheme'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
+import { syncWidget } from '../../lib/syncWidget'
 
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
@@ -242,6 +245,19 @@ export default function StreakDetailScreen() {
   const [localFreeze, setLocalFreeze] = useState(
     () => dashData?.focusStats.freeze_count ?? 0
   )
+  const [showTreeInfo, setShowTreeInfo] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const viewShotRef = useRef<ViewShot>(null)
+
+  async function shareCard() {
+    if (!viewShotRef.current || sharing) return
+    try {
+      setSharing(true)
+      const uri = await (viewShotRef.current as any).capture()
+      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Ulashish' })
+    } catch {}
+    finally { setSharing(false) }
+  }
   const [calDays, setCalDays]   = useState<7 | 30>(7)
   const calDaysRef              = useRef<7 | 30>(7)
   const loadGenRef              = useRef(0)   // generation counter — stale responses are discarded
@@ -265,6 +281,7 @@ export default function StreakDetailScreen() {
         setTimeout(() => setShowLostModal(true), 500)
       } else {
         setData(res)
+        syncWidget(res.streak_days)
         const newStage = stageFromStreak(res.streak_days)
         if (newStage > prevStageRef.current) {
           prevStageRef.current = newStage
@@ -440,7 +457,18 @@ export default function StreakDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Hero ──────────────────────────────────────────────────────── */}
-        <LinearGradient colors={heroGradient} style={styles.hero}>
+        <View>
+          <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
+          <LinearGradient colors={heroGradient} style={styles.hero}>
+          {/* Info button */}
+          <Pressable
+            style={styles.treeInfoBtn}
+            onPress={() => setShowTreeInfo(true)}
+            hitSlop={10}
+          >
+            <Info size={18} color="rgba(255,255,255,0.55)" />
+          </Pressable>
+
           {/* Stage chip */}
           <View style={[styles.stageChip, { backgroundColor: heroChipBg }]}>
             <Text style={[styles.stageChipText, { color: heroChipText, fontFamily: typography.fontFamily.bold }]}>
@@ -448,7 +476,7 @@ export default function StreakDetailScreen() {
             </Text>
           </View>
 
-          <MagicTree stage={stage} state={treeState} size="card" uid="sd_hero" />
+          <MagicTree stage={stage} state={treeState} size="auto" uid="sd_hero" />
 
           {/* Big streak number */}
           <View style={styles.heroTextRow}>
@@ -478,7 +506,18 @@ export default function StreakDetailScreen() {
             </View>
           )}
 
-        </LinearGradient>
+          <Text style={[styles.heroWatermark, { fontFamily: typography.fontFamily.medium }]}>
+            🌱 sahifalab.uz
+          </Text>
+
+          </LinearGradient>
+          </ViewShot>
+
+          {/* Share button — outside ViewShot so it won't appear in the captured image */}
+          <Pressable style={styles.shareBtn} onPress={shareCard} hitSlop={10} disabled={sharing}>
+            <Share2 size={18} color={sharing ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.55)'} />
+          </Pressable>
+        </View>
 
         {/* ── Stats row ─────────────────────────────────────────────────── */}
         <View style={styles.statsRow}>
@@ -694,9 +733,188 @@ export default function StreakDetailScreen() {
         toStage={evolutionStage}
         onClose={() => setShowEvolution(false)}
       />
+
+      <TreeInfoModal visible={showTreeInfo} onClose={() => setShowTreeInfo(false)} c={c} goalMinutes={goalM} />
     </View>
   )
 }
+
+// ── Tree info modal ───────────────────────────────────────────────────────────
+
+function TreeInfoModal({ visible, onClose, c, goalMinutes }: {
+  visible: boolean
+  onClose: () => void
+  c: ReturnType<typeof useTheme>['c']
+  goalMinutes: number
+}) {
+  const insets       = useSafeAreaInsets()
+  const [rendered, setRendered] = useState(visible)
+  const backdropAnim = useRef(new Animated.Value(0)).current
+  const slideAnim    = useRef(new Animated.Value(500)).current
+
+  useEffect(() => {
+    if (visible) {
+      setRendered(true)
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(slideAnim,    { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(slideAnim,    { toValue: 500, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setRendered(false); slideAnim.setValue(500) })
+    }
+  }, [visible])
+
+  if (!rendered) return null
+
+  return (
+    <Modal visible={rendered} transparent onRequestClose={onClose} statusBarTranslucent>
+      <View style={{ flex: 1 }}>
+        {/* Backdrop fades in independently */}
+        <Animated.View style={[ti.backdrop, { opacity: backdropAnim }]}>
+          <Pressable style={{ flex: 1 }} onPress={onClose} />
+        </Animated.View>
+
+        {/* Sheet slides up via spring */}
+        <Animated.View style={[ti.sheetWrap, { transform: [{ translateY: slideAnim }] }]}>
+          <View style={[ti.sheet, { backgroundColor: c.bgElevated }]}>
+          {/* Handle */}
+          <View style={[ti.handle, { backgroundColor: c.border }]} />
+
+          {/* Header */}
+          <View style={ti.header}>
+            <Text style={[ti.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+              🌳 Jonli Daraxt nima?
+            </Text>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <X size={20} color={c.textMuted} />
+            </Pressable>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} style={[ti.scroll, { maxHeight: Dimensions.get('window').height * 0.6 }]} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+            {/* What is it */}
+            <Text style={[ti.body, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+              Jonli Daraxt — sizning o'qish seriyangizni aks ettiruvchi tirik daraxt. Har kuni o'qisangiz daraxt o'sadi va yangi bosqichlarga o'tadi.
+            </Text>
+
+            {/* Rules */}
+            <View style={[ti.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+              <InfoRow emoji="✅" title="O'stirish" desc="Kundalik maqsadingizni bajaring — daraxt o'sadi." c={c} />
+              <InfoRow emoji="❄️" title="Muzlagan holat" desc="Bir kun o'tkazib yuborsangiz daraxt muzlaydi. 'Freeze' ishlatib ertasi kuni tiklang." c={c} />
+              <InfoRow emoji="🥀" title="So'ligan holat" desc="Seriya uzilib dars qoldirsangiz daraxt so'liydi. Yangidan boshlash kerak." c={c} />
+              <InfoRow emoji="🎯" title="Kunlik maqsad" desc={`Fokus taymer orqali ${goalMinutes} daqiqa o'qing — seriya saqlanadi. Taymer faqat faol o'qish vaqtini hisoblaydi.`} c={c} last />
+            </View>
+
+            {/* Stages */}
+            <Text style={[ti.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+              10 ta bosqich
+            </Text>
+            {TREE_STAGES.map((s, i) => (
+              <View
+                key={s.id}
+                style={[ti.stageRow, { borderBottomColor: c.border, borderBottomWidth: i < 9 ? StyleSheet.hairlineWidth : 0 }]}
+              >
+                <Text style={[ti.stageNum, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+                  {s.id}
+                </Text>
+                <View style={ti.stageInfo}>
+                  <Text style={[ti.stageName, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+                    {s.name}
+                  </Text>
+                  <Text style={[ti.stageBlurb, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                    {s.blurb}
+                  </Text>
+                </View>
+                <Text style={[ti.stageDays, { color: c.brand, fontFamily: typography.fontFamily.bold }]}>
+                  {s.streakDays === 0 ? 'Boshlang\'ich' : `${s.streakDays}+ kun`}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+        </Animated.View>
+      </View>
+    </Modal>
+  )
+}
+
+function InfoRow({ emoji, title, desc, c, last }: {
+  emoji: string; title: string; desc: string
+  c: ReturnType<typeof useTheme>['c']
+  last?: boolean
+}) {
+  return (
+    <View style={[ti.infoRow, !last && { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+      <Text style={ti.infoEmoji}>{emoji}</Text>
+      <View style={ti.infoText}>
+        <Text style={[ti.infoTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+          {title}
+        </Text>
+        <Text style={[ti.infoDesc, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+          {desc}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+const ti = StyleSheet.create({
+  backdrop: {
+    position:        'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  sheetWrap: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+  },
+  sheet: {
+    borderTopLeftRadius:  radius['2xl'],
+    borderTopRightRadius: radius['2xl'],
+    paddingTop: 12,
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 2,
+    alignSelf: 'center', marginBottom: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.base,
+  },
+  title:   { fontSize: 17 },
+  scroll:  { paddingHorizontal: spacing.lg },
+  body:    { fontSize: 14, lineHeight: 22, marginBottom: spacing.base },
+
+  card: {
+    borderRadius: radius.lg,
+    borderWidth:  1,
+    marginBottom: spacing.base,
+    overflow: 'hidden',
+  },
+  infoRow:   { flexDirection: 'row', alignItems: 'flex-start', padding: spacing.sm, gap: spacing.sm },
+  infoEmoji: { fontSize: 18, width: 26, textAlign: 'center', marginTop: 1 },
+  infoText:  { flex: 1, gap: 2 },
+  infoTitle: { fontSize: 13 },
+  infoDesc:  { fontSize: 12, lineHeight: 18 },
+
+  sectionTitle: { fontSize: 14, marginBottom: spacing.sm },
+  stageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  stageNum:   { width: 20, fontSize: 12, textAlign: 'center' },
+  stageInfo:  { flex: 1, gap: 2 },
+  stageName:  { fontSize: 13 },
+  stageBlurb: { fontSize: 11, lineHeight: 16 },
+  stageDays:  { fontSize: 11, minWidth: 70, textAlign: 'right' },
+})
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
@@ -725,6 +943,14 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: spacing['2xl'],
     gap:           spacing.md,
+  },
+
+  treeInfoBtn: {
+    position: 'absolute',
+    top:      12,
+    right:    12,
+    padding:  6,
+    zIndex:   10,
   },
 
   // Hero — fills ~40% of screen height
@@ -1072,6 +1298,22 @@ const styles = StyleSheet.create({
     height:          5,
     borderRadius:    3,
     backgroundColor: '#46c08a',
+  },
+
+  heroWatermark: {
+    fontSize:      11,
+    color:         'rgba(255,255,255,0.35)',
+    textAlign:     'center',
+    marginTop:     6,
+    letterSpacing: 0.4,
+  },
+
+  shareBtn: {
+    position: 'absolute',
+    top:      12,
+    left:     12,
+    padding:  6,
+    zIndex:   10,
   },
 
 })
