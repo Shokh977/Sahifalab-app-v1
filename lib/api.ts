@@ -1180,6 +1180,20 @@ export interface EnrollmentCheck {
   owner:    boolean
 }
 
+export interface PendingEnrollmentStatus {
+  has_pending:     boolean
+  reference_code?: string
+  status?:         'awaiting_payment' | 'paid'
+  expires_at?:     string
+}
+
+export interface EnrollmentCodeResponse {
+  reference_code:  string
+  telegram_bot_url: string
+  expires_at:      string
+  status:          'awaiting_payment' | 'paid'
+}
+
 export const enrollments = {
   check: (courseId: number) =>
     request<EnrollmentCheck>(`/api/enrollments/check?course_id=${courseId}`, { auth: true }),
@@ -1199,6 +1213,18 @@ export const enrollments = {
   mine: () =>
     request<Array<{ course_id: number; created_at: string; courses: Course | null }>>(
       '/api/enrollments/mine', { auth: true },
+    ),
+
+  requestCode: (courseId: number) =>
+    request<EnrollmentCodeResponse>(
+      '/api/enrollments/request-code',
+      { method: 'POST', body: JSON.stringify({ course_id: courseId }), auth: true },
+    ),
+
+  pendingStatus: (courseId: number) =>
+    request<PendingEnrollmentStatus>(
+      `/api/enrollments/pending-status?course_id=${courseId}`,
+      { auth: true },
     ),
 }
 

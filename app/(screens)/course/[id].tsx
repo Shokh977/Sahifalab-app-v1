@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, FlatList, Pressable,
   Image, ActivityIndicator, Alert, Linking, Animated,
-  TextInput, Dimensions,
+  TextInput, Dimensions, Modal, Clipboard,
 } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -12,7 +12,8 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   BookOpen, Play, Pause, Star, Users, Clock, Globe, Calendar,
   CheckCircle, Heart, Award, Folder, Infinity as InfinityIcon,
-  Smartphone, FileText, Share2, Download, Lock, Pencil,
+  Smartphone, FileText, Share2, Download, Lock, Pencil, Copy, X,
+  MessageCircle,
 } from 'lucide-react-native'
 import { MotiView } from 'moti'
 import { VideoPlayer } from '../../../components/courses/VideoPlayer'
@@ -20,12 +21,12 @@ import { useTheme } from '../../../hooks/useTheme'
 import { useAuthStore } from '../../../stores/authStore'
 import { useCourseStore } from '../../../stores/courseStore'
 import { useDownloadStore } from '../../../stores/downloadStore'
-import { courses as coursesApi, lessons as lessonsApi, profile } from '../../../lib/api'
+import { courses as coursesApi, lessons as lessonsApi, profile, enrollments as enrollmentsApi } from '../../../lib/api'
+import type { PendingEnrollmentStatus, EnrollmentCodeResponse } from '../../../lib/api'
 import { typography, spacing, radius, WEB_URL } from '../../../lib/constants'
 import { shareCertificate } from '../../../lib/share'
 import type { Course, Lesson, CourseReview, CourseCertificate } from '../../../lib/api'
 import type { ProfileData } from '../../../lib/types'
-import { ComingSoonModal } from '../../../components/ui/ComingSoonModal'
 import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 import { RoleBadge } from '../../../components/ui/RoleBadge'
 
@@ -751,7 +752,11 @@ export default function CourseDetailScreen() {
   const [certificate,    setCertificate]    = useState<CourseCertificate | null>(null)
   const [loading,        setLoading]        = useState(true)
   const [enrolling,      setEnrolling]      = useState(false)
-  const [showComingSoon, setShowComingSoon] = useState(false)
+  const [showPaySheet,   setShowPaySheet]   = useState(false)
+  const [payCode,        setPayCode]        = useState<EnrollmentCodeResponse | null>(null)
+  const [payCodeLoading, setPayCodeLoading] = useState(false)
+  const [pendingStatus,  setPendingStatus]  = useState<PendingEnrollmentStatus | null>(null)
+  const [codeCopied,     setCodeCopied]     = useState(false)
   const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
   const [wishlisted,     setWishlisted]     = useState(false)
   const [descExpanded,   setDescExpanded]   = useState(false)
@@ -799,6 +804,13 @@ export default function CourseDetailScreen() {
       setLessons(ls)
       setReviews(rv)
       await Promise.all([checkEnrollment(courseId), loadProgress(courseId)])
+
+      // Check for pending payment if the course is paid and user is not enrolled
+      if (courseData.is_paid) {
+        enrollmentsApi.pendingStatus(courseId).then(s => {
+          if (s.has_pending) setPendingStatus(s)
+        }).catch(() => {})
+      }
 
       const progSet = progressCache[courseId] ?? new Set<number>()
       const startL  = startLessonId ? ls.find(l => l.id === Number(startLessonId)) : null
@@ -885,11 +897,32 @@ export default function CourseDetailScreen() {
   // ── Enroll / buy ───────────────────────────────────────────────────────────
   async function handleEnroll() {
     if (!course) return
-    if (course.is_paid) { setShowComingSoon(true); return }
+    if (course.is_paid) {
+      setPayCodeLoading(true)
+      setShowPaySheet(true)
+      try {
+        const res = await enrollmentsApi.requestCode(courseId)
+        setPayCode(res)
+        setPendingStatus({ has_pending: true, reference_code: res.reference_code, status: res.status as any, expires_at: res.expires_at })
+      } catch (e: any) {
+        setShowPaySheet(false)
+        Alert.alert('Xatolik', e?.message ?? 'Kod olinmadi')
+      } finally {
+        setPayCodeLoading(false)
+      }
+      return
+    }
     setEnrolling(true)
     try { await enroll(courseId) }
     catch (e: any) { Alert.alert('Xatolik', e?.message ?? "Ro'yxatdan o'tishda xatolik") }
     finally { setEnrolling(false) }
+  }
+
+  function handleCopyCode() {
+    if (!payCode) return
+    Clipboard.setString(payCode.reference_code)
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
   }
 
   // ── Reset watch state when lesson changes ─────────────────────────────────
@@ -1329,6 +1362,17 @@ export default function CourseDetailScreen() {
                 {wishlisted ? 'Sevimlilardan olib tashlash' : "Sevimlilarga qo'shish"}
               </Text>
             </Pressable>
+
+            {/* Pending payment status badge */}
+            {pendingStatus?.has_pending && (
+              <View style={[styles.pendingBadge, { backgroundColor: c.warningMuted }]}>
+                <Text style={[styles.pendingBadgeText, { color: c.warning, fontFamily: typography.fontFamily.medium }]}>
+                  {pendingStatus.status === 'paid'
+                    ? `✓ Screenshot qabul qilindi. Tasdiqlash kutilmoqda... (${pendingStatus.reference_code})`
+                    : `⏳ To'lov tekshirilmoqda... (${pendingStatus.reference_code})`}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* What you'll learn */}
@@ -1525,7 +1569,125 @@ export default function CourseDetailScreen() {
         </MotiView>
       )}
 
-      <ComingSoonModal visible={showComingSoon} onClose={() => setShowComingSoon(false)} />
+      {/* Payment bottom sheet */}
+      <Modal
+        visible={showPaySheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPaySheet(false)}
+      >
+        <Pressable
+          style={[styles.paySheetOverlay, { backgroundColor: c.overlay }]}
+          onPress={() => setShowPaySheet(false)}
+        />
+        <View style={[styles.paySheet, { backgroundColor: c.bgSecondary }]}>
+          <View style={[styles.paySheetHandle, { backgroundColor: c.border }]} />
+
+          {/* Header */}
+          <View style={styles.paySheetHeader}>
+            <Text style={[styles.paySheetTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+              Kursga yozilish
+            </Text>
+            <Pressable onPress={() => setShowPaySheet(false)} hitSlop={12}>
+              <X size={20} color={c.textMuted} />
+            </Pressable>
+          </View>
+
+          {/* Course info row */}
+          <View style={[styles.paySheetCourse, { borderColor: c.border }]}>
+            {course?.thumbnail_url
+              ? <Image source={{ uri: course.thumbnail_url }} style={styles.paySheetThumb} />
+              : <View style={[styles.paySheetThumb, { backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }]}>
+                  <BookOpen size={20} color={c.brand} />
+                </View>
+            }
+            <View style={{ flex: 1 }}>
+              <Text numberOfLines={2} style={[styles.paySheetCourseName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                {course?.title}
+              </Text>
+              <Text style={[styles.paySheetCoursePrice, { color: c.brand, fontFamily: typography.fontFamily.bold }]}>
+                {course?.price?.toLocaleString()} so'm
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.paySheetDivider, { backgroundColor: c.border }]} />
+
+          {payCodeLoading ? (
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <ActivityIndicator color={c.brand} size="large" />
+              <Text style={[{ color: c.textMuted, marginTop: 12, fontFamily: typography.fontFamily.regular, fontSize: typography.size.sm }]}>
+                Kod tayyorlanmoqda...
+              </Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Steps */}
+              {[
+                {
+                  label: "Telegram bot bilan bog'laning:",
+                  extra: (
+                    <Pressable onPress={() => payCode && Linking.openURL(payCode.telegram_bot_url)} style={[styles.paySheetLink, { backgroundColor: c.brandSubtle }]}>
+                      <MessageCircle size={14} color={c.brand} />
+                      <Text style={[styles.paySheetLinkText, { color: c.brand, fontFamily: typography.fontFamily.semibold }]}>@sahifalab_pay_bot</Text>
+                    </Pressable>
+                  ),
+                },
+                {
+                  label: 'Botga quyidagi kodni yuboring:',
+                  extra: payCode ? (
+                    <Pressable onPress={handleCopyCode} style={[styles.paySheetCodeRow, { backgroundColor: c.bgTertiary, borderColor: c.border }]}>
+                      <Text style={[styles.paySheetCode, { color: c.textPrimary, fontFamily: typography.fontFamily.mono }]}>
+                        {payCode.reference_code}
+                      </Text>
+                      {codeCopied
+                        ? <CheckCircle size={15} color={c.brand} />
+                        : <Copy size={15} color={c.textMuted} />
+                      }
+                    </Pressable>
+                  ) : null,
+                },
+                {
+                  label: "Bot to'lov ko'rsatmalarini yuboradi:",
+                  sub: "Karta raqami, kurs narxi va nima yozish kerakligi",
+                },
+                {
+                  label: "To'lov qilgach, bot avtomatik ravishda kursga kirishni faollashtiradi (5-30 daqiqa ichida).",
+                },
+              ].map((step, i) => (
+                <View key={i} style={styles.paySheetStep}>
+                  <View style={[styles.paySheetStepNum, { backgroundColor: c.brandSubtle }]}>
+                    <Text style={[{ color: c.brand, fontSize: 12, fontFamily: typography.fontFamily.bold }]}>{i + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Text style={[styles.paySheetStepText, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}>
+                      {step.label}
+                    </Text>
+                    {step.sub && (
+                      <Text style={[{ color: c.textSecondary, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>
+                        {step.sub}
+                      </Text>
+                    )}
+                    {step.extra}
+                  </View>
+                </View>
+              ))}
+
+              {/* Footer */}
+              <View style={styles.paySheetFooter}>
+                <Pressable onPress={() => setShowPaySheet(false)}>
+                  <Text style={[{ color: c.textMuted, fontSize: typography.size.sm, fontFamily: typography.fontFamily.medium }]}>Yopish</Text>
+                </Pressable>
+                <Pressable onPress={() => Linking.openURL('https://t.me/sahifalab')}>
+                  <Text style={[{ color: c.brand, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>
+                    Yordam kerak? Sahifalab Telegram'ga yozing
+                  </Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          )}
+        </View>
+      </Modal>
 
       <ConfirmModal
         visible={confirm.visible}
@@ -1771,4 +1933,34 @@ const styles = StyleSheet.create({
   stickyOld:     { fontSize: typography.size.xs, textDecorationLine: 'line-through', marginTop: 1 },
   stickyBtn:     { flex: 7, paddingVertical: 12, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   stickyBtnText: { color: '#fff', fontSize: typography.size.sm },
+
+  // Pending badge (below enroll button when payment is awaiting)
+  pendingBadge:     { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, marginTop: spacing.xs },
+  pendingBadgeText: { fontSize: typography.size.xs, lineHeight: 18 },
+
+  // Payment bottom sheet
+  paySheetOverlay: { flex: 1 },
+  paySheet: {
+    borderTopLeftRadius: radius['3xl'],
+    borderTopRightRadius: radius['3xl'],
+    paddingHorizontal: spacing.base,
+    paddingBottom: spacing.xl,
+    maxHeight: '80%',
+  },
+  paySheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: spacing.sm, marginBottom: spacing.base },
+  paySheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.base },
+  paySheetTitle:  { fontSize: typography.size.lg },
+  paySheetCourse: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingBottom: spacing.base, borderBottomWidth: StyleSheet.hairlineWidth },
+  paySheetThumb:  { width: 60, height: 60, borderRadius: radius.sm },
+  paySheetCourseName:  { fontSize: typography.size.sm, lineHeight: 20, marginBottom: 2 },
+  paySheetCoursePrice: { fontSize: typography.size.lg },
+  paySheetDivider:     { height: StyleSheet.hairlineWidth, marginBottom: spacing.base },
+  paySheetStep:   { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.base, alignItems: 'flex-start' },
+  paySheetStepNum:{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
+  paySheetStepText: { fontSize: typography.size.sm, lineHeight: 20 },
+  paySheetLink:   { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.sm, alignSelf: 'flex-start', marginTop: 4 },
+  paySheetLinkText: { fontSize: typography.size.sm },
+  paySheetCodeRow:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs + 2, borderRadius: radius.sm, borderWidth: 1, marginTop: 4 },
+  paySheetCode:   { fontSize: typography.size.base, letterSpacing: 1 },
+  paySheetFooter: { gap: spacing.sm, alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.base },
 })
