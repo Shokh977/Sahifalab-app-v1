@@ -36,6 +36,7 @@ const DICT: Record<string, {
   comment:         { Icon: MessageCircle, color: '#34d399', title: 'Izoh',            message: m => `${actor(m)} izoh qoldirdi.`                    },
   repost:          { Icon: Repeat2,       color: '#a78bfa', title: 'Ulashdi',         message: () => "Kimdir sizning postingizni ulashdi."            },
   enrollment:      { Icon: GraduationCap, color: '#e8792f', title: 'Kurs',            message: m => m.course_title ? `"${m.course_title}" kursiga yozildingiz.` : "Kursga yozildingiz." },
+  course_granted:  { Icon: GraduationCap, color: '#10b981', title: 'Kurs ochildi',   message: m => m.course_title ? `🎉 "${m.course_title}" kursi sizga ochildi!` : "🎉 Kurs sizga ochildi!" },
   lesson_complete: { Icon: BookCheck,     color: '#34d399', title: 'Dars yakunlandi', message: m => m.lesson_title ? `"${m.lesson_title}" yakunlandi.` : "Dars yakunlandi." },
   course_complete: { Icon: Award,         color: '#fbbf24', title: 'Kurs yakunlandi', message: m => m.course_title ? `"${m.course_title}" to'liq yakunlandi!` : "Kurs yakunlandi!" },
   certificate:     { Icon: Award,         color: '#fbbf24', title: 'Sertifikat',      message: m => m.course_title ? `"${m.course_title}" sertifikati tayyor.` : "Sertifikat tayyor." },
