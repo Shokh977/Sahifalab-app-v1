@@ -81,8 +81,6 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
   },
 
   async checkEnrollment(courseId) {
-    const cached = get().enrollmentCache[courseId]
-    if (cached) return cached
     const result = await enrollmentsApi.check(courseId)
     set(s => ({ enrollmentCache: { ...s.enrollmentCache, [courseId]: result } }))
     return result
