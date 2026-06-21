@@ -49,6 +49,7 @@ const NOTIF_DICT: Record<string, {
   comment_reply:   { Icon: MessageCircle, color: '#34d399', message: m => `${actor(m)} izohingizga javob berdi.` },
   repost:          { Icon: Repeat2,       color: '#a78bfa', message: () => "Kimdir sizning postingizni ulashdi." },
   enrollment:      { Icon: GraduationCap, color: '#e8792f', message: m => m.course_title ? `"${m.course_title}" kursiga yozildingiz.` : "Kursga yozildingiz." },
+  course_granted:  { Icon: GraduationCap, color: '#10b981', message: m => m.course_title ? `🎉 "${m.course_title}" kursi sizga ochildi! O'rganishni boshlang.` : "🎉 Kurs sizga ochildi! O'rganishni boshlang." },
   lesson_complete: { Icon: BookCheck,     color: '#34d399', message: m => m.lesson_title ? `"${m.lesson_title}" yakunlandi.` : "Dars yakunlandi." },
   course_complete: { Icon: Award,         color: '#fbbf24', message: m => m.course_title ? `"${m.course_title}" to'liq yakunlandi!` : "Kurs yakunlandi!" },
   certificate:     { Icon: Award,         color: '#fbbf24', message: m => m.course_title ? `"${m.course_title}" sertifikati tayyor.` : "Sertifikat tayyor." },
