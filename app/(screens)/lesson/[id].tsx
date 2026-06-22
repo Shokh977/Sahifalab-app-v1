@@ -684,8 +684,10 @@ export default function LessonPlayerScreen() {
 
   // ── Lesson type ──────────────────────────────────────────────────────────────
 
-  const isLive    = lesson?.lesson_type === 'live'
-  const isReading = lesson?.lesson_type === 'text' || lesson?.lesson_type === 'reading'
+  const isLive     = lesson?.lesson_type === 'live'
+  const isReading  = lesson?.lesson_type === 'text' || lesson?.lesson_type === 'reading'
+  const isMaterial = lesson?.lesson_type === 'material'
+  const isQuiz     = lesson?.lesson_type === 'quiz'
 
   // For live ended-with-recording, switch to video player
   const liveHasRecording = isLive && !!(lesson?.hls_url || lesson?.video_url)
@@ -729,13 +731,17 @@ export default function LessonPlayerScreen() {
         <NavBar onBack={() => router.back()} title={lesson.title} c={c} />
       </View>
 
-      {/* Content area: video / live / reading */}
+      {/* Content area: video / live / reading / material / quiz */}
       {(isLive && !liveHasRecording) ? (
         <LiveBlock lesson={lesson} c={c} />
       ) : isReading ? (
         lesson.content_html
           ? <ReadingBlock html={lesson.content_html} c={c} onRead={() => setReadingDone(true)} />
           : <PlaceholderBlock icon="book" label="Matnli dars" c={c} />
+      ) : isMaterial ? (
+        <MaterialsContent lesson={lesson} c={c} />
+      ) : isQuiz ? (
+        <PlaceholderBlock icon="book" label="Test darsi" c={c} />
       ) : !encodingReady && !embedUrl ? (
         <PlaceholderBlock icon="video" label="Video tayyorlanmoqda..." c={c} />
       ) : (

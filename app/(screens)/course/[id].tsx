@@ -198,7 +198,8 @@ function LessonItem({
   downloaded: boolean; downloading: boolean; dlProgress: number
   c: any
 }) {
-  const isPdf = lesson.lesson_type === 'pdf'
+  const isPdf  = lesson.lesson_type === 'material'
+  const isQuiz = lesson.lesson_type === 'quiz'
   return (
     <Pressable
       onPress={onPress}
@@ -213,6 +214,8 @@ function LessonItem({
           <CheckCircle size={20} color={c.brand} />
         ) : isPdf ? (
           <FileText size={18} color={c.textMuted} />
+        ) : isQuiz ? (
+          <Pencil size={18} color={c.textMuted} />
         ) : current && isPlaying ? (
           <Pause size={18} color={c.brand} />
         ) : current ? (
@@ -236,7 +239,7 @@ function LessonItem({
           </Text>
         )}
       </View>
-      {!isPdf && (
+      {!isPdf && !isQuiz && (
         <DownloadBtn
           downloading={downloading}
           downloaded={downloaded}
@@ -817,7 +820,7 @@ export default function CourseDetailScreen() {
 
       const progSet = progressCache[courseId] ?? new Set<number>()
       const startL  = startLessonId ? ls.find(l => l.id === Number(startLessonId)) : null
-      const first   = startL ?? ls.find(l => !progSet.has(l.id) && l.lesson_type !== 'pdf' && l.lesson_type !== 'test') ?? ls.find(l => l.lesson_type !== 'pdf' && l.lesson_type !== 'test') ?? null
+      const first   = startL ?? ls.find(l => !progSet.has(l.id) && l.lesson_type !== 'material' && l.lesson_type !== 'quiz') ?? ls.find(l => l.lesson_type !== 'material' && l.lesson_type !== 'quiz') ?? null
       setCurrentLesson(first)
 
       const [teacherData, tcRes, certs, teacherExtraData] = await Promise.all([
@@ -1000,14 +1003,14 @@ export default function CourseDetailScreen() {
   }, [courseId])
 
   // ── Lesson selection ───────────────────────────────────────────────────────
-  const isPlayableLesson = (l: Lesson) => l.lesson_type !== 'pdf' && l.lesson_type !== 'test'
+  const isPlayableLesson = (l: Lesson) => l.lesson_type !== 'material' && l.lesson_type !== 'quiz'
 
   function selectLesson(lesson: Lesson) {
-    if (lesson.lesson_type === 'pdf' && lesson.material_url) {
+    if (lesson.lesson_type === 'material' && lesson.material_url) {
       Linking.openURL(lesson.material_url)
       return
     }
-    if (lesson.lesson_type === 'test') {
+    if (lesson.lesson_type === 'quiz') {
       router.push(`/(screens)/test/${lesson.test_id ?? lesson.id}` as any)
       return
     }
