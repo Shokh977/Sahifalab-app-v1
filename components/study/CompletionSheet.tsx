@@ -8,7 +8,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native'
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, withTiming, Easing, FadeIn, FadeOut,
 } from 'react-native-reanimated'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
@@ -45,11 +45,14 @@ export function CompletionSheet({ visible, minutes, xpEarned, onSave, onSkip, sa
 
   return (
     <Modal transparent animationType="none" visible={visible} statusBarTranslucent>
+      <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(180)} style={styles.backdrop}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onSkip} />
+      </Animated.View>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.backdrop}
+        style={styles.sheetWrap}
+        pointerEvents="box-none"
       >
-        <Pressable style={styles.backdropPress} />
         <Animated.View style={[styles.sheet, { backgroundColor: c.bgSecondary }, sheetStyle]}>
           {/* Handle */}
           <View style={[styles.handle, { backgroundColor: c.border }]} />
@@ -111,16 +114,13 @@ export function CompletionSheet({ visible, minutes, xpEarned, onSave, onSkip, sa
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
+
   )
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex:            1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  backdropPress: { flex: 1 },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  sheetWrap: { flex: 1, justifyContent: 'flex-end' },
 
   sheet: {
     borderTopLeftRadius:  radius.modal,

@@ -105,10 +105,11 @@ export function CompareModal({ visible, me, them, onClose }: Props) {
   })
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
-      <Animated.View style={[styles.overlay, { opacity: opacityAnim, backgroundColor: c.overlay }]}>
+    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-
+      </Animated.View>
+      <View style={styles.overlay} pointerEvents="box-none">
         <Animated.View style={[
           styles.sheet,
           {
@@ -157,7 +158,7 @@ export function CompareModal({ visible, me, them, onClose }: Props) {
           {/* Overall result */}
           <ResultBanner myWins={myWins} theirWins={theirWins} meName={me.name} themName={them.name} c={c} />
         </Animated.View>
-      </Animated.View>
+      </View>
     </Modal>
   )
 }
@@ -273,6 +274,7 @@ function ResultBanner({
 }
 
 const styles = StyleSheet.create({
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
   overlay: {
     flex:           1,
     justifyContent: 'flex-end',

@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import {
-  MagnifyingGlass, Star, Clock, Users, BookOpen, X,
+  MagnifyingGlass, Star, Clock, Users, BookOpen, X, Heart,
 } from 'phosphor-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useCourseStore, getCachedCourseList, setCachedCourseList } from '../../stores/courseStore'
@@ -516,9 +516,18 @@ export default function CoursesTab() {
 
       {/* ── Fixed top bar ─────────────────────────────────────────────── */}
       <View style={[styles.topBar, { paddingTop: insets.top + spacing.xs, borderBottomColor: c.border }]}>
-        <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-          Kurslar
-        </Text>
+        <View style={styles.topTitleRow}>
+          <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+            Kurslar
+          </Text>
+          <Pressable
+            onPress={() => router.push('/(screens)/saved' as any)}
+            hitSlop={8}
+            style={[styles.heartBtn, { backgroundColor: c.bgTertiary }]}
+          >
+            <Heart size={18} color={c.textSecondary} />
+          </Pressable>
+        </View>
         <View style={[styles.searchWrap, { backgroundColor: c.bgTertiary }]}>
           <MagnifyingGlass size={16} color={c.textDisabled} />
           <TextInput
@@ -592,7 +601,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     gap:               spacing.sm,
   },
+  topTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   topTitle: { fontSize: typography.size.xl },
+  heartBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 
   searchWrap: {
     flexDirection:     'row',

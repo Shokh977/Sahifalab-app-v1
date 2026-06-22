@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
   ActivityIndicator, TextInput, Modal, Alert,
-  KeyboardAvoidingView, Platform, RefreshControl,
+  KeyboardAvoidingView, Platform, RefreshControl, Animated,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -63,9 +63,28 @@ function WithdrawModal({
   onSuccess: () => void
   c:         any
 }) {
+  const insets = useSafeAreaInsets()
   const [amount,     setAmount]     = useState('')
   const [card,       setCard]       = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [mounted,    setMounted]    = useState(visible)
+  const backdropAnim = useRef(new Animated.Value(0)).current
+  const slideAnim    = useRef(new Animated.Value(500)).current
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true)
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(slideAnim,    { toValue: 500, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setMounted(false); slideAnim.setValue(500) })
+    }
+  }, [visible])
 
   function formatCard(raw: string) {
     const digits = raw.replace(/\D/g, '').slice(0, 16)
@@ -102,16 +121,21 @@ function WithdrawModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      {/* Backdrop */}
+      <Animated.View style={[modal.backdrop, { opacity: backdropAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+
+      {/* Sheet */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
+        style={modal.overlay}
+        pointerEvents="box-none"
       >
-        <Pressable style={modal.overlay} onPress={onClose}>
-          <Pressable
-            style={[modal.sheet, { backgroundColor: c.bgSecondary }]}
-            onPress={e => e.stopPropagation()}
-          >
+        <Animated.View
+          style={[modal.sheet, { backgroundColor: c.bgSecondary, paddingBottom: (insets.bottom || 0) + 24, transform: [{ translateY: slideAnim }] }]}
+        >
             <View style={[modal.handle, { backgroundColor: c.border }]} />
 
             <View style={modal.header}>
@@ -167,16 +191,16 @@ function WithdrawModal({
                   </Text>
               }
             </Pressable>
-          </Pressable>
-        </Pressable>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   )
 }
 
 const modal = StyleSheet.create({
-  overlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet:       { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.base, paddingBottom: 32 },
+  backdrop:    { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  overlay:     { flex: 1, justifyContent: 'flex-end' },
+  sheet:       { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.base },
   handle:      { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.base },
   header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.base },
   title:       { fontSize: 18 },

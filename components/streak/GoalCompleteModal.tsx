@@ -48,8 +48,10 @@ export function GoalCompleteModal({ visible, streakDays, xpEarned, onClose }: Pr
 
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
-      <Animated.View style={[styles.overlay, { opacity: opacityAnim, backgroundColor: c.overlay }]}>
+      <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+      <Animated.View style={[styles.overlay, { opacity: opacityAnim }]} pointerEvents="box-none">
         <Animated.View style={[
           styles.card,
           { backgroundColor: c.bgSecondary, borderColor: c.border, transform: [{ scale: scaleAnim }] },
@@ -100,6 +102,7 @@ export function GoalCompleteModal({ visible, streakDays, xpEarned, onClose }: Pr
 }
 
 const styles = StyleSheet.create({
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
   overlay: {
     flex:           1,
     alignItems:     'center',

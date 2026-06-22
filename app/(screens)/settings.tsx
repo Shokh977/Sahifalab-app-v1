@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, Pressable, StyleSheet, ScrollView,
-  Switch, ActivityIndicator, Alert, TextInput, Modal, Linking,
+  Switch, ActivityIndicator, Alert, TextInput, Modal, Linking, Animated,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft } from 'lucide-react-native'
 import { Appearance } from 'react-native'
@@ -88,31 +88,55 @@ function GoalPickerModal({
   c:        any
 }) {
   const GOALS = [10, 20, 40, 60, 90, 120]
+  const insets = useSafeAreaInsets()
+  const [mounted,    setMounted]    = useState(visible)
+  const backdropAnim = useRef(new Animated.Value(0)).current
+  const slideAnim    = useRef(new Animated.Value(400)).current
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true)
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(slideAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setMounted(false); slideAnim.setValue(400) })
+    }
+  }, [visible])
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={s.modalOverlay} onPress={onClose} />
-      <View style={[s.modalSheet, { backgroundColor: c.bgSecondary }]}>
-        <View style={[s.modalHandle, { backgroundColor: c.border }]} />
-        <Text style={[s.modalTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-          Kunlik maqsad
-        </Text>
-        {GOALS.map(min => (
-          <Pressable
-            key={min}
-            onPress={() => { onSelect(min); onClose() }}
-            style={[s.modalOption, { borderBottomColor: c.border }]}
-          >
-            <Text style={[s.modalOptionText, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
-              {min} daqiqa
-            </Text>
-            {current === min && (
-              <Text style={[{ color: c.accentPrimary, fontSize: 18 }]}>✓</Text>
-            )}
+    <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      <Animated.View style={[s.sheetBackdrop, { opacity: backdropAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+      <View style={s.sheetWrap} pointerEvents="box-none">
+        <Animated.View style={[s.modalSheet, { backgroundColor: c.bgSecondary, paddingBottom: (insets.bottom || 0) + 24, transform: [{ translateY: slideAnim }] }]}>
+          <View style={[s.modalHandle, { backgroundColor: c.border }]} />
+          <Text style={[s.modalTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+            Kunlik maqsad
+          </Text>
+          {GOALS.map(min => (
+            <Pressable
+              key={min}
+              onPress={() => { onSelect(min); onClose() }}
+              style={[s.modalOption, { borderBottomColor: c.border }]}
+            >
+              <Text style={[s.modalOptionText, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+                {min} daqiqa
+              </Text>
+              {current === min && (
+                <Text style={[{ color: c.accentPrimary, fontSize: 18 }]}>✓</Text>
+              )}
+            </Pressable>
+          ))}
+          <Pressable onPress={onClose} style={[s.modalCancel, { backgroundColor: c.bgTertiary }]}>
+            <Text style={[{ color: c.textSecondary, fontFamily: typography.fontFamily.medium, fontSize: 15 }]}>Bekor</Text>
           </Pressable>
-        ))}
-        <Pressable onPress={onClose} style={[s.modalCancel, { backgroundColor: c.bgTertiary }]}>
-          <Text style={[{ color: c.textSecondary, fontFamily: typography.fontFamily.medium, fontSize: 15 }]}>Bekor</Text>
-        </Pressable>
+        </Animated.View>
       </View>
     </Modal>
   )
@@ -336,10 +360,33 @@ function TelegramLinkModal({
 
   const handleClose = () => { stopPolling(); onClose() }
 
+  const tgInsets = useSafeAreaInsets()
+  const [tgMounted,    setTgMounted]    = useState(visible)
+  const tgBackdropAnim = useRef(new Animated.Value(0)).current
+  const tgSlideAnim    = useRef(new Animated.Value(400)).current
+
+  useEffect(() => {
+    if (visible) {
+      setTgMounted(true)
+      Animated.parallel([
+        Animated.timing(tgBackdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(tgSlideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(tgBackdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(tgSlideAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setTgMounted(false); tgSlideAnim.setValue(400) })
+    }
+  }, [visible])
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <Pressable style={s.modalOverlay} onPress={handleClose} />
-      <View style={[s.modalSheet, { backgroundColor: c.bgSecondary }]}>
+    <Modal visible={tgMounted} transparent animationType="none" statusBarTranslucent onRequestClose={handleClose}>
+      <Animated.View style={[s.sheetBackdrop, { opacity: tgBackdropAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+      </Animated.View>
+      <View style={s.sheetWrap} pointerEvents="box-none">
+      <Animated.View style={[s.modalSheet, { backgroundColor: c.bgSecondary, paddingBottom: (tgInsets.bottom || 0) + 24, transform: [{ translateY: tgSlideAnim }] }]}>
         <View style={[s.modalHandle, { backgroundColor: c.border }]} />
         <Text style={[s.modalTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
           Telegram bog'lash
@@ -392,6 +439,7 @@ function TelegramLinkModal({
             </Pressable>
           </>
         )}
+      </Animated.View>
       </View>
     </Modal>
   )
@@ -740,12 +788,13 @@ const s = StyleSheet.create({
   radioDot:    { width: 8, height: 8, borderRadius: 4 },
 
   // Goal picker modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  sheetWrap:     { flex: 1, justifyContent: 'flex-end' },
+  modalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   modalSheet: {
     borderTopLeftRadius:  20,
     borderTopRightRadius: 20,
     padding:              spacing.xl,
-    paddingBottom:        40,
     gap:                  4,
   },
   modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.sm },

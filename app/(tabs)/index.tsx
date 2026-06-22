@@ -289,7 +289,7 @@ export default function HomeTab() {
                 onAction={() => router.push('/(tabs)/courses' as any)}
               />
               <View style={[styles.vList, { paddingHorizontal: spacing.screenMargin }]}>
-                {rec.map(course => <CourseVCard key={course.id} course={course} />)}
+                {rec.slice(0, 3).map(course => <CourseVCard key={course.id} course={course} />)}
               </View>
             </>
           )

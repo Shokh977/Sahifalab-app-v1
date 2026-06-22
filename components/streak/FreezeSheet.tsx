@@ -89,10 +89,12 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
   const sheetPaddingBottom = Math.max(insets.bottom, spacing.md) + spacing.sm
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
-      <Animated.View style={[styles.overlay, { opacity: opacityAnim, backgroundColor: c.overlay }]}>
+    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
 
+      <View style={styles.overlay}>
         <Animated.View style={[
           styles.sheet,
           { backgroundColor: c.bgSecondary, borderColor: c.border, paddingBottom: sheetPaddingBottom, transform: [{ translateY: slideAnim }] },
@@ -236,12 +238,16 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
             }
           </Pressable>
         </Animated.View>
-      </Animated.View>
+      </View>
     </Modal>
   )
 }
 
 const styles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+  },
   overlay: {
     flex:           1,
     justifyContent: 'flex-end',

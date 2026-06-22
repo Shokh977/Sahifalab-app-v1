@@ -39,8 +39,10 @@ export function ConfirmModal({
 
   return (
     <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onCancel}>
-      <Animated.View style={[styles.overlay, { opacity, backgroundColor: c.overlay }]}>
+      <Animated.View style={[styles.backdrop, { opacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
+      </Animated.View>
+      <Animated.View style={[styles.overlay, { opacity }]} pointerEvents="box-none">
         <Animated.View style={[
           styles.card,
           { backgroundColor: c.bgSecondary, borderColor: c.border, transform: [{ scale }] },
@@ -83,6 +85,10 @@ export function ConfirmModal({
 }
 
 const styles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+  },
   overlay: {
     flex:           1,
     alignItems:     'center',

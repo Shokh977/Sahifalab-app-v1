@@ -753,6 +753,9 @@ export default function CourseDetailScreen() {
   const [loading,        setLoading]        = useState(true)
   const [enrolling,      setEnrolling]      = useState(false)
   const [showPaySheet,   setShowPaySheet]   = useState(false)
+  const [paySheetMounted, setPaySheetMounted] = useState(false)
+  const payBackdropAnim = useRef(new Animated.Value(0)).current
+  const paySlideAnim    = useRef(new Animated.Value(500)).current
   const [payCode,        setPayCode]        = useState<EnrollmentCodeResponse | null>(null)
   const [payCodeLoading, setPayCodeLoading] = useState(false)
   const [pendingStatus,  setPendingStatus]  = useState<PendingEnrollmentStatus | null>(null)
@@ -917,6 +920,21 @@ export default function CourseDetailScreen() {
     catch (e: any) { Alert.alert('Xatolik', e?.message ?? "Ro'yxatdan o'tishda xatolik") }
     finally { setEnrolling(false) }
   }
+
+  useEffect(() => {
+    if (showPaySheet) {
+      setPaySheetMounted(true)
+      Animated.parallel([
+        Animated.timing(payBackdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(paySlideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(payBackdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(paySlideAnim,    { toValue: 500, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setPaySheetMounted(false); paySlideAnim.setValue(500) })
+    }
+  }, [showPaySheet])
 
   function handleCopyCode() {
     if (!payCode) return
@@ -1571,16 +1589,20 @@ export default function CourseDetailScreen() {
 
       {/* Payment bottom sheet */}
       <Modal
-        visible={showPaySheet}
+        visible={paySheetMounted}
         transparent
-        animationType="slide"
+        animationType="none"
+        statusBarTranslucent
         onRequestClose={() => setShowPaySheet(false)}
       >
-        <Pressable
-          style={[styles.paySheetOverlay, { backgroundColor: c.overlay }]}
-          onPress={() => setShowPaySheet(false)}
-        />
-        <View style={[styles.paySheet, { backgroundColor: c.bgSecondary }]}>
+        {/* Backdrop */}
+        <Animated.View style={[styles.paySheetBackdrop, { opacity: payBackdropAnim }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowPaySheet(false)} />
+        </Animated.View>
+
+        {/* Sheet */}
+        <View style={styles.paySheetOverlay}>
+          <Animated.View style={[styles.paySheet, { backgroundColor: c.bgSecondary, paddingBottom: (insets.bottom || 0) + spacing.xl, transform: [{ translateY: paySlideAnim }] }]}>
           <View style={[styles.paySheetHandle, { backgroundColor: c.border }]} />
 
           {/* Header */}
@@ -1678,7 +1700,7 @@ export default function CourseDetailScreen() {
                 <Pressable onPress={() => setShowPaySheet(false)}>
                   <Text style={[{ color: c.textMuted, fontSize: typography.size.sm, fontFamily: typography.fontFamily.medium }]}>Yopish</Text>
                 </Pressable>
-                <Pressable onPress={() => Linking.openURL('https://t.me/sahifalab')}>
+                <Pressable onPress={() => Linking.openURL('https://t.me/sahifalab1')}>
                   <Text style={[{ color: c.brand, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>
                     Yordam kerak? Sahifalab Telegram'ga yozing
                   </Text>
@@ -1686,6 +1708,7 @@ export default function CourseDetailScreen() {
               </View>
             </ScrollView>
           )}
+          </Animated.View>
         </View>
       </Modal>
 
@@ -1939,13 +1962,13 @@ const styles = StyleSheet.create({
   pendingBadgeText: { fontSize: typography.size.xs, lineHeight: 18 },
 
   // Payment bottom sheet
-  paySheetOverlay: { flex: 1 },
+  paySheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  paySheetOverlay:  { flex: 1, justifyContent: 'flex-end' },
   paySheet: {
     borderTopLeftRadius: radius['3xl'],
     borderTopRightRadius: radius['3xl'],
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.xl,
-    maxHeight: '80%',
+    maxHeight: '85%',
   },
   paySheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: spacing.sm, marginBottom: spacing.base },
   paySheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.base },

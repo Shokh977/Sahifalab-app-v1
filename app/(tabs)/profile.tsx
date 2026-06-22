@@ -6,7 +6,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { Settings, Share2, ChevronRight, X, GraduationCap } from 'lucide-react-native'
+import { Settings, Share2, ChevronRight, X, GraduationCap, Heart } from 'lucide-react-native'
 import { shareProfile } from '../../lib/share'
 import { useTheme } from '../../hooks/useTheme'
 import { useProfileStore } from '../../stores/profileStore'
@@ -469,6 +469,13 @@ export default function ProfileTab() {
               title="Seriya va inventar"
               sub={`Joriy: ${streak} kun seriya`}
               onPress={() => router.push('/(screens)/streak-detail' as any)}
+              showDivider
+            />
+            <NavRow
+              emoji="❤️"
+              title="Sevimli kurslar"
+              sub="Saqlangan kurslaringiz"
+              onPress={() => router.push('/(screens)/saved' as any)}
             />
           </View>
 
