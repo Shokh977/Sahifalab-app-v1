@@ -88,9 +88,7 @@ export function AnimatedTabBar({ state, navigation }: BottomTabBarProps) {
               <cfg.Icon size={24} color={color} weight={isFocused ? 'fill' : 'regular'} />
               {cfg.name === 'notifications' && unreadCount > 0 && (
                 <View style={[tabBadge.badge, { backgroundColor: '#FF453A' }]}>
-                  {unreadCount < 10 && (
-                    <Text style={tabBadge.text}>{unreadCount}</Text>
-                  )}
+                  <Text style={tabBadge.text}>{unreadCount >= 10 ? '9+' : unreadCount}</Text>
                 </View>
               )}
             </View>

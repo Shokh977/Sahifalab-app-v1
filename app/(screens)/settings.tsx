@@ -662,8 +662,20 @@ export default function SettingsScreen() {
         <SettingGroup>
           <SettingRow
             label="Foydalanish shartlari"
-            isLast
             onPress={() => setShowTerms(true)}
+          />
+          <SettingRow
+            label="Maxfiylik siyosati"
+            onPress={() => Linking.openURL('https://sahifalab.uz/privacy').catch(() => {})}
+          />
+          <SettingRow
+            label="Ilovani baholang ⭐"
+            onPress={() => Linking.openURL('https://play.google.com/store/apps/details?id=com.sahifalab.app').catch(() => {})}
+          />
+          <SettingRow
+            label="Murojaat qiling"
+            isLast
+            onPress={() => Linking.openURL('https://t.me/sahifalab1').catch(() => {})}
           />
         </SettingGroup>
 

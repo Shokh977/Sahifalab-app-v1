@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, FlatList, Pressable,
   Image, ActivityIndicator, Alert, Linking, Animated,
-  TextInput, Dimensions, Modal, Clipboard,
+  TextInput, Dimensions, Modal, Clipboard, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -301,7 +301,7 @@ function EnrolledSectionRow({
 
 // ── Review form ────────────────────────────────────────────────────────────────
 
-function ReviewForm({ courseId, onSubmitted, c }: { courseId: number; onSubmitted: () => void; c: any }) {
+function ReviewForm({ courseId, onSubmitted, c, onFocused }: { courseId: number; onSubmitted: () => void; c: any; onFocused?: () => void }) {
   const [rating,  setRating]  = useState(0)
   const [text,    setText]    = useState('')
   const [loading, setLoading] = useState(false)
@@ -349,6 +349,7 @@ function ReviewForm({ courseId, onSubmitted, c }: { courseId: number; onSubmitte
         placeholderTextColor={c.textMuted}
         multiline
         numberOfLines={3}
+        onFocus={() => { setTimeout(() => onFocused?.(), 200) }}
         style={[styles.reviewInput, { color: c.textPrimary, backgroundColor: c.bgTertiary, fontFamily: typography.fontFamily.regular }]}
       />
       <Pressable
@@ -531,6 +532,7 @@ function EnrolledInfoTab({
   onReviewSubmitted: () => void; router: any; c: any; insets: any
 }) {
   const [descExpanded, setDescExpanded] = useState(false)
+  const infoScrollRef = useRef<ScrollView>(null)
   const total     = lessons.length
   const completed = progress.size
   const remaining = total - completed
@@ -542,7 +544,11 @@ function EnrolledInfoTab({
   }
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+    <ScrollView ref={infoScrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
       {/* Certificate section */}
       <View style={[styles.certCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
         {certificate ? (
@@ -707,7 +713,12 @@ function EnrolledInfoTab({
         <View style={[styles.infoSection, { borderColor: c.border }]}>
           <Text style={[styles.infoHeading, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>Sharhlar</Text>
           <RatingBreakdown reviews={reviews} overallRating={course.rating ?? 0} c={c} />
-          <ReviewForm courseId={course.id} onSubmitted={onReviewSubmitted} c={c} />
+          <ReviewForm
+            courseId={course.id}
+            onSubmitted={onReviewSubmitted}
+            c={c}
+            onFocused={() => infoScrollRef.current?.scrollToEnd({ animated: true })}
+          />
         </View>
 
         {reviews.length > 0 && (
@@ -729,6 +740,7 @@ function EnrolledInfoTab({
         )}
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
