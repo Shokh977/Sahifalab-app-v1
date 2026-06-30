@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 import {
   ArrowLeft, DotsThreeVertical, Plus, PencilSimple, Trash,
-  Check, X,
+  Check, X, Globe, ShareNetwork, Star,
 } from 'phosphor-react-native'
 
 import { useTheme } from '../../../hooks/useTheme'
@@ -19,6 +19,9 @@ import { useFlashcardStore } from '../../../stores/flashcardStore'
 import type { FlashcardDeck, Flashcard } from '../../../lib/types'
 import { typography, spacing, radius } from '../../../lib/constants'
 import { ConfirmModal } from '../../../components/ui/ConfirmModal'
+import { PublishSheet } from '../../../components/flashcards/PublishSheet'
+import { RatingSheet } from '../../../components/flashcards/RatingSheet'
+import { shareFlashcardDeck } from '../../../lib/share'
 
 const PRESET_COLORS = [
   '#F5A623', '#FF6B6B', '#4DA6FF', '#34C759', '#AF52DE',
@@ -229,7 +232,10 @@ export default function DeckDetailScreen() {
   const [menuOpen,  setMenuOpen]  = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editCard,  setEditCard]  = useState<Flashcard | null>(null)
-  const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; danger?: boolean; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
+  const [publishSheetOpen, setPublishSheetOpen] = useState(false)
+  const [ratingSheetOpen,  setRatingSheetOpen]  = useState(false)
+  const [myRating,         setMyRating]         = useState<number | null>(null)
+  const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; danger?: boolean; emoji?: string; confirmText?: string; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
 
   const refresh = useCallback(async () => {
     try {
@@ -260,6 +266,26 @@ export default function DeckDetailScreen() {
           await flashcardsApi.deleteDeck(deckId)
           removeDeck(deckId)
           router.back()
+        } catch (e: any) {
+          Alert.alert('Xatolik', e.message)
+        }
+      },
+    })
+  }
+
+  const handleUnpublish = () => {
+    setConfirm({
+      visible:     true,
+      title:       "Ommadan olib tashlaysizmi?",
+      message:     "Boshqalar endi topa olmaydi, lekin avval nusxa olganlar saqlanib qoladi.",
+      emoji:       '🌐',
+      confirmText: 'Olib tashlash',
+      onConfirm: async () => {
+        setConfirm(s => ({ ...s, visible: false }))
+        try {
+          const updated = await flashcardsApi.unpublishDeck(deckId)
+          setDeck(updated)
+          updateDeck(updated)
         } catch (e: any) {
           Alert.alert('Xatolik', e.message)
         }
@@ -339,6 +365,31 @@ export default function DeckDetailScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 80 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Public badge + rate-the-source-deck (if this is a clone) */}
+        {(deck.is_public || deck.cloned_from_deck_id) && (
+          <View style={styles.badgeRow}>
+            {deck.is_public && (
+              <View style={[styles.publicBadge, { backgroundColor: c.accentPrimaryMuted, borderColor: c.accentPrimary }]}>
+                <Globe size={13} color={c.accentPrimary} weight="bold" />
+                <Text style={[styles.publicBadgeText, { color: c.accentPrimary, fontFamily: typography.fontFamily.medium }]}>
+                  Ommaviy
+                </Text>
+              </View>
+            )}
+            {deck.cloned_from_deck_id && (
+              <Pressable
+                onPress={() => setRatingSheetOpen(true)}
+                style={[styles.rateBadge, { backgroundColor: c.bgTertiary, borderColor: c.border }]}
+              >
+                <Star size={13} color={myRating ? '#FFB830' : c.textSecondary} weight={myRating ? 'fill' : 'regular'} />
+                <Text style={[styles.rateBadgeText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+                  {myRating ? `Bahoyingiz: ${myRating}` : "To'plamni baholash"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* Hero study card */}
         <View style={[
           styles.heroCard,
@@ -464,6 +515,24 @@ export default function DeckDetailScreen() {
               <Text style={[styles.menuText, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}>Tahrirlash</Text>
             </Pressable>
             <View style={[styles.menuDivider, { backgroundColor: c.border }]} />
+            {deck.is_public ? (
+              <>
+                <Pressable onPress={() => { setMenuOpen(false); shareFlashcardDeck({ id: deck.id, title: deck.title }) }} style={styles.menuItem}>
+                  <ShareNetwork size={16} color={c.textPrimary} />
+                  <Text style={[styles.menuText, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}>Havolani ulashish</Text>
+                </Pressable>
+                <Pressable onPress={() => { setMenuOpen(false); handleUnpublish() }} style={styles.menuItem}>
+                  <Globe size={16} color={c.textPrimary} />
+                  <Text style={[styles.menuText, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}>Ommadan olib tashlash</Text>
+                </Pressable>
+              </>
+            ) : (
+              <Pressable onPress={() => { setMenuOpen(false); setPublishSheetOpen(true) }} style={styles.menuItem}>
+                <Globe size={16} color={c.textPrimary} />
+                <Text style={[styles.menuText, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}>Ommaga ulashish</Text>
+              </Pressable>
+            )}
+            <View style={[styles.menuDivider, { backgroundColor: c.border }]} />
             <Pressable onPress={() => { setMenuOpen(false); handleDeleteDeck() }} style={styles.menuItem}>
               <Trash size={16} color={c.error} />
               <Text style={[styles.menuText, { color: c.error, fontFamily: typography.fontFamily.regular }]}>O'chirish</Text>
@@ -483,14 +552,31 @@ export default function DeckDetailScreen() {
 
       <ConfirmModal
         visible={confirm.visible}
-        emoji="🗑️"
+        emoji={confirm.emoji ?? "🗑️"}
         title={confirm.title}
         message={confirm.message}
-        confirmText="O'chirish"
+        confirmText={confirm.confirmText ?? "O'chirish"}
         danger={confirm.danger}
         onConfirm={confirm.onConfirm}
         onCancel={() => setConfirm(s => ({ ...s, visible: false }))}
       />
+
+      <PublishSheet
+        visible={publishSheetOpen}
+        deck={deck}
+        cards={cards}
+        onClose={() => setPublishSheetOpen(false)}
+        onPublished={updated => { setDeck(updated); updateDeck(updated) }}
+      />
+
+      {deck.cloned_from_deck_id != null && (
+        <RatingSheet
+          visible={ratingSheetOpen}
+          originalDeckId={deck.cloned_from_deck_id}
+          onClose={() => setRatingSheetOpen(false)}
+          onRated={result => setMyRating(result.my_rating)}
+        />
+      )}
     </View>
   )
 }
@@ -512,6 +598,30 @@ const styles = StyleSheet.create({
   topTitle: { flex: 1, fontSize: typography.size.base, textAlign: 'center' },
 
   scroll: { padding: spacing.screenMargin, gap: spacing.lg },
+
+  badgeRow: { flexDirection: 'row', gap: 8, marginTop: -spacing.sm },
+  publicBadge: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    alignSelf:         'flex-start',
+    gap:               5,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderRadius:      radius.button,
+    borderWidth:       1,
+  },
+  publicBadgeText: { fontSize: typography.size.xs },
+  rateBadge: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    alignSelf:         'flex-start',
+    gap:               5,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderRadius:      radius.button,
+    borderWidth:       1,
+  },
+  rateBadgeText: { fontSize: typography.size.xs },
 
   // Hero card
   heroCard: {

@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router'
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, withSpring,
 } from 'react-native-reanimated'
-import { Plus, Cards, Check, CaretRight, X } from 'phosphor-react-native'
+import { Plus, Cards, Check, CaretRight, X, Globe } from 'phosphor-react-native'
 
 import { useTheme } from '../../hooks/useTheme'
 import { useFlashcardStore } from '../../stores/flashcardStore'
@@ -337,9 +337,14 @@ export default function FlashcardsScreen() {
         <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
           Kartochkalar
         </Text>
-        <Pressable onPress={openCreate} hitSlop={10}>
-          <Plus size={24} color={c.accentPrimary} weight="bold" />
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <Pressable onPress={() => router.push('/(screens)/public-decks' as any)} hitSlop={10}>
+            <Globe size={22} color={c.accentPrimary} />
+          </Pressable>
+          <Pressable onPress={openCreate} hitSlop={10}>
+            <Plus size={24} color={c.accentPrimary} weight="bold" />
+          </Pressable>
+        </View>
       </View>
 
       {loading && decks.length === 0 ? (
@@ -351,6 +356,17 @@ export default function FlashcardsScreen() {
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 80 }]}
           showsVerticalScrollIndicator={false}
         >
+          <Pressable
+            onPress={() => router.push('/(screens)/public-decks' as any)}
+            style={({ pressed }) => [styles.publicLibraryBtn, { backgroundColor: c.bgSecondary, opacity: pressed ? 0.88 : 1 }]}
+          >
+            <Globe size={20} color={c.accentPrimary} />
+            <Text style={[styles.publicLibraryText, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+              Ommaviy to'plamlar
+            </Text>
+            <CaretRight size={14} color={c.textDisabled} />
+          </Pressable>
+
           <StatsCard />
 
           {decks.length === 0 ? (
@@ -395,6 +411,16 @@ const styles = StyleSheet.create({
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   scroll: { padding: spacing.screenMargin, gap: 10 },
+
+  publicLibraryBtn: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               10,
+    borderRadius:      14,
+    padding:           spacing.base,
+    marginBottom:      2,
+  },
+  publicLibraryText: { flex: 1, fontSize: typography.size.sm },
 
   // Stats card
   statsCard: {

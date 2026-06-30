@@ -3,6 +3,8 @@ import { Share } from 'react-native'
 export const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.sahifalab.app'
 
+export const WEB_URL = 'https://sahifalab.uz'
+
 function appFooter(deepPath?: string): string {
   const lines: string[] = ['']
   if (deepPath) lines.push(`Ilovada ochish: sahifalab://${deepPath}`)
@@ -80,6 +82,18 @@ export async function shareCertificate(opts: {
   if (opts.certUrl) lines.push(`Tasdiqlash: ${opts.certUrl}`)
   lines.push(appFooter())
   try { await Share.share({ message: lines.join('\n') }) } catch {}
+}
+
+export async function shareFlashcardDeck(opts: {
+  id:    number
+  title: string
+}) {
+  // Uses the universal link (not appFooter's sahifalab:// line) since /deck/{id}
+  // resolves for both: deep-links into the app for installed users, and shows
+  // the web landing page + Play Store CTA for everyone else.
+  const url = `${WEB_URL}/deck/${opts.id}`
+  const msg = `Men Sahifalab'da "${opts.title}" kartochkalar to'plamini topdim — bepul o'rganing! 📚\n\n${url}`
+  try { await Share.share({ message: msg }) } catch {}
 }
 
 export async function shareCertificateImage(opts: {

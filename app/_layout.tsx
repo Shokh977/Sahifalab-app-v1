@@ -41,7 +41,9 @@ try { Constants = require('expo-constants').default } catch {}
 // ── Deep link URL → in-app route ─────────────────────────────────────────────
 
 function parseDeepLink(url: string): string | null {
-  const path  = url.replace(/^sahifalab:\/\//, '')
+  const path  = url
+    .replace(/^sahifalab:\/\//, '')
+    .replace(/^https?:\/\/(www\.)?sahifalab\.uz\/?/, '')
   const parts = path.split('/')
   const seg0  = parts[0] ?? ''
   const seg1  = parts[1]
@@ -79,6 +81,8 @@ function parseDeepLink(url: string): string | null {
   if (seg0 === 'flashcards' && seg1 && seg2 !== 'study')   return `/(screens)/flashcard-deck/${seg1}`
   // sahifalab://flashcards/{id}/study → study session
   if (seg0 === 'flashcards' && seg1 && seg2 === 'study')   return `/(screens)/flashcard-study/${seg1}`
+  // sahifalab://deck/{id} or https://sahifalab.uz/deck/{id} → public deck preview
+  if (seg0 === 'deck' && seg1)                             return `/(screens)/public-deck/${seg1}`
 
   return null
 }
@@ -321,20 +325,28 @@ export default function RootLayout() {
     wasOnlineRef.current = isOnline
   }, [isOnline, isAuthenticated])
 
-  // ── Deep linking for unauthenticated users ────────────────────────────────
-  // Capture initial URL (cold start) — store if not yet authenticated
+  // ── Deep linking ────────────────────────────────────────────────────────────
+  // Already-authenticated users: navigate straight away (cold start + foreground).
+  // Unauthenticated users: queue the URL and replay it once login completes,
+  // since the auth guard below would otherwise redirect them to /(auth)/login.
   useEffect(() => {
     Linking.getInitialURL().then(url => {
-      if (url && !isAuthenticated && !isLoading) {
+      if (!url) return
+      if (isAuthenticated && !isLoading) {
+        const route = parseDeepLink(url)
+        if (route) setTimeout(() => router.push(route as any), 600)
+      } else if (!isLoading) {
         usePendingDeepLinkStore.getState().setPending(url)
       }
     }).catch(() => {})
-  }, [])
+  }, [isAuthenticated, isLoading])
 
-  // Capture foreground deep links for unauthenticated users
   useEffect(() => {
     const sub = Linking.addEventListener('url', ({ url }) => {
-      if (!isAuthenticated) {
+      if (isAuthenticated) {
+        const route = parseDeepLink(url)
+        if (route) router.push(route as any)
+      } else {
         usePendingDeepLinkStore.getState().setPending(url)
       }
     })

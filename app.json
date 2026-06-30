@@ -21,7 +21,10 @@
         "UIBackgroundModes": [
           "audio"
         ]
-      }
+      },
+      "associatedDomains": [
+        "applinks:sahifalab.uz"
+      ]
     },
     "android": {
       "package": "com.sahifalab.app",
@@ -48,6 +51,21 @@
             {
               "scheme": "sahifalab",
               "host": "*"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "sahifalab.uz",
+              "pathPrefix": "/deck"
             }
           ],
           "category": [

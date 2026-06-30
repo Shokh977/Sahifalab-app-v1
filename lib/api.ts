@@ -8,7 +8,9 @@ import * as SecureStore from 'expo-secure-store'
 import { API_URL } from './constants'
 import type {
   FlashcardDeck, Flashcard, FlashcardStats,
-  StudySession, ReviewResult, CompleteSessionResult,
+  StudySession, ReviewResult, CompleteSessionResult, PublishDeckError,
+  PublicDeckItem, PublicDeckDetail, PublicDeckListResult, DeckRatingsResult,
+  RateDeckResult, DeckCategory, DeckSort, DeckReportReason,
 } from './types'
 
 export const TOKEN_KEY = 'sahifalab_jwt'
@@ -993,6 +995,67 @@ export const flashcards = {
 
   getStats: () =>
     request<FlashcardStats>('/api/flashcards/stats', { auth: true }),
+
+  publishDeck: (id: number, body: { is_anonymous: boolean; category: string }) =>
+    request<FlashcardDeck>(`/api/flashcards/decks/${id}/publish`, {
+      method: 'PATCH', body: JSON.stringify(body), auth: true,
+    }),
+
+  unpublishDeck: (id: number) =>
+    request<FlashcardDeck>(`/api/flashcards/decks/${id}/unpublish`, {
+      method: 'PATCH', auth: true,
+    }),
+
+  listPublicDecks: (filters: { category?: DeckCategory | 'all'; sort?: DeckSort; search?: string; page?: number; limit?: number } = {}) => {
+    const params = new URLSearchParams()
+    if (filters.category) params.set('category', filters.category)
+    if (filters.sort)     params.set('sort', filters.sort)
+    if (filters.search)   params.set('search', filters.search)
+    params.set('page',  String(filters.page  ?? 1))
+    params.set('limit', String(filters.limit ?? 20))
+    return request<PublicDeckListResult>(`/api/flashcards/public?${params.toString()}`, { auth: true })
+  },
+
+  getFeaturedDecks: () =>
+    request<PublicDeckItem[]>('/api/flashcards/public/featured', { auth: true }),
+
+  getPublicDeck: (id: number) =>
+    request<PublicDeckDetail>(`/api/flashcards/public/${id}`, { auth: true }),
+
+  cloneDeck: (id: number) =>
+    request<FlashcardDeck & { already_cloned: boolean }>(`/api/flashcards/public/${id}/clone`, {
+      method: 'POST', auth: true,
+    }),
+
+  rateDeck: (id: number, body: { rating: number; comment?: string }) =>
+    request<RateDeckResult>(`/api/flashcards/public/${id}/rate`, {
+      method: 'POST', body: JSON.stringify(body), auth: true,
+    }),
+
+  getDeckRatings: (id: number, page = 1) =>
+    request<DeckRatingsResult>(`/api/flashcards/public/${id}/ratings?page=${page}`, { auth: true }),
+
+  reportDeck: (id: number, body: { reason: DeckReportReason; details?: string }) =>
+    request<{ ok: boolean }>(`/api/flashcards/public/${id}/report`, {
+      method: 'POST', body: JSON.stringify(body), auth: true,
+    }),
+}
+
+/**
+ * Several flashcard endpoints (publish, clone, rate, report) fail with
+ * `Error.message` = JSON.stringify of the backend's
+ * { success: false, error: { code, details } } body — including rate-limit
+ * (429) responses. Extracts the Uzbek `details` string, falling back to the
+ * raw message for any other error shape.
+ */
+export function apiErrorDetails(e: any): string {
+  try {
+    const parsed = JSON.parse(e?.message ?? '') as PublishDeckError
+    if (parsed && parsed.success === false && parsed.error?.details) {
+      return parsed.error.details
+    }
+  } catch {}
+  return e?.message ?? "Xatolik yuz berdi"
 }
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
