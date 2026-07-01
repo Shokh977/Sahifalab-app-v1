@@ -6,7 +6,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { flashcards as flashcardsApi, apiErrorDetails } from '../../lib/api'
+import { apiErrorDetails } from '../../lib/api'
+import { usePublicDecksStore } from '../../stores/publicDecksStore'
 import type { DeckReportReason } from '../../lib/types'
 
 interface Props {
@@ -54,7 +55,7 @@ export function ReportSheet({ visible, deckId, onClose }: Props) {
     if (!reason || loading) return
     setLoading(true)
     try {
-      await flashcardsApi.reportDeck(deckId, { reason, details: details.trim() || undefined })
+      await usePublicDecksStore.getState().reportDeck(deckId, reason, details.trim() || undefined)
       onClose()
       Alert.alert('Yuborildi', "Shikoyatingiz qabul qilindi. Ko'rib chiqamiz.")
     } catch (e: any) {

@@ -17,6 +17,7 @@ import { FreezeSheet } from '../../components/streak/FreezeSheet'
 import { StreakLostModal } from '../../components/streak/StreakLostModal'
 import { EvolutionModal } from '../../components/streak/EvolutionModal'
 import { MagicTree } from '../../components/streak/MagicTree'
+import { StreakHeroBackground } from '../../components/streak/StreakHeroBackground'
 import { stageFromStreak, TREE_STAGES } from '../../lib/treeTheme'
 import type { TreeState, StageNumber } from '../../lib/treeTheme'
 import { useAuthStore } from '../../stores/authStore'
@@ -222,7 +223,7 @@ function CalCell({
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function StreakDetailScreen() {
-  const { c } = useTheme()
+  const { c, theme } = useTheme()
   const router  = useRouter()
   const insets  = useSafeAreaInsets()
   const user    = useAuthStore(s => s.user)
@@ -248,6 +249,10 @@ export default function StreakDetailScreen() {
   const [showTreeInfo, setShowTreeInfo] = useState(false)
   const [sharing, setSharing] = useState(false)
   const viewShotRef = useRef<ViewShot>(null)
+  // step-16: dev-only preview toggle for the 4 hero background states — never
+  // shown in production builds, lets the 4 variants be checked without
+  // manipulating real streak data.
+  const [devHeroOverride, setDevHeroOverride] = useState<{ theme: 'dark' | 'light'; health: 'healthy' | 'frozen' } | null>(null)
 
   async function shareCard() {
     if (!viewShotRef.current || sharing) return
@@ -272,9 +277,12 @@ export default function StreakDetailScreen() {
       // A newer load() has already started — discard this stale response
       if (gen !== loadGenRef.current) return
       setLocalFreeze(res.freeze_count)
-      // Show streak-lost modal once per session when streak is broken
-      if (!isRefresh && !hasShownLostRef.current && !res.is_active && res.streak_days > 0) {
+      // Show streak-lost modal once per session when streak is broken.
+      // Skip if the home screen already showed it (streakLostSeen in dashboardStore).
+      const alreadyShown = useDashboardStore.getState().streakLostSeen
+      if (!isRefresh && !hasShownLostRef.current && !alreadyShown && !res.is_active && res.streak_days > 0) {
         hasShownLostRef.current = true
+        useDashboardStore.getState().markStreakLostSeen()
         setPrevStreakDays(res.streak_days)
         // Display 0 in the hero — the streak is gone; keep the raw value in prevStreakDays for the modal
         setData({ ...res, streak_days: 0 })
@@ -389,14 +397,12 @@ export default function StreakDetailScreen() {
     }
   }
 
-  // Hero colors — adapt to dark/light
-  const heroGradient: [string, string] = ['#0f1b30', '#1b3056']
-  const heroNumColor   = '#eaf3ff'
-  const heroLabelColor = '#adc4e6'
-  const heroChipBg     = 'rgba(255,255,255,0.10)'
-  const heroChipText   = '#6fd6a8'
-  const nextLabelColor = '#adc4e6'
-  const nextTrackBg    = 'rgba(255,255,255,0.10)'
+  // step-16: hero health — reuses the same treeState the tree itself uses, so
+  // the background and the tree's frost coloring always transition together.
+  const heroHealth: 'healthy' | 'frozen' = treeState === 'frozen' ? 'frozen' : 'healthy'
+  const heroTheme  = devHeroOverride?.theme  ?? theme
+  const heroHealthResolved = devHeroOverride?.health ?? heroHealth
+  const nextTrackBg = 'rgba(255,255,255,0.10)'
 
   if (loading) {
     return (
@@ -408,37 +414,10 @@ export default function StreakDetailScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: c.bgPrimary }]}>
-      {/* Header */}
-      <View style={[styles.topBar, { borderBottomColor: c.border, paddingTop: insets.top + spacing.xs }]}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <ChevronLeft size={22} color={c.textPrimary} />
-        </Pressable>
-        <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-          Seriya
-        </Text>
-        <View style={styles.topRight}>
-          <Pressable
-            style={[styles.topIconBtn, { backgroundColor: c.bgTertiary, borderColor: c.border }]}
-            onPress={() => router.push('/(screens)/tree-stages' as any)}
-            hitSlop={8}
-          >
-            <Map size={15} color={c.textMuted} />
-          </Pressable>
-          <Pressable
-            style={[styles.freezeChip, { backgroundColor: '#60a5fa22', borderColor: '#60a5fa55' }]}
-            onPress={() => setShowFreeze(true)}
-          >
-            <Snowflake size={14} color="#60a5fa" />
-            <Text style={[styles.freezeChipText, { color: '#60a5fa', fontFamily: typography.fontFamily.bold }]}>
-              {freezeCount}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* API error banner — partial data from local stores is still shown */}
+      {/* API error banner — partial data from local stores is still shown.
+          No separate top bar anymore (step-16) — give it its own inset padding. */}
       {loadError && (
-        <View style={[styles.errorBanner, { backgroundColor: '#ff453a22', borderColor: '#ff453a44' }]}>
+        <View style={[styles.errorBanner, { backgroundColor: '#ff453a22', borderColor: '#ff453a44', paddingTop: insets.top + spacing.xs }]}>
           <Text style={[styles.errorBannerText, { color: '#ff453a', fontFamily: typography.fontFamily.regular }]}>
             ⚠️ {loadError}
           </Text>
@@ -459,64 +438,120 @@ export default function StreakDetailScreen() {
         {/* ── Hero ──────────────────────────────────────────────────────── */}
         <View>
           <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
-          <LinearGradient colors={heroGradient} style={styles.hero}>
-          {/* Info button */}
-          <Pressable
-            style={styles.treeInfoBtn}
-            onPress={() => setShowTreeInfo(true)}
-            hitSlop={10}
-          >
-            <Info size={18} color="rgba(255,255,255,0.55)" />
-          </Pressable>
+          <StreakHeroBackground theme={heroTheme} health={heroHealthResolved} topInset={insets.top}>
+            {(hc) => (
+              <>
+                {/* Floating header — replaces the old separate top bar so the
+                    background can extend edge-to-edge under the status bar. */}
+                <View style={styles.heroTopRow}>
+                  <Pressable
+                    style={styles.backBtn}
+                    onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)' as any)}
+                    hitSlop={10}
+                  >
+                    <ChevronLeft size={22} color={hc.primary} />
+                  </Pressable>
+                  <Text style={[styles.topTitle, { color: hc.primary, fontFamily: typography.fontFamily.bold }]}>
+                    Seriya
+                  </Text>
+                  <View style={styles.topRight}>
+                    <Pressable
+                      style={[styles.topIconBtn, { backgroundColor: hc.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(22,50,31,0.08)', borderColor: 'transparent' }]}
+                      onPress={() => setShowTreeInfo(true)}
+                      hitSlop={8}
+                    >
+                      <Info size={15} color={hc.secondary} />
+                    </Pressable>
+                    <Pressable
+                      style={[styles.topIconBtn, { backgroundColor: hc.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(22,50,31,0.08)', borderColor: 'transparent' }]}
+                      onPress={() => router.push('/(screens)/tree-stages' as any)}
+                      hitSlop={8}
+                    >
+                      <Map size={15} color={hc.secondary} />
+                    </Pressable>
+                    <Pressable
+                      style={[styles.topIconBtn, { backgroundColor: hc.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(22,50,31,0.08)', borderColor: 'transparent', opacity: sharing ? 0.5 : 1 }]}
+                      onPress={shareCard}
+                      disabled={sharing}
+                      hitSlop={8}
+                    >
+                      <Share2 size={15} color={hc.secondary} />
+                    </Pressable>
+                  </View>
+                </View>
 
-          {/* Stage chip */}
-          <View style={[styles.stageChip, { backgroundColor: heroChipBg }]}>
-            <Text style={[styles.stageChipText, { color: heroChipText, fontFamily: typography.fontFamily.bold }]}>
-              {stageMeta.name.toUpperCase()} · BOSQICH {stage}
-            </Text>
-          </View>
+                {__DEV__ && (
+                  <View style={styles.devToggleRow}>
+                    {([
+                      { label: 'Aurora',  theme: 'dark' as const,  health: 'healthy' as const },
+                      { label: 'A-Frost', theme: 'dark' as const,  health: 'frozen' as const  },
+                      { label: 'Meadow',  theme: 'light' as const, health: 'healthy' as const },
+                      { label: 'M-Frost', theme: 'light' as const, health: 'frozen' as const  },
+                    ]).map(opt => (
+                      <Pressable
+                        key={opt.label}
+                        onPress={() => setDevHeroOverride(
+                          devHeroOverride?.theme === opt.theme && devHeroOverride?.health === opt.health
+                            ? null
+                            : { theme: opt.theme, health: opt.health }
+                        )}
+                        style={[
+                          styles.devToggleBtn,
+                          devHeroOverride?.theme === opt.theme && devHeroOverride?.health === opt.health && styles.devToggleBtnActive,
+                        ]}
+                      >
+                        <Text style={styles.devToggleText}>{opt.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
 
-          <MagicTree stage={stage} state={treeState} size="auto" uid="sd_hero" />
+                <View style={styles.heroContent}>
+                  {/* Stage chip */}
+                  <View style={[styles.stageChip, { backgroundColor: hc.isDark ? 'rgba(255,255,255,0.10)' : 'rgba(22,50,31,0.08)' }]}>
+                    <Text style={[styles.stageChipText, { color: hc.isDark ? '#6fd6a8' : '#1f7a4d', fontFamily: typography.fontFamily.bold }]}>
+                      {stageMeta.name.toUpperCase()} · BOSQICH {stage}
+                    </Text>
+                  </View>
 
-          {/* Big streak number */}
-          <View style={styles.heroTextRow}>
-            <Text style={styles.heroFlame}>🔥</Text>
-            <Text style={[styles.heroNum, { color: heroNumColor, fontFamily: typography.fontFamily.bold }]}>
-              {streakDays}
-            </Text>
-          </View>
-          <Text style={[styles.heroLabel, { color: heroLabelColor, fontFamily: typography.fontFamily.regular }]}>
-            kunlik seriya
-          </Text>
+                  <MagicTree stage={stage} state={treeState} size="auto" uid="sd_hero" />
 
-          {/* Next-stage progress */}
-          {nextStageMeta && (
-            <View style={styles.nextStageWrap}>
-              <View style={styles.nextStageMeta}>
-                <Text style={[styles.nextStageLabel, { color: nextLabelColor, fontFamily: typography.fontFamily.regular }]}>
-                  Keyingi: {nextStageMeta.name}
-                </Text>
-                <Text style={[styles.nextStageDays, { fontFamily: typography.fontFamily.medium }]}>
-                  {daysToNext} kun qoldi
-                </Text>
-              </View>
-              <View style={[styles.nextStageTrack, { backgroundColor: nextTrackBg }]}>
-                <View style={[styles.nextStageFill, { width: `${nextStagePct}%` as any }]} />
-              </View>
-            </View>
-          )}
+                  {/* Big streak number */}
+                  <View style={styles.heroTextRow}>
+                    <Text style={styles.heroFlame}>🔥</Text>
+                    <Text style={[styles.heroNum, { color: hc.primary, fontFamily: typography.fontFamily.bold }]}>
+                      {streakDays}
+                    </Text>
+                  </View>
+                  <Text style={[styles.heroLabel, { color: hc.secondary, fontFamily: typography.fontFamily.regular }]}>
+                    kunlik seriya
+                  </Text>
 
-          <Text style={[styles.heroWatermark, { fontFamily: typography.fontFamily.medium }]}>
-            🌱 sahifalab.uz
-          </Text>
+                  {/* Next-stage progress */}
+                  {nextStageMeta && (
+                    <View style={styles.nextStageWrap}>
+                      <View style={styles.nextStageMeta}>
+                        <Text style={[styles.nextStageLabel, { color: hc.secondary, fontFamily: typography.fontFamily.regular }]}>
+                          Keyingi: {nextStageMeta.name}
+                        </Text>
+                        <Text style={[styles.nextStageDays, { fontFamily: typography.fontFamily.medium }]}>
+                          {daysToNext} kun qoldi
+                        </Text>
+                      </View>
+                      <View style={[styles.nextStageTrack, { backgroundColor: nextTrackBg }]}>
+                        <View style={[styles.nextStageFill, { width: `${nextStagePct}%` as any }]} />
+                      </View>
+                    </View>
+                  )}
 
-          </LinearGradient>
+                  <Text style={[styles.heroWatermark, { color: hc.faint, fontFamily: typography.fontFamily.medium }]}>
+                    🌱 sahifalab.uz
+                  </Text>
+                </View>
+              </>
+            )}
+          </StreakHeroBackground>
           </ViewShot>
-
-          {/* Share button — outside ViewShot so it won't appear in the captured image */}
-          <Pressable style={styles.shareBtn} onPress={shareCard} hitSlop={10} disabled={sharing}>
-            <Share2 size={18} color={sharing ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.55)'} />
-          </Pressable>
         </View>
 
         {/* ── Stats row ─────────────────────────────────────────────────── */}
@@ -726,6 +761,9 @@ export default function StreakDetailScreen() {
         freezeCount={freezeCount}
         onClose={() => setShowLostModal(false)}
         onUseFreeze={data?.can_freeze ? handleUseFreeze : undefined}
+        onBuyFreeze={data?.can_freeze_if_purchased && !data?.can_freeze
+          ? () => { setShowLostModal(false); setShowFreeze(true) }
+          : undefined}
       />
 
       <EvolutionModal
@@ -920,58 +958,47 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
 
-  topBar: {
+  // step-16: floating header — replaces the old non-scrolling topBar so the
+  // hero background can extend edge-to-edge under the status bar.
+  heroTopRow: {
     flexDirection:     'row',
     alignItems:        'center',
     paddingHorizontal: spacing.base,
-    paddingVertical:   spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: { padding: spacing.xs, marginRight: spacing.xs },
   topTitle: { fontSize: typography.size.base, flex: 1 },
-  freezeChip: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   4,
-    borderRadius:      radius.full,
-    borderWidth:       1,
-  },
-  freezeChipText: { fontSize: typography.size.sm },
 
   scroll: {
     paddingBottom: spacing['2xl'],
     gap:           spacing.md,
   },
 
-  treeInfoBtn: {
-    position: 'absolute',
-    top:      12,
-    right:    12,
-    padding:  6,
-    zIndex:   10,
-  },
-
-  // Hero — fills ~40% of screen height
-  hero: {
+  // Hero content — fills ~40% of screen height, sits inside StreakHeroBackground
+  heroContent: {
     alignItems:    'center',
-    paddingTop:    spacing.lg,
+    paddingTop:    spacing.sm,
     paddingBottom: spacing.lg,
     gap:           spacing.xs,
-    minHeight:     380,
   },
-  heroInfoBtn: {
-    position:       'absolute',
-    top:            spacing.sm,
-    right:          spacing.sm,
-    width:          30,
-    height:         30,
-    borderRadius:   15,
-    borderWidth:    StyleSheet.hairlineWidth,
-    alignItems:     'center',
-    justifyContent: 'center',
+  // step-16 dev-only preview row (__DEV__ gated, never shown in production)
+  devToggleRow: {
+    flexDirection:     'row',
+    gap:               6,
+    paddingHorizontal: spacing.base,
+    marginTop:         6,
   },
+  // Fixed dark chip regardless of the hero's current background — a debug
+  // tool needs to stay visible across all 4 variants, not blend in with them.
+  devToggleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical:   3,
+    borderRadius:      radius.full,
+    backgroundColor:   'rgba(0,0,0,0.55)',
+    borderWidth:       1,
+    borderColor:       'rgba(255,255,255,0.25)',
+  },
+  devToggleBtnActive: { backgroundColor: 'rgba(245,166,35,0.9)', borderColor: 'rgba(245,166,35,0.9)' },
+  devToggleText: { fontSize: 9, color: '#fff', fontWeight: '700' },
   heroTextRow: {
     flexDirection: 'row',
     alignItems:    'flex-end',
@@ -1307,13 +1334,4 @@ const styles = StyleSheet.create({
     marginTop:     6,
     letterSpacing: 0.4,
   },
-
-  shareBtn: {
-    position: 'absolute',
-    top:      12,
-    left:     12,
-    padding:  6,
-    zIndex:   10,
-  },
-
 })

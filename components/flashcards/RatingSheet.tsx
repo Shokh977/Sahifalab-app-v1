@@ -7,14 +7,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Star } from 'phosphor-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { flashcards as flashcardsApi } from '../../lib/api'
-import type { RateDeckResult } from '../../lib/types'
+import { apiErrorDetails } from '../../lib/api'
+import { usePublicDecksStore } from '../../stores/publicDecksStore'
 
 interface Props {
   visible:    boolean
   originalDeckId: number
   onClose:    () => void
-  onRated:    (result: RateDeckResult) => void
+  onRated:    (rating: number) => void
 }
 
 export function RatingSheet({ visible, originalDeckId, onClose, onRated }: Props) {
@@ -47,11 +47,11 @@ export function RatingSheet({ visible, originalDeckId, onClose, onRated }: Props
     if (!rating || loading) return
     setLoading(true)
     try {
-      const result = await flashcardsApi.rateDeck(originalDeckId, { rating, comment: comment.trim() || undefined })
-      onRated(result)
+      await usePublicDecksStore.getState().rateDeck(originalDeckId, rating, comment.trim() || undefined)
+      onRated(rating)
       onClose()
     } catch (e: any) {
-      Alert.alert('Xatolik', e.message ?? 'Baholashda xatolik yuz berdi')
+      Alert.alert('Xatolik', apiErrorDetails(e))
     } finally {
       setLoading(false)
     }

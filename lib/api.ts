@@ -1523,15 +1523,16 @@ export interface FreezePackage {
 }
 
 export interface StreakDetail {
-  streak_days:     number
-  is_active:       boolean
-  can_freeze:      boolean
-  longest_streak:  number
-  week_days:       number
-  freeze_count:    number
-  milestones:      StreakMilestone[]
-  calendar:        StreakCalendarDay[]
-  freeze_packages: FreezePackage[]
+  streak_days:             number
+  is_active:               boolean
+  can_freeze:              boolean
+  can_freeze_if_purchased: boolean
+  longest_streak:          number
+  week_days:               number
+  freeze_count:            number
+  milestones:              StreakMilestone[]
+  calendar:                StreakCalendarDay[]
+  freeze_packages:         FreezePackage[]
 }
 
 export const streaks = {

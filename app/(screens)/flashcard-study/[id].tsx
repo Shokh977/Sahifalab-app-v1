@@ -260,7 +260,8 @@ export default function FlashcardStudyScreen() {
         }
       } catch (e: any) {
         Alert.alert('Xatolik', e.message)
-        router.back()
+        if (router.canGoBack()) router.back()
+        else router.replace(`/(screens)/flashcard-deck/${deckId}` as any)
       } finally {
         setLoading(false)
       }
@@ -411,7 +412,7 @@ export default function FlashcardStudyScreen() {
           masteryBefore={masteryBefore}
           masteryAfter={masteryAfter}
           onHome={() => router.push('/(tabs)' as any)}
-          onOther={() => router.push('/(screens)/flashcards' as any)}
+          onOther={() => router.push('/(tabs)/flashcards' as any)}
         />
         <MilestoneModal
           visible={milestoneVisible}
@@ -550,7 +551,11 @@ export default function FlashcardStudyScreen() {
               Natijalar saqlanadi.
             </Text>
             <Pressable
-              onPress={() => { setShowConfirm(false); router.back() }}
+              onPress={() => {
+                setShowConfirm(false)
+                if (router.canGoBack()) router.back()
+                else router.replace(`/(screens)/flashcard-deck/${deckId}` as any)
+              }}
               style={({ pressed }) => [styles.confirmBtn, { backgroundColor: c.accentPrimary, opacity: pressed ? 0.85 : 1 }]}
             >
               <Text style={[styles.confirmBtnText, { color: c.textInverse, fontFamily: typography.fontFamily.semibold }]}>

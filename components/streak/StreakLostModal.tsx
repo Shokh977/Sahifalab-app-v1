@@ -12,11 +12,12 @@ import { typography, spacing, radius } from '../../lib/constants'
 import { TreeStage, treeStageFromStreak } from '../ui/TreeStage'
 
 interface Props {
-  visible:      boolean
-  prevStreak:   number
-  freezeCount:  number
-  onClose:      () => void
-  onUseFreeze?: () => void
+  visible:       boolean
+  prevStreak:    number
+  freezeCount:   number
+  onClose:       () => void
+  onUseFreeze?:  () => void
+  onBuyFreeze?:  () => void
 }
 
 const ENCOURAGEMENTS = [
@@ -27,7 +28,7 @@ const ENCOURAGEMENTS = [
   "O'tgan kunlar o'rgatdi — bugun yanada kuchliroq bo'lasan.",
 ]
 
-export function StreakLostModal({ visible, prevStreak, freezeCount, onClose, onUseFreeze }: Props) {
+export function StreakLostModal({ visible, prevStreak, freezeCount, onClose, onUseFreeze, onBuyFreeze }: Props) {
   const { c } = useTheme()
   const scaleAnim   = useRef(new Animated.Value(0.8)).current
   const opacityAnim = useRef(new Animated.Value(0)).current
@@ -90,8 +91,19 @@ export function StreakLostModal({ visible, prevStreak, freezeCount, onClose, onU
                 </Text>
               </Pressable>
             )}
+            {onBuyFreeze && freezeCount === 0 && (
+              <Pressable
+                style={[styles.freezeBtn, { backgroundColor: c.bgTertiary, borderColor: '#60a5fa' + '55' }]}
+                onPress={onBuyFreeze}
+              >
+                <Text style={styles.freezeEmoji}>🧊</Text>
+                <Text style={[styles.freezeBtnText, { color: '#60a5fa', fontFamily: typography.fontFamily.semibold }]}>
+                  Muzlatish sotib ol
+                </Text>
+              </Pressable>
+            )}
             <Pressable
-              style={[styles.btn, { backgroundColor: c.brand, flex: onUseFreeze && freezeCount > 0 ? 1 : undefined }]}
+              style={[styles.btn, { backgroundColor: c.brand, flex: (onUseFreeze && freezeCount > 0) || (onBuyFreeze && freezeCount === 0) ? 1 : undefined }]}
               onPress={onClose}
             >
               <Text style={[styles.btnText, { color: '#fff', fontFamily: typography.fontFamily.bold }]}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, ScrollView, RefreshControl, StyleSheet,
   Pressable, Linking,
@@ -14,7 +14,8 @@ import { useDashboardStore } from '../../stores/dashboardStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius, getLevelTier } from '../../lib/constants'
-import { hero, type HeroContent } from '../../lib/api'
+import { hero, streaks as streaksApi, type HeroContent } from '../../lib/api'
+import { StreakLostModal } from '../../components/streak/StreakLostModal'
 import { SkeletonBlock } from '../../components/dashboard/SkeletonBlock'
 import { UnifiedBanner } from '../../components/dashboard/UnifiedBanner'
 import { ContextualActionRow } from '../../components/dashboard/ContextualActionRow'
@@ -204,11 +205,38 @@ const heroBannerStyles = StyleSheet.create({
 export default function HomeTab() {
   const { c }      = useTheme()
   const router     = useRouter()
-  const { fetch, refresh, data, loading, refreshing } = useDashboardStore()
+  const { fetch, refresh, data, loading, refreshing, streakLostSeen, markStreakLostSeen } = useDashboardStore()
 
   useEffect(() => { fetch() }, [])
 
   const onRefresh = useCallback(() => { refresh() }, [])
+
+  // ── Streak-lost modal ────────────────────────────────────────────────────────
+  const shownLostRef = useRef(false)
+  const [showLostModal,  setShowLostModal]  = useState(false)
+  const [prevStreakDays, setPrevStreakDays]  = useState(0)
+
+  useEffect(() => {
+    if (!data?.streakJustLost || streakLostSeen || shownLostRef.current) return
+    shownLostRef.current = true
+    markStreakLostSeen()
+    setPrevStreakDays(data.streakLostPrevDays ?? 0)
+    const t = setTimeout(() => setShowLostModal(true), 800)
+    return () => clearTimeout(t)
+  }, [data?.streakJustLost, streakLostSeen, markStreakLostSeen])
+
+  async function handleUseFreeze() {
+    try {
+      await streaksApi.useFreeze()
+    } catch {}
+    setShowLostModal(false)
+    refresh()
+  }
+
+  function handleBuyFreeze() {
+    setShowLostModal(false)
+    router.push('/(screens)/streak-detail' as any)
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
@@ -316,6 +344,15 @@ export default function HomeTab() {
 
         <View style={{ height: spacing['2xl'] }} />
       </ScrollView>
+
+      <StreakLostModal
+        visible={showLostModal}
+        prevStreak={prevStreakDays}
+        freezeCount={data?.focusStats.freeze_count ?? 0}
+        onClose={() => setShowLostModal(false)}
+        onUseFreeze={data?.streakLostCanFreeze ? handleUseFreeze : undefined}
+        onBuyFreeze={data?.streakLostCanBuyFreeze ? handleBuyFreeze : undefined}
+      />
     </View>
   )
 }

@@ -26,6 +26,11 @@ export interface DashboardData {
   heatmap:           HeatmapDay[]
   flashcardDueCount: number
   fetchedAt:         number
+  // Streak-loss detection — set when a fresh fetch finds is_active=false and streak_days>0
+  streakJustLost?:       boolean
+  streakLostPrevDays?:   number
+  streakLostCanFreeze?:  boolean   // can_freeze: window open + freeze available
+  streakLostCanBuyFreeze?: boolean // window open but no freezes to use
 }
 
 interface DashboardState {
@@ -33,11 +38,14 @@ interface DashboardState {
   loading:    boolean
   refreshing: boolean
   error:      string | null
+  // Per-session flag: once the streak-lost modal has been shown, don't show it again
+  streakLostSeen: boolean
 
-  fetch:           () => Promise<void>
-  refresh:         () => Promise<void>
-  patchFocusStats: (patch: Partial<FocusStats>) => void
-  clear:           () => void
+  fetch:              () => Promise<void>
+  refresh:            () => Promise<void>
+  patchFocusStats:    (patch: Partial<FocusStats>) => void
+  markStreakLostSeen: () => void
+  clear:              () => void
 }
 
 function emptyFocus(): FocusStats {
@@ -116,7 +124,13 @@ async function fetchAll(): Promise<DashboardData> {
   // (UnifiedBanner, StreakBanner, profile stats) sees the real value of 0.
   let stats = statsRes.status === 'fulfilled' ? statsRes.value : emptyFocus()
   const streakDetail = streakRes.status === 'fulfilled' ? streakRes.value : null
-  if (streakDetail && !streakDetail.is_active && stats.streak_days > 0) {
+  const streakJustLost = !!(streakDetail && !streakDetail.is_active && streakDetail.streak_days > 0)
+  const streakLostPrevDays   = streakJustLost ? streakDetail!.streak_days : 0
+  const streakLostCanFreeze  = streakJustLost ? streakDetail!.can_freeze : false
+  const streakLostCanBuyFreeze = streakJustLost
+    ? (streakDetail!.can_freeze_if_purchased && !streakDetail!.can_freeze)
+    : false
+  if (streakJustLost) {
     stats = { ...stats, streak_days: 0 }
   }
   const flashcardDueCount = flashStats?.total_due ?? 0
@@ -167,22 +181,27 @@ async function fetchAll(): Promise<DashboardData> {
 
   return {
     user,
-    enrolled:          validEnrolled,
+    enrolled:               validEnrolled,
     recommended,
-    leaderboard:       lbEntries,
-    myLeaderRank:      myLeaderRank,
-    focusStats:        stats,
+    leaderboard:            lbEntries,
+    myLeaderRank:           myLeaderRank,
+    focusStats:             stats,
     heatmap,
     flashcardDueCount,
-    fetchedAt:         Date.now(),
+    fetchedAt:              Date.now(),
+    streakJustLost,
+    streakLostPrevDays,
+    streakLostCanFreeze,
+    streakLostCanBuyFreeze,
   }
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
-  data:       null,
-  loading:    false,
-  refreshing: false,
-  error:      null,
+  data:            null,
+  loading:         false,
+  refreshing:      false,
+  error:           null,
+  streakLostSeen:  false,
 
   fetch: async () => {
     if (get().loading) return
@@ -217,6 +236,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       set({ refreshing: false })
     }
   },
+
+  markStreakLostSeen: () => set({ streakLostSeen: true }),
 
   patchFocusStats: (patch) => {
     const { data } = get()

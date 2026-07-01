@@ -5,7 +5,7 @@ import {
   Animated as RNAnimated, Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useRouter, useFocusEffect } from 'expo-router'
+import { useRouter } from 'expo-router'
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withRepeat, withSequence, Easing, runOnJS,
@@ -16,7 +16,6 @@ import * as Haptics from 'expo-haptics'
 import { useTimerStore } from '../../stores/timerStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
-import { useFlashcardStore } from '../../stores/flashcardStore'
 import { useOfflineQueueStore } from '../../stores/offlineQueueStore'
 import { focus, profile, focusStats, focusChallenges } from '../../lib/api'
 import type { FocusStats } from '../../lib/api'
@@ -44,13 +43,12 @@ import {
 
 // ── Sub-tab bar ───────────────────────────────────────────────────────────────
 
-type SubTab = 'timer' | 'stats' | 'flashcards'
+type SubTab = 'timer' | 'stats'
 
 const SCREEN_W = Dimensions.get('window').width
 const SUBTABS: { id: SubTab; label: string }[] = [
-  { id: 'timer',      label: '⏱ Taymer' },
-  { id: 'flashcards', label: 'Kartalar' },
-  { id: 'stats',      label: 'Statistika' },
+  { id: 'timer', label: '⏱ Taymer' },
+  { id: 'stats', label: 'Statistika' },
 ]
 
 function SubTabBar({
@@ -896,206 +894,6 @@ function InfoSheetModal({ visible, onClose, children }: {
   )
 }
 
-// ── Flashcards inline view (deck list within the tab) ────────────────────────
-
-function FlashcardsView() {
-  const { c }      = useTheme()
-  const router     = useRouter()
-  const insets     = useSafeAreaInsets()
-  const { decks, loading, fetchDecks, fetchStats, addDeck } = useFlashcardStore()
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [showInfo,  setShowInfo]  = useState(false)
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchDecks()
-      fetchStats()
-    }, [])
-  )
-
-  const stats = useFlashcardStore(s => s.stats)
-
-  return (
-    <>
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={{ padding: spacing.screenMargin, gap: 12, paddingBottom: 80 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header row with info button */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-        <Text style={[{ color: c.textPrimary, fontFamily: typography.fontFamily.semibold, fontSize: typography.size.base }]}>
-          Mening to'plamlarim
-        </Text>
-        <Pressable
-          onPress={() => setShowInfo(true)}
-          hitSlop={10}
-          style={({ pressed }) => [
-            styles.infoCircleBtn,
-            { borderColor: c.border, backgroundColor: pressed ? c.bgTertiary : c.bgSecondary },
-          ]}
-        >
-          <Text style={[{ color: c.textSecondary, fontFamily: typography.fontFamily.bold, fontSize: 13, lineHeight: 18 }]}>
-            i
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Stats row */}
-      {stats && (
-        <View style={[styles.fcStatsCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-          <FCStatItem label="Jami kartalar" value={stats.total_cards} color={c.textPrimary} />
-          <View style={[{ width: 1, backgroundColor: c.border, marginVertical: 4 }]} />
-          <FCStatItem label="O'rganilgan" value={stats.total_mastered} color={c.success} />
-          <View style={[{ width: 1, backgroundColor: c.border, marginVertical: 4 }]} />
-          <FCStatItem label="Bugun" value={stats.today_reviewed} color={c.accentPrimary} />
-        </View>
-      )}
-
-      {/* Deck list or empty */}
-      {loading && decks.length === 0 ? (
-        <ActivityIndicator color={c.accentPrimary} style={{ marginTop: 40 }} />
-      ) : decks.length === 0 ? (
-        <View style={{ alignItems: 'center', gap: 12, paddingTop: 40 }}>
-          <Text style={[{ color: c.textDisabled, fontFamily: typography.fontFamily.regular, fontSize: 15 }]}>
-            Hali kartochka yo'q
-          </Text>
-          <Pressable
-            onPress={() => router.push('/(screens)/flashcards' as any)}
-            style={({ pressed }) => [styles.fcCreateBtn, { backgroundColor: c.accentPrimary, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <Text style={[{ color: c.textInverse, fontFamily: typography.fontFamily.semibold, fontSize: 15 }]}>
-              To'plam yaratish
-            </Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          {decks.map(deck => {
-            const mastery = deck.card_count > 0 ? deck.mastered_count / deck.card_count : 0
-            return (
-              <Pressable
-                key={deck.id}
-                onPress={() => router.push(`/(screens)/flashcard-deck/${deck.id}` as any)}
-                style={({ pressed }) => [styles.fcDeckRow, { backgroundColor: c.bgSecondary, opacity: pressed ? 0.88 : 1 }]}
-              >
-                <View style={[styles.fcStripe, { backgroundColor: deck.color }]} />
-                <View style={{ flex: 1, gap: 3, paddingRight: 8 }}>
-                  <Text style={[{ color: c.textPrimary, fontFamily: typography.fontFamily.semibold, fontSize: 15 }]} numberOfLines={1}>
-                    {deck.title}
-                  </Text>
-                  <Text style={[{ color: c.textSecondary, fontFamily: typography.fontFamily.regular, fontSize: 12 }]}>
-                    {deck.card_count} ta karta · {deck.mastered_count} ta o'rganildi
-                  </Text>
-                  <View style={[{ height: 4, borderRadius: 2, width: 100, backgroundColor: c.bgTertiary, overflow: 'hidden' }]}>
-                    <View style={[{ height: 4, borderRadius: 2, backgroundColor: c.success, width: `${Math.round(mastery * 100)}%` as any }]} />
-                  </View>
-                </View>
-                {deck.due_count > 0 && (
-                  <View style={[{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.accentPrimary, alignItems: 'center', justifyContent: 'center' }]}>
-                    <Text style={[{ color: c.textInverse, fontFamily: typography.fontFamily.bold, fontSize: 12 }]}>
-                      {deck.due_count > 99 ? '99+' : deck.due_count}
-                    </Text>
-                  </View>
-                )}
-              </Pressable>
-            )
-          })}
-          <Pressable
-            onPress={() => router.push('/(screens)/flashcards' as any)}
-            style={({ pressed }) => [styles.fcCreateBtn, { borderColor: c.border, borderWidth: 1, opacity: pressed ? 0.75 : 1 }]}
-          >
-            <Text style={[{ color: c.textSecondary, fontFamily: typography.fontFamily.medium, fontSize: 14 }]}>
-              Barcha to'plamlar →
-            </Text>
-          </Pressable>
-        </>
-      )}
-    </ScrollView>
-
-    {/* ── Flashcards info modal ─────────────────────────────────────────── */}
-    <InfoSheetModal visible={showInfo} onClose={() => setShowInfo(false)}>
-        <View style={[styles.fcInfoHandle, { backgroundColor: c.border }]} />
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 18, paddingBottom: 32 }}>
-
-          <Text style={[styles.fcInfoTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-            Flashcard nima?
-          </Text>
-          <Text style={[styles.fcInfoBody, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-            Flashcard — bu bir tomonda savol yoki atama, ikkinchi tomonda esa javob yoki tushuntirish yozilgan raqamli karta. Siz kartani ko'rib, javobni o'ylab topsangiz, orqa tomonini ochib tekshirasiz.
-          </Text>
-
-          <View style={[styles.fcInfoDivider, { backgroundColor: c.borderSubtle }]} />
-
-          <Text style={[styles.fcInfoSection, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            Nima uchun foydali?
-          </Text>
-          {[
-            { icon: '🧠', title: 'Aktiv eslash', desc: "Faqat o'qish emas, balki eslashga urinish — bilimni mustahkamlaydigan eng samarali usul." },
-            { icon: '📅', title: "Intervalli takrorlash (SM-2)", desc: "Ilova avtomatik ravishda qaysi kartani qachon ko'rsatishni hisoblaydi. Yaxshi bilganingizni kamroq, qiyinini ko'proq takrorlaysiz." },
-            { icon: '⏱', title: "Vaqtni tejaydi", desc: "Kuniga 10–15 daqiqa flashcard bilan ishlash an'anaviy qayta o'qishdan ko'ra 2–4 barobar samaraliroq." },
-            { icon: '📈', title: "O'sishni ko'rasiz", desc: "Har bir kartaning holati (yangi, o'rganilmoqda, o'rganilgan) va umumiy statistika saqlanadi." },
-          ].map(item => (
-            <View key={item.title} style={styles.fcInfoBenefit}>
-              <Text style={{ fontSize: 22 }}>{item.icon}</Text>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[{ color: c.textPrimary, fontFamily: typography.fontFamily.semibold, fontSize: typography.size.sm }]}>
-                  {item.title}
-                </Text>
-                <Text style={[{ color: c.textSecondary, fontFamily: typography.fontFamily.regular, fontSize: typography.size.xs, lineHeight: 18 }]}>
-                  {item.desc}
-                </Text>
-              </View>
-            </View>
-          ))}
-
-          <View style={[styles.fcInfoDivider, { backgroundColor: c.borderSubtle }]} />
-
-          <Text style={[styles.fcInfoSection, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            Qanday ishlatish kerak?
-          </Text>
-          {[
-            { n: '1', text: "\"Barcha to'plamlar\" tugmasini bosib flashcard ekraniga o'ting." },
-            { n: '2', text: "Yangi to'plam yarating: mavzu nomi va rang tanlang." },
-            { n: '3', text: "To'plamga kartalar qo'shing: savol va javob yozing." },
-            { n: '4', text: "\"Takrorlash\" tugmasini bosing — ilova kartalarni ko'rsatadi, javobni ko'ring va qanchalik bilishingizni baholang." },
-            { n: '5', text: "Har kuni biroz vaqt ajrating. \"Bugungi\" hisoblagich kundalik takrorlaganingizni ko'rsatadi." },
-          ].map(step => (
-            <View key={step.n} style={styles.fcInfoStep}>
-              <View style={[styles.fcInfoStepBadge, { backgroundColor: c.accentPrimary }]}>
-                <Text style={[{ color: c.textInverse, fontFamily: typography.fontFamily.bold, fontSize: 12 }]}>{step.n}</Text>
-              </View>
-              <Text style={[{ flex: 1, color: c.textSecondary, fontFamily: typography.fontFamily.regular, fontSize: typography.size.sm, lineHeight: 20 }]}>
-                {step.text}
-              </Text>
-            </View>
-          ))}
-
-        </ScrollView>
-
-        <Pressable
-          onPress={() => setShowInfo(false)}
-          style={({ pressed }) => [styles.fcInfoClose, { backgroundColor: c.accentPrimary, opacity: pressed ? 0.85 : 1 }]}
-        >
-          <Text style={[{ color: c.textInverse, fontFamily: typography.fontFamily.semibold, fontSize: typography.size.base }]}>
-            Tushunarli
-          </Text>
-        </Pressable>
-    </InfoSheetModal>
-    </>
-  )
-}
-
-function FCStatItem({ label, value, color }: { label: string; value: number; color: string }) {
-  const { c } = useTheme()
-  return (
-    <View style={{ flex: 1, alignItems: 'center', gap: 3 }}>
-      <Text style={[{ color, fontFamily: typography.fontFamily.bold, fontSize: 20 }]}>{value}</Text>
-      <Text style={[{ color: c.textSecondary, fontFamily: typography.fontFamily.regular, fontSize: 11, textAlign: 'center' }]}>{label}</Text>
-    </View>
-  )
-}
-
 // ── Stats screen ──────────────────────────────────────────────────────────────
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -1348,7 +1146,6 @@ export default function StudyTab() {
             }}
           >
             <View style={{ width: SCREEN_W, height: pagerH }}><TimerScreen /></View>
-            <View style={{ width: SCREEN_W, height: pagerH }}><FlashcardsView /></View>
             <View style={{ width: SCREEN_W, height: pagerH }}><StatsScreen /></View>
           </RNAnimated.ScrollView>
         )}
@@ -1642,31 +1439,7 @@ const styles = StyleSheet.create({
   streakRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
   flameEmoji:  { fontSize: 16 },
 
-  // Flashcards inline view
-  fcStatsCard: {
-    flexDirection: 'row',
-    borderRadius:  radius.cardLg,
-    borderWidth:   1,
-    padding:       spacing.base,
-    marginBottom:  2,
-  },
-  fcDeckRow: {
-    height:        80,
-    borderRadius:  14,
-    flexDirection: 'row',
-    alignItems:    'center',
-    overflow:      'hidden',
-  },
-  fcStripe: { width: 4, alignSelf: 'stretch', marginRight: 14 },
-  fcCreateBtn: {
-    height:         44,
-    borderRadius:   radius.button,
-    alignItems:     'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-
-  // Flashcards info button + modal
+  // Info button + modal (shared by timer/stats info sheets)
   infoCircleBtn: {
     width:          26,
     height:         26,

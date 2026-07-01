@@ -197,6 +197,7 @@ export interface PublicDeckItem {
   id:             number
   title:          string
   description:    string | null
+  color:          string
   card_count:     number
   category:       string | null
   badge_type:     DeckBadgeType

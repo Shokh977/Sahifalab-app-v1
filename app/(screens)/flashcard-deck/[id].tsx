@@ -16,6 +16,7 @@ import {
 import { useTheme } from '../../../hooks/useTheme'
 import { flashcards as flashcardsApi } from '../../../lib/api'
 import { useFlashcardStore } from '../../../stores/flashcardStore'
+import { usePublicDecksStore } from '../../../stores/publicDecksStore'
 import type { FlashcardDeck, Flashcard } from '../../../lib/types'
 import { typography, spacing, radius } from '../../../lib/constants'
 import { ConfirmModal } from '../../../components/ui/ConfirmModal'
@@ -265,7 +266,8 @@ export default function DeckDetailScreen() {
         try {
           await flashcardsApi.deleteDeck(deckId)
           removeDeck(deckId)
-          router.back()
+          if (router.canGoBack()) router.back()
+          else router.replace('/(tabs)/flashcards' as any)
         } catch (e: any) {
           Alert.alert('Xatolik', e.message)
         }
@@ -283,7 +285,7 @@ export default function DeckDetailScreen() {
       onConfirm: async () => {
         setConfirm(s => ({ ...s, visible: false }))
         try {
-          const updated = await flashcardsApi.unpublishDeck(deckId)
+          const updated = await usePublicDecksStore.getState().unpublishDeck(deckId)
           setDeck(updated)
           updateDeck(updated)
         } catch (e: any) {
@@ -350,7 +352,7 @@ export default function DeckDetailScreen() {
     <View style={[styles.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
       {/* Top bar */}
       <View style={[styles.topBar, { borderBottomColor: c.borderSubtle }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/flashcards' as any)} hitSlop={12}>
           <ArrowLeft size={24} color={c.textPrimary} />
         </Pressable>
         <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]} numberOfLines={1}>
@@ -574,7 +576,7 @@ export default function DeckDetailScreen() {
           visible={ratingSheetOpen}
           originalDeckId={deck.cloned_from_deck_id}
           onClose={() => setRatingSheetOpen(false)}
-          onRated={result => setMyRating(result.my_rating)}
+          onRated={rating => setMyRating(rating)}
         />
       )}
     </View>

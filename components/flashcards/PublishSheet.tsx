@@ -7,7 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Check, X } from 'phosphor-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { flashcards as flashcardsApi, apiErrorDetails } from '../../lib/api'
+import { apiErrorDetails } from '../../lib/api'
+import { usePublicDecksStore } from '../../stores/publicDecksStore'
 import { shareFlashcardDeck } from '../../lib/share'
 import { DECK_CATEGORIES } from '../../lib/flashcardCategories'
 import type { FlashcardDeck, Flashcard } from '../../lib/types'
@@ -63,10 +64,7 @@ export function PublishSheet({ visible, deck, cards, onClose, onPublished }: Pro
     setLoading(true)
     setError(null)
     try {
-      const updated = await flashcardsApi.publishDeck(deck.id, {
-        is_anonymous: !shareWithName,
-        category:     category!,
-      })
+      const updated = await usePublicDecksStore.getState().publishDeck(deck.id, !shareWithName, category!)
       onPublished(updated)
       setPublished(true)
     } catch (e: any) {

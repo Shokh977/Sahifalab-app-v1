@@ -4,7 +4,7 @@ export const DECK_CATEGORIES: { key: DeckCategory; label: string }[] = [
   { key: 'english',     label: 'Ingliz tili' },
   { key: 'ielts',       label: 'IELTS/CEFR' },
   { key: 'business',    label: 'Biznes' },
-  { key: 'arabic',      label: "Arab tili / Qur'on" },
+  { key: 'arabic',      label: 'Arab tili' },
   { key: 'programming', label: 'Dasturlash' },
   { key: 'medical',     label: 'Tibbiyot' },
   { key: 'other',       label: 'Boshqa' },

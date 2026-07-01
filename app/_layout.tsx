@@ -20,6 +20,7 @@ import { useNotificationStore } from '../stores/notificationStore'
 import { useNotifToastStore } from '../stores/notifToastStore'
 import { usePendingDeepLinkStore } from '../stores/pendingDeepLinkStore'
 import { useOfflineQueueStore } from '../stores/offlineQueueStore'
+import { usePublicDecksStore } from '../stores/publicDecksStore'
 import { useOnline } from '../hooks/useOnline'
 import { OfflineBanner } from '../components/ui/OfflineBanner'
 import { NotifToast } from '../components/ui/NotifToast'
@@ -75,8 +76,8 @@ function parseDeepLink(url: string): string | null {
   if (seg0 === 'certificates'    && seg1)                  return `/(screens)/certificate/${seg1}`
   if (seg0 === 'payment-complete'&& seg1)                  return `/(screens)/payment-complete/${seg1}`
   // Flashcard deep links
-  // sahifalab://flashcards → deck list
-  if (seg0 === 'flashcards' && !seg1)                      return '/(screens)/flashcards'
+  // sahifalab://flashcards → Kartalar tab
+  if (seg0 === 'flashcards' && !seg1)                      return '/(tabs)/flashcards'
   // sahifalab://flashcards/{id} → deck detail
   if (seg0 === 'flashcards' && seg1 && seg2 !== 'study')   return `/(screens)/flashcard-deck/${seg1}`
   // sahifalab://flashcards/{id}/study → study session
@@ -316,11 +317,13 @@ export default function RootLayout() {
   // ── Offline queue: load on mount, flush when network restores ─────────────
   useEffect(() => {
     useOfflineQueueStore.getState().loadFromStorage()
+    usePublicDecksStore.getState().loadQueuesFromStorage()
   }, [])
 
   useEffect(() => {
     if (isOnline && !wasOnlineRef.current && isAuthenticated) {
       useOfflineQueueStore.getState().flush()
+      usePublicDecksStore.getState().flushQueues()
     }
     wasOnlineRef.current = isOnline
   }, [isOnline, isAuthenticated])

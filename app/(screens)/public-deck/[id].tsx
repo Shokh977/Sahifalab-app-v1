@@ -8,16 +8,17 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
-import { ArrowLeft, SealCheck, Star, ShareNetwork, Flag } from 'phosphor-react-native'
+import { ArrowLeft, SealCheck, Star, ShareNetwork, Flag, CaretRight } from 'phosphor-react-native'
 
 import { useTheme } from '../../../hooks/useTheme'
-import { flashcards as flashcardsApi, apiErrorDetails } from '../../../lib/api'
+import { useOnline } from '../../../hooks/useOnline'
+import { apiErrorDetails } from '../../../lib/api'
 import { shareFlashcardDeck } from '../../../lib/share'
-import { categoryLabel } from '../../../lib/flashcardCategories'
 import { useFlashcardStore } from '../../../stores/flashcardStore'
-import type { PublicDeckDetail } from '../../../lib/types'
+import { usePublicDecksStore } from '../../../stores/publicDecksStore'
 import { typography, spacing, radius } from '../../../lib/constants'
 import { ReportSheet } from '../../../components/flashcards/ReportSheet'
+import { Avatar } from '../../../components/ui/Avatar'
 
 export default function PublicDeckPreviewScreen() {
   const { id }  = useLocalSearchParams<{ id: string }>()
@@ -25,39 +26,42 @@ export default function PublicDeckPreviewScreen() {
   const { c }   = useTheme()
   const insets  = useSafeAreaInsets()
   const router  = useRouter()
+  const isOnline = useOnline()
   const { addDeck } = useFlashcardStore()
+  const { previewDeck: deck, fetchDeckPreview } = usePublicDecksStore()
 
-  const [deck,       setDeck]       = useState<PublicDeckDetail | null>(null)
   const [loading,    setLoading]    = useState(true)
   const [cloning,    setCloning]    = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
 
   const refresh = useCallback(async () => {
-    try {
-      const d = await flashcardsApi.getPublicDeck(deckId)
-      setDeck(d)
-    } catch (e: any) {
-      Alert.alert('Xatolik', e.message ?? "To'plam topilmadi")
-      router.back()
-    } finally {
-      setLoading(false)
-    }
-  }, [deckId])
+    setLoading(true)
+    await fetchDeckPreview(deckId)
+    setLoading(false)
+  }, [deckId, fetchDeckPreview])
 
   useFocusEffect(useCallback(() => { refresh() }, [refresh]))
 
+  useEffect(() => {
+    if (!loading && !deck) {
+      Alert.alert('Xatolik', "To'plam topilmadi")
+      if (router.canGoBack()) router.back()
+      else router.replace('/(tabs)/flashcards' as any)
+    }
+  }, [loading, deck])
+
   async function handleClone() {
-    if (!deck || cloning) return
+    if (!deck || cloning || !isOnline) return
     if (deck.already_cloned) {
       // The clone already exists — find it via the user's own decks and navigate.
-      router.push(`/(screens)/flashcards` as any)
+      router.push(`/(tabs)/flashcards` as any)
       return
     }
     setCloning(true)
     try {
-      const cloned = await flashcardsApi.cloneDeck(deckId)
+      const cloned = await usePublicDecksStore.getState().cloneDeck(deckId)
       addDeck(cloned)
-      setDeck(prev => prev ? { ...prev, already_cloned: true, clone_count: prev.clone_count + 1 } : prev)
+      await fetchDeckPreview(deckId)
       router.replace(`/(screens)/flashcard-deck/${cloned.id}` as any)
     } catch (e: any) {
       Alert.alert('Xatolik', apiErrorDetails(e))
@@ -80,7 +84,7 @@ export default function PublicDeckPreviewScreen() {
     <View style={[styles.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
       {/* Top bar */}
       <View style={[styles.topBar, { borderBottomColor: c.borderSubtle }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/flashcards' as any)} hitSlop={12}>
           <ArrowLeft size={24} color={c.textPrimary} />
         </Pressable>
         <Pressable onPress={() => shareFlashcardDeck({ id: deck.id, title: deck.title })} hitSlop={12}>
@@ -92,7 +96,9 @@ export default function PublicDeckPreviewScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header — deck color shows up here as a subtle accent, and as the
+            stripe on every list card, so the deck has one consistent identity. */}
+        <View style={[styles.colorAccent, { backgroundColor: deck.color }]} />
         <View style={styles.headerRow}>
           <Text style={[styles.deckTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
             {deck.title}
@@ -106,43 +112,59 @@ export default function PublicDeckPreviewScreen() {
             </View>
           )}
         </View>
-        {!!deck.category && (
-          <Text style={[styles.categoryLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-            {categoryLabel(deck.category)}
-          </Text>
-        )}
         {!!deck.description && (
           <Text style={[styles.description, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
             {deck.description}
           </Text>
         )}
 
-        {/* Creator block */}
-        <View style={[styles.creatorBlock, { backgroundColor: c.bgSecondary }]}>
-          {isOfficial ? (
-            <>
+        {/* Creator card — author always reads as a person: avatar + role label + name */}
+        {isOfficial ? (
+          <View style={[styles.creatorCard, { backgroundColor: c.bgSecondary, borderColor: c.accentPrimary + '33' }]}>
+            <View style={[styles.officialAvatar, { backgroundColor: c.accentPrimaryMuted }]}>
+              <SealCheck size={20} color={c.accentPrimary} weight="fill" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.creatorLabel, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                RASMIY TO'PLAM
+              </Text>
               <Text style={[styles.creatorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                Sahifalab tomonidan tasdiqlangan
+                Sahifalab
               </Text>
               <Text style={[styles.creatorSub, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
                 Sifati tekshirilgan rasmiy to'plam.
               </Text>
-            </>
-          ) : deck.creator ? (
-            <Pressable
-              onPress={() => router.push(`/(screens)/profile/${deck.creator!.id}` as any)}
-              style={styles.creatorTappable}
-            >
-              <Text style={[styles.creatorName, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
+            </View>
+          </View>
+        ) : deck.creator ? (
+          <Pressable
+            onPress={() => router.push(`/(screens)/profile/${deck.creator!.id}` as any)}
+            style={({ pressed }) => [styles.creatorCard, { backgroundColor: c.bgSecondary, borderColor: c.border, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Avatar uri={deck.creator.avatar_url} name={deck.creator.name} size={40} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.creatorLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.semibold }]}>
+                MUALLIF
+              </Text>
+              <Text style={[styles.creatorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
                 {deck.creator.name}
               </Text>
-            </Pressable>
-          ) : (
-            <Text style={[styles.creatorName, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-              Anonim foydalanuvchi
-            </Text>
-          )}
-        </View>
+            </View>
+            <CaretRight size={16} color={c.textDisabled} />
+          </Pressable>
+        ) : (
+          <View style={[styles.creatorCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+            <Avatar uri={null} name={null} size={40} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.creatorLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.semibold }]}>
+                MUALLIF
+              </Text>
+              <Text style={[styles.creatorName, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
+                Anonim foydalanuvchi
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Stats row */}
         <View style={[styles.statsRow, { backgroundColor: c.bgTertiary, borderColor: c.border }]}>
@@ -153,21 +175,24 @@ export default function PublicDeckPreviewScreen() {
           <StatItem label="Baho" value={deck.rating_count > 0 ? `⭐ ${deck.rating_avg.toFixed(1)}` : '—'} />
         </View>
 
-        {/* Card preview */}
+        {/* Card preview — one cohesive group, not separate floating boxes */}
         <View style={{ gap: spacing.sm }}>
           <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
             Namuna kartalar
           </Text>
-          <View style={{ gap: 8 }}>
+          <View style={[styles.previewGroup, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
             {deck.preview_cards.map((card, i) => (
-              <View key={i} style={[styles.previewCard, { backgroundColor: c.bgSecondary }]}>
-                <Text style={[styles.previewFront, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]} numberOfLines={1}>
-                  {card.front_text}
-                </Text>
-                <Text style={[styles.previewBack, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]} numberOfLines={1}>
-                  {card.back_text}
-                </Text>
-              </View>
+              <React.Fragment key={i}>
+                {i > 0 && <View style={[styles.previewCardDivider, { backgroundColor: c.borderSubtle }]} />}
+                <View style={styles.previewCard}>
+                  <Text style={[styles.previewFront, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]} numberOfLines={1}>
+                    {card.front_text}
+                  </Text>
+                  <Text style={[styles.previewBack, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]} numberOfLines={1}>
+                    {card.back_text}
+                  </Text>
+                </View>
+              </React.Fragment>
             ))}
           </View>
           <Text style={[styles.previewNote, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
@@ -193,19 +218,22 @@ export default function PublicDeckPreviewScreen() {
           ) : (
             deck.recent_ratings.map((r, i) => (
               <View key={i} style={[styles.reviewRow, { backgroundColor: c.bgSecondary }]}>
-                <View style={styles.reviewHeader}>
-                  <Text style={[styles.reviewName, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
-                    {r.rater.name || 'Foydalanuvchi'}
-                  </Text>
-                  <Text style={{ color: '#FFB830', fontSize: 12 }}>
-                    {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
-                  </Text>
+                <Avatar uri={r.rater.avatar_url} name={r.rater.name} size={28} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <View style={styles.reviewHeader}>
+                    <Text style={[styles.reviewName, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+                      {r.rater.name || 'Foydalanuvchi'}
+                    </Text>
+                    <Text style={{ color: '#FFB830', fontSize: 12 }}>
+                      {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                    </Text>
+                  </View>
+                  {!!r.comment && (
+                    <Text style={[styles.reviewComment, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                      {r.comment}
+                    </Text>
+                  )}
                 </View>
-                {!!r.comment && (
-                  <Text style={[styles.reviewComment, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                    {r.comment}
-                  </Text>
-                )}
               </View>
             ))
           )}
@@ -224,13 +252,13 @@ export default function PublicDeckPreviewScreen() {
       <View style={[styles.bottomBar, { backgroundColor: c.bgPrimary, borderTopColor: c.borderSubtle, paddingBottom: insets.bottom + spacing.sm }]}>
         <Pressable
           onPress={handleClone}
-          disabled={cloning}
-          style={[styles.cloneBtn, { backgroundColor: c.accentPrimary }]}
+          disabled={cloning || (!isOnline && !deck.already_cloned)}
+          style={[styles.cloneBtn, { backgroundColor: (!isOnline && !deck.already_cloned) ? c.bgTertiary : c.accentPrimary }]}
         >
           {cloning
             ? <ActivityIndicator color={c.textInverse} size="small" />
-            : <Text style={[styles.cloneBtnText, { color: c.textInverse, fontFamily: typography.fontFamily.semibold }]}>
-                {deck.already_cloned ? 'Mening nusxamga o\'tish' : 'Nusxa olish'}
+            : <Text style={[styles.cloneBtnText, { color: (!isOnline && !deck.already_cloned) ? c.textDisabled : c.textInverse, fontFamily: typography.fontFamily.semibold }]}>
+                {!isOnline && !deck.already_cloned ? 'Internet aloqasi kerak' : deck.already_cloned ? 'Mening nusxamga o\'tish' : 'Nusxa olish'}
               </Text>
           }
         </Pressable>
@@ -268,17 +296,23 @@ const styles = StyleSheet.create({
 
   scroll: { padding: spacing.screenMargin, gap: spacing.lg },
 
+  colorAccent: { width: 36, height: 4, borderRadius: 2, marginBottom: -4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   deckTitle: { flex: 1, fontSize: 22 },
   officialBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.button },
   officialBadgeText: { fontSize: 11 },
-  categoryLabel: { fontSize: typography.size.sm, marginTop: -8 },
   description: { fontSize: typography.size.sm, lineHeight: 20 },
 
-  creatorBlock: { borderRadius: radius.lg, padding: spacing.base, gap: 2 },
-  creatorTappable: {},
+  // Creator card — set apart with a border so it doesn't blend into the
+  // "wall of white boxes" the rest of the screen is built from.
+  creatorCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: radius.lg, borderWidth: 1, padding: spacing.base,
+  },
+  officialAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  creatorLabel: { fontSize: 11, letterSpacing: 0.5, marginBottom: 1 },
   creatorName: { fontSize: typography.size.base },
-  creatorSub:  { fontSize: typography.size.xs },
+  creatorSub:  { fontSize: typography.size.xs, marginTop: 1 },
 
   statsRow: { flexDirection: 'row', borderRadius: radius.lg, borderWidth: 1, paddingVertical: spacing.base },
   statValue: { fontSize: 18 },
@@ -286,7 +320,9 @@ const styles = StyleSheet.create({
   statsDivider: { width: 1, marginVertical: 2 },
 
   sectionTitle: { fontSize: typography.size.base },
-  previewCard: { borderRadius: 12, padding: spacing.base, gap: 2 },
+  previewGroup: { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
+  previewCard: { padding: spacing.base, gap: 2 },
+  previewCardDivider: { height: 1 },
   previewFront: { fontSize: typography.size.sm },
   previewBack:  { fontSize: typography.size.xs },
   previewNote:  { fontSize: typography.size.xs, textAlign: 'center' },
@@ -295,7 +331,7 @@ const styles = StyleSheet.create({
   ratingsBig:    { fontSize: 22 },
   ratingsCount:  { fontSize: typography.size.sm },
   noRatings:     { fontSize: typography.size.sm },
-  reviewRow:     { borderRadius: 12, padding: spacing.base, gap: 4 },
+  reviewRow:     { flexDirection: 'row', gap: 10, borderRadius: 12, padding: spacing.base },
   reviewHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   reviewName:    { fontSize: typography.size.sm },
   reviewComment: { fontSize: typography.size.sm, lineHeight: 18 },

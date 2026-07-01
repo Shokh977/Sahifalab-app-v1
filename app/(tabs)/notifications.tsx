@@ -42,6 +42,7 @@ const TITLES: Record<string, string> = {
   leaderboard_rank:    "Reyting",
   streak_reminder:     "Seriya eslatmasi",
   new_content:         "Yangi dars",
+  deck_clone_milestone: "To'plamingiz mashhur bo'lmoqda! 🎉",
 }
 
 function notifTitle(type: string): string {
@@ -74,6 +75,9 @@ function notifBody(type: string, meta: Record<string, any>): string {
     leaderboard_rank:    meta.message ?? "Reyting o'zgardi.",
     streak_reminder:     "Bugun dars o'tmaganiz — seriyangizni saqlang!",
     new_content:         meta.lesson_title ? `Yangi dars: ${meta.lesson_title}` : "Yangi dars qo'shildi.",
+    deck_clone_milestone: meta.deck_title
+      ? `🎉 Sizning "${meta.deck_title}" to'plamingiz ${meta.clone_count} marta nusxa olindi!`
+      : "To'plamingiz mashhur bo'lmoqda!",
   }
   return map[type] ?? 'Yangi bildirishnoma'
 }
@@ -102,6 +106,8 @@ function resolveRoute(type: string, meta: Record<string, any>): string | null {
       return '/(screens)/leaderboard'
     case 'streak_reminder':
       return '/(tabs)/study'
+    case 'deck_clone_milestone':
+      return meta.deck_id ? `/(screens)/flashcard-deck/${meta.deck_id}` : null
     default:
       return null
   }
@@ -132,6 +138,7 @@ function getIconCfg(type: string): { Icon: LucideIcon; color: string; bg: string
       return { Icon: Flame,          color: '#FFB830', bg: 'rgba(255,184,48,0.15)'  }
     case 'achievement':
     case 'leaderboard_rank':
+    case 'deck_clone_milestone':
       return { Icon: Trophy,         color: '#FFD700', bg: 'rgba(255,215,0,0.12)'   }
     case 'level_up':
       return { Icon: TrendingUp,     color: '#F5A623', bg: 'rgba(245,166,35,0.12)'  }

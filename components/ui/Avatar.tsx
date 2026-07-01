@@ -7,7 +7,7 @@ import { getLevelTier, typography } from '../../lib/constants'
 interface Props {
   uri?:         string | null
   name?:        string | null
-  size?:        20 | 28 | 32 | 48 | 64 | 80
+  size?:        20 | 28 | 32 | 40 | 48 | 64 | 80
   level?:       number
   borderWidth?: number
 }

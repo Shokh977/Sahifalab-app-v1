@@ -35,7 +35,7 @@ function buildCards(data: DashboardData, c: any): ActionCard[] {
       color:   '#4DA6FF',
       bgColor: 'rgba(77,166,255,0.10)',
       Icon:    Cards,
-      route:   '/(tabs)/study',
+      route:   '/(tabs)/flashcards',
     })
   }
 
