@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.sahifalab.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D0D0F"
