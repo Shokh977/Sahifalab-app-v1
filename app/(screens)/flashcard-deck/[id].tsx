@@ -417,9 +417,10 @@ export default function DeckDetailScreen() {
 
   const { updateDeck, removeDeck } = useFlashcardStore()
 
-  const [deck,      setDeck]      = useState<FlashcardDeck | null>(null)
-  const [cards,     setCards]     = useState<Flashcard[]>([])
-  const [loading,   setLoading]   = useState(true)
+  const [deck,         setDeck]         = useState<FlashcardDeck | null>(null)
+  const [cards,        setCards]        = useState<Flashcard[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [loadingCards, setLoadingCards] = useState(false)
   const [menuOpen,  setMenuOpen]  = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editCard,  setEditCard]  = useState<Flashcard | null>(null)
@@ -430,17 +431,23 @@ export default function DeckDetailScreen() {
   const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; danger?: boolean; emoji?: string; confirmText?: string; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
 
   const refresh = useCallback(async () => {
+    // Phase 1 — load deck metadata (fast ~200ms); shows the hero section immediately.
     try {
-      const [d, c2] = await Promise.all([
-        flashcardsApi.getDeck(deckId),
-        flashcardsApi.listCards(deckId),
-      ])
+      const d = await flashcardsApi.getDeck(deckId)
       setDeck(d)
-      setCards(c2)
-    } catch (e: any) {
-      Alert.alert('Xatolik', e.message)
-    } finally {
       setLoading(false)
+    } catch (e: any) {
+      setLoading(false)
+      Alert.alert('Xatolik', e.message)
+      return
+    }
+
+    // Phase 2 — load full card list (slow for large decks); only needed for the list + stats.
+    setLoadingCards(true)
+    try {
+      setCards(await flashcardsApi.listCards(deckId))
+    } catch {} finally {
+      setLoadingCards(false)
     }
   }, [deckId])
 
@@ -530,13 +537,15 @@ export default function DeckDetailScreen() {
   const learningCount = cards.filter(c => c.status === 'learning').length
   const masteredCount = cards.filter(c => c.status === 'mastered').length
   const reviewedCount = cards.filter(c => c.status !== 'new').length
-  const mastery = deck.card_count > 0 ? reviewedCount / deck.card_count : 0
+  // While cards are still loading, approximate mastery from the server-supplied mastered_count;
+  // once cards arrive we switch to the full non-new count so learning cards are included.
+  const mastery = deck.card_count > 0
+    ? (loadingCards ? deck.mastered_count : reviewedCount) / deck.card_count
+    : 0
 
-  // Count studyable cards: new (never reviewed) + non-mastered cards whose review is due
-  const studyableCount = cards.filter(c =>
-    c.status === 'new' ||
-    (c.status !== 'mastered' && c.next_review != null && new Date(c.next_review).getTime() <= Date.now())
-  ).length
+  // Use the server-side due_count so the hero section renders immediately
+  // without waiting for all card rows to load.
+  const studyableCount = deck.due_count
   const hasDue = studyableCount > 0
 
   return (
@@ -648,16 +657,21 @@ export default function DeckDetailScreen() {
               <Text style={[styles.progressLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
                 O'rganilganlik darajasi
               </Text>
-              <Text style={[styles.progressLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                {reviewedCount}/{deck.card_count}
-              </Text>
+              {!loadingCards && (
+                <Text style={[styles.progressLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                  {reviewedCount}/{deck.card_count}
+                </Text>
+              )}
             </View>
             <View style={[styles.progressTrack, { backgroundColor: c.bgTertiary }]}>
               <View style={[styles.progressFill, { backgroundColor: c.success, width: `${Math.round(mastery * 100)}%` as any }]} />
             </View>
-            <Text style={[styles.progressSub, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-              Yangi: {newCount} · O'rganilmoqda: {learningCount} · O'rganilgan: {masteredCount}
-            </Text>
+            {loadingCards
+              ? <ActivityIndicator size="small" color={c.textDisabled} style={{ alignSelf: 'flex-start' }} />
+              : <Text style={[styles.progressSub, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
+                  Yangi: {newCount} · O'rganilmoqda: {learningCount} · O'rganilgan: {masteredCount}
+                </Text>
+            }
           </View>
         )}
 
@@ -674,7 +688,9 @@ export default function DeckDetailScreen() {
             </Pressable>
           </View>
 
-          {cards.length === 0 ? (
+          {loadingCards && cards.length === 0 ? (
+            <ActivityIndicator color={c.accentPrimary} size="small" style={{ paddingVertical: spacing.lg }} />
+          ) : cards.length === 0 ? (
             <Text style={[styles.emptyCards, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
               Hali kartalar yo'q. Yuqoridagi tugmani bosing.
             </Text>

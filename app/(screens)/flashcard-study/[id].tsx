@@ -5,7 +5,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, Pressable, ScrollView,
-  Modal, Alert, Dimensions, Platform,
+  Modal, Alert, Dimensions, Platform, ActivityIndicator,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -437,7 +437,9 @@ export default function FlashcardStudyScreen() {
   if (loading || !currentCard || !deck) {
     return (
       <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
-        <View style={styles.loader} />
+        <View style={styles.loader}>
+          <ActivityIndicator color={c.accentPrimary} size="large" />
+        </View>
       </View>
     )
   }
@@ -617,7 +619,7 @@ function RatingBtn({ label, icon, bg, textColor, onPress }: {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  loader: { flex: 1 },
+  loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   topBar: {
     height:            52,
