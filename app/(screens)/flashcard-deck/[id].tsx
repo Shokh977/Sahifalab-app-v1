@@ -410,6 +410,14 @@ export default function DeckDetailScreen() {
                   O'rganishni boshlash
                 </Text>
               </Pressable>
+              <Pressable
+                onPress={() => router.push({ pathname: `/(screens)/flashcard-study/${deck.id}`, params: { practice: '1' } } as any)}
+                style={styles.practiceLink}
+              >
+                <Text style={[styles.practiceLinkText, { color: c.accentPrimary, fontFamily: typography.fontFamily.medium }]}>
+                  Barchasini mashq qilish ({deck.card_count} ta)
+                </Text>
+              </Pressable>
             </>
           ) : deck.card_count > 0 ? (
             <>
