@@ -14,6 +14,7 @@ if (Platform.OS === 'android') {
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../stores/authStore'
+import { useDashboardStore } from '../stores/dashboardStore'
 import { syncStreakReminderWithPrefs } from '../lib/streakNotifications'
 import { useThemeStore } from '../stores/themeStore'
 import { useNotificationStore } from '../stores/notificationStore'
@@ -292,6 +293,8 @@ export default function RootLayout() {
   // ── After auth: register push token, unread count, streak reminder ──────────
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
+      // Prefetch dashboard data immediately so home tab renders with data already loaded
+      useDashboardStore.getState().fetch()
       registerPushToken()
       fetchUnreadCount()
       syncStreakReminderWithPrefs()

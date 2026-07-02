@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
-  auth, courses, enrollments, lessons as lessonsApi, profile, leaderboard, focusStats, flashcards as flashcardsApi, streaks,
-  type MeResponse, type Course, type LeaderboardEntry, type FocusStats, type HeatmapDay,
+  auth, courses, enrollments, lessons as lessonsApi, leaderboard, focusStats, flashcards as flashcardsApi, streaks,
+  type MeResponse, type Course, type LeaderboardEntry, type FocusStats,
 } from '../lib/api'
 import { useAuthStore } from './authStore'
 
@@ -23,7 +23,6 @@ export interface DashboardData {
   leaderboard:       LeaderboardEntry[]
   myLeaderRank:      number | null
   focusStats:        FocusStats
-  heatmap:           HeatmapDay[]
   flashcardDueCount: number
   fetchedAt:         number
   // Streak-loss detection — set when a fresh fetch finds is_active=false and streak_days>0
@@ -144,12 +143,6 @@ async function fetchAll(): Promise<DashboardData> {
   const myLeaderRank = lbRaw.my_rank ?? lbEntries.find(e => e.is_me)?.rank ?? null
   const lbData = { entries: lbEntries, my_rank: myLeaderRank }
 
-  // Fetch heatmap only if we have a user
-  let heatmap: HeatmapDay[] = []
-  if (user?.telegram_id) {
-    try { heatmap = await profile.getHeatmap(user.telegram_id, 30) } catch {}
-  }
-
   // Filter enrolled courses: remove ones where course data is null
   const rawEnrolled = enrolled.filter(e => e.courses !== null)
 
@@ -186,7 +179,6 @@ async function fetchAll(): Promise<DashboardData> {
     leaderboard:            lbEntries,
     myLeaderRank:           myLeaderRank,
     focusStats:             stats,
-    heatmap,
     flashcardDueCount,
     fetchedAt:              Date.now(),
     streakJustLost,
@@ -205,6 +197,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
   fetch: async () => {
     if (get().loading) return
+
+    // If data is already fresh (within TTL) skip the round-trip entirely
+    const existing = get().data
+    if (existing && Date.now() - existing.fetchedAt < CACHE_TTL) return
+
     set({ loading: true, error: null })
 
     // Serve stale cache immediately while fetching fresh
