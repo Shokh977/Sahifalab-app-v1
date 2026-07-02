@@ -1147,11 +1147,13 @@ export const leaderboard = {
       const res = await request<{ entries: LeaderboardEntry[]; my_rank: number | null }>(
         `/api/leaderboard/weekly?period=${period}`, { auth: true },
       )
-      // For week/month: sparse results are correct (only active users) — return as-is.
-      // For all: fall back to old endpoint if new one is missing data.
+      // week/month: sparse is correct (only users active in the period appear)
+      // all: only trust the new endpoint if it has reasonable data (≥ 10 entries)
       if (res.entries && (period !== 'all' || res.entries.length >= 10)) return res
     } catch {}
-    // Fallback for 'all' only — old endpoint has all-time data for all 1400 users
+    // Fallback to old all-time endpoint ONLY for 'all' period.
+    // For week/month, falling back would show wrong (all-time) data.
+    if (period !== 'all') return { entries: [] as LeaderboardEntry[], my_rank: null as number | null }
     try {
       const rows = await request<_OldLbRow[]>('/api/profiles/leaderboard?limit=100', { auth: true })
       return _mapOldLb(rows)

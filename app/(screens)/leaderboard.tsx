@@ -17,10 +17,6 @@ import { InfoModal } from '../../components/ui/InfoModal'
 
 const MEDAL = ['🥇', '🥈', '🥉'] as const
 
-function isMonday(): boolean {
-  return new Date().getDay() === 1
-}
-
 function formatTime(minutes: number): string {
   if (!minutes || minutes <= 0) return ''
   const h = Math.floor(minutes / 60)
@@ -219,15 +215,15 @@ function RankRow({
 type TabKey = 'global' | 'friends'
 
 const PERIODS: { key: LeaderboardPeriod; label: string }[] = [
-  { key: 'week',  label: 'Bu hafta' },
-  { key: 'month', label: 'Bu oy'    },
-  { key: 'all',   label: 'Hammasi'  },
+  { key: 'week',  label: 'Son 7 kun' },
+  { key: 'month', label: 'Bu oy'     },
+  { key: 'all',   label: 'Hammasi'   },
 ]
 
 const PERIOD_INFO: Record<LeaderboardPeriod, { title: string; body: string }> = {
-  week:  { title: 'Haftalik reyting',  body: "Joriy dushanba boshidan yig'ilgan XP bo'yicha hisoblanadi." },
-  month: { title: 'Oylik reyting',     body: "Joriy oy boshidan yig'ilgan XP bo'yicha hisoblanadi."       },
-  all:   { title: "Umumiy reyting",    body: "Barcha vaqt davomida yig'ilgan umumiy XP bo'yicha."          },
+  week:  { title: "Oxirgi 7 kunlik reyting", body: "So'nggi 7 kun ichida yig'ilgan XP bo'yicha hisoblanadi."           },
+  month: { title: 'Oylik reyting',           body: "Joriy oy 1-sanasidan (Toshkent vaqti) yig'ilgan XP bo'yicha."      },
+  all:   { title: "Umumiy reyting",          body: "Barcha vaqt davomida yig'ilgan umumiy XP bo'yicha."                 },
 }
 
 export default function LeaderboardScreen() {
@@ -357,15 +353,6 @@ export default function LeaderboardScreen() {
         })}
       </View>
 
-      {/* Monday reset banner */}
-      {isMonday() && period === 'week' && activeTab === 'global' && (
-        <View style={[styles.resetBanner, { backgroundColor: c.accentPrimaryMuted }]}>
-          <Text style={[styles.resetText, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            Yangi hafta boshlandi — reyting yangilandi! 🎉
-          </Text>
-        </View>
-      )}
-
       {loading ? (
         <ActivityIndicator color={c.accentPrimary} style={{ marginTop: 60 }} />
       ) : entries.length === 0 ? (
@@ -375,7 +362,7 @@ export default function LeaderboardScreen() {
             {activeTab === 'friends'
               ? "Kuzatilayotganlar yo'q"
               : period === 'week'
-                ? "Bu hafta faollik yo'q"
+                ? "Oxirgi 7 kunda faollik yo'q"
                 : period === 'month'
                   ? "Bu oy faollik yo'q"
                   : "Ma'lumot yo'q"}
@@ -505,14 +492,6 @@ const styles = StyleSheet.create({
     borderWidth:       1,
     overflow:          'hidden',
   },
-
-  // Monday banner
-  resetBanner: {
-    paddingHorizontal: spacing.screenMargin,
-    paddingVertical:   spacing.sm,
-    alignItems:        'center',
-  },
-  resetText: { fontSize: 13 },
 
   // Podium
   podiumRow: {
