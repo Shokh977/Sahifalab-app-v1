@@ -6,9 +6,12 @@ import {
   View, Text, StyleSheet, Pressable, ScrollView,
   ActivityIndicator, Alert,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 import { ArrowLeft, SealCheck, Star, ShareNetwork, Flag, CaretRight } from 'phosphor-react-native'
+
+import { CategoryIcon, darkenHex } from '../../../components/flashcards/DeckCard'
 
 import { useTheme } from '../../../hooks/useTheme'
 import { useOnline } from '../../../hooks/useOnline'
@@ -96,22 +99,36 @@ export default function PublicDeckPreviewScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header — deck color shows up here as a subtle accent, and as the
-            stripe on every list card, so the deck has one consistent identity. */}
-        <View style={[styles.colorAccent, { backgroundColor: deck.color }]} />
-        <View style={styles.headerRow}>
-          <Text style={[styles.deckTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-            {deck.title}
-          </Text>
-          {isOfficial && (
-            <View style={[styles.officialBadge, { backgroundColor: c.accentPrimaryMuted }]}>
-              <SealCheck size={12} color={c.accentPrimary} weight="fill" />
-              <Text style={[styles.officialBadgeText, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                Sahifalab
-              </Text>
+        {/* Color gradient band — same identity color as the card in the list */}
+        <View style={styles.bandWrap}>
+          <LinearGradient
+            colors={[deck.color, darkenHex(deck.color, 22)]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.band}
+          >
+            <CategoryIcon category={deck.category} size={36} />
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+              <LinearGradient
+                colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
             </View>
-          )}
+            {isOfficial && (
+              <View style={styles.bandOfficialPill}>
+                <SealCheck size={11} color="#fff" weight="fill" />
+                <Text style={styles.bandOfficialPillText}>Sahifalab</Text>
+              </View>
+            )}
+          </LinearGradient>
         </View>
+
+        {/* Title */}
+        <Text style={[styles.deckTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+          {deck.title}
+        </Text>
         {!!deck.description && (
           <Text style={[styles.description, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
             {deck.description}
@@ -296,9 +313,27 @@ const styles = StyleSheet.create({
 
   scroll: { padding: spacing.screenMargin, gap: spacing.lg },
 
-  colorAccent: { width: 36, height: 4, borderRadius: 2, marginBottom: -4 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  deckTitle: { flex: 1, fontSize: 22 },
+  bandWrap: { borderRadius: 14, overflow: 'hidden' },
+  band: {
+    height:            96,
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: 20,
+  },
+  bandOfficialPill: {
+    position:          'absolute',
+    top:                10,
+    right:              12,
+    flexDirection:      'row',
+    alignItems:         'center',
+    gap:                4,
+    backgroundColor:   'rgba(255,255,255,0.22)',
+    paddingHorizontal:  8,
+    paddingVertical:    4,
+    borderRadius:       12,
+  },
+  bandOfficialPillText: { color: '#fff', fontSize: 10, fontWeight: '600' as const },
+  deckTitle: { fontSize: 22 },
   officialBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.button },
   officialBadgeText: { fontSize: 11 },
   description: { fontSize: typography.size.sm, lineHeight: 20 },

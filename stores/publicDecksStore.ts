@@ -5,8 +5,12 @@ import type {
   PublicDeckItem, PublicDeckDetail, DeckCategory, DeckSort, DeckReportReason, FlashcardDeck,
 } from '../lib/types'
 
-const RATE_QUEUE_KEY   = 'sahifalab_deck_rate_queue'
-const REPORT_QUEUE_KEY = 'sahifalab_deck_report_queue'
+const RATE_QUEUE_KEY    = 'sahifalab_deck_rate_queue'
+const REPORT_QUEUE_KEY  = 'sahifalab_deck_report_queue'
+const PUB_CACHE_KEY     = 'sahifalab_pub_decks_v1'
+const FEATURED_CACHE_KEY = 'sahifalab_featured_decks_v1'
+const PUB_CACHE_TTL     = 5  * 60 * 1000   // 5 min — public list
+const FEATURED_CACHE_TTL = 30 * 60 * 1000  // 30 min — featured changes rarely
 const PAGE_SIZE = 20
 
 interface RateQueueItem   { deckId: number; rating: number; comment?: string; queuedAt: number }
@@ -66,7 +70,30 @@ export const usePublicDecksStore = create<PublicDecksState>((set, get) => ({
 
   fetchPublicDecks: async (page = 1) => {
     const { filters } = get()
-    set(page === 1 ? { loading: true, error: null } : { loadingMore: true })
+    const isDefault = page === 1
+      && filters.category === 'all'
+      && filters.sort === 'popular'
+      && !filters.search.trim()
+
+    // For the default first-page view, serve cached data instantly and skip
+    // the network if the cache is still fresh (< 5 min).
+    if (isDefault && get().publicDecks.length === 0) {
+      try {
+        const raw = await AsyncStorage.getItem(PUB_CACHE_KEY)
+        if (raw) {
+          const entry: { data: PublicDeckItem[]; total: number; cachedAt: number } = JSON.parse(raw)
+          set({ publicDecks: entry.data, total: entry.total })
+          if (Date.now() - entry.cachedAt < PUB_CACHE_TTL) return
+        }
+      } catch {}
+    }
+
+    // Only show the full-page spinner when there's nothing to display yet
+    const hasData = get().publicDecks.length > 0
+    set(page === 1
+      ? { loading: !hasData, error: null }
+      : { loadingMore: true }
+    )
     try {
       const res = await flashcardsApi.listPublicDecks({
         category: filters.category, sort: filters.sort, search: filters.search.trim() || undefined,
@@ -77,15 +104,34 @@ export const usePublicDecksStore = create<PublicDecksState>((set, get) => ({
         total: res.total,
         page,
       }))
+      if (isDefault) {
+        AsyncStorage.setItem(PUB_CACHE_KEY, JSON.stringify({
+          data: res.decks, total: res.total, cachedAt: Date.now(),
+        })).catch(() => {})
+      }
     } catch (e: any) {
-      if (page === 1) set({ error: e?.message ?? 'Xatolik yuz berdi' })
+      if (page === 1 && !hasData) set({ error: e?.message ?? 'Xatolik yuz berdi' })
     } finally { set({ loading: false, loadingMore: false }) }
   },
 
   fetchFeatured: async () => {
+    // Serve cached featured decks and only re-fetch when the cache is stale.
+    if (get().featuredDecks.length === 0) {
+      try {
+        const raw = await AsyncStorage.getItem(FEATURED_CACHE_KEY)
+        if (raw) {
+          const entry: { data: PublicDeckItem[]; cachedAt: number } = JSON.parse(raw)
+          set({ featuredDecks: entry.data })
+          if (Date.now() - entry.cachedAt < FEATURED_CACHE_TTL) return
+        }
+      } catch {}
+    }
     try {
       const featuredDecks = await flashcardsApi.getFeaturedDecks()
       set({ featuredDecks })
+      AsyncStorage.setItem(FEATURED_CACHE_KEY, JSON.stringify({
+        data: featuredDecks, cachedAt: Date.now(),
+      })).catch(() => {})
     } catch {}
   },
 

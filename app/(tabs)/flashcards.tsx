@@ -3,7 +3,7 @@
  * public deck library. One screen, one tap to switch — no nested "more" buttons.
  * (step-17-flashcard-ui-guide)
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, Pressable, ScrollView, TextInput,
   Modal, ActivityIndicator, Alert, Animated as RNAnimated, FlatList,
@@ -11,17 +11,14 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, withSpring,
-} from 'react-native-reanimated'
-import { Plus, Cards, Check, CaretRight, X, Globe, MagnifyingGlass, SealCheck } from 'phosphor-react-native'
+import { Plus, Cards, Check, X, Globe, MagnifyingGlass } from 'phosphor-react-native'
 
 import { useTheme } from '../../hooks/useTheme'
 import { useFlashcardStore } from '../../stores/flashcardStore'
 import { usePublicDecksStore } from '../../stores/publicDecksStore'
 import { flashcards as flashcardsApi } from '../../lib/api'
 import { DECK_CATEGORIES } from '../../lib/flashcardCategories'
-import { Avatar } from '../../components/ui/Avatar'
+import { DeckCard } from '../../components/flashcards/DeckCard'
 import type { FlashcardDeck, PublicDeckItem, DeckSort, DeckCategory } from '../../lib/types'
 import { typography, spacing, radius } from '../../lib/constants'
 
@@ -202,63 +199,6 @@ function DeckSheet({ visible, editing, onClose, onSaved }: DeckSheetProps) {
   )
 }
 
-// ── My deck card ──────────────────────────────────────────────────────────────
-
-function DeckCard({ deck, onPress }: { deck: FlashcardDeck; onPress: () => void }) {
-  const { c } = useTheme()
-  const pulse = useSharedValue(1)
-
-  useEffect(() => {
-    if (deck.due_count > 0) {
-      pulse.value = withRepeat(
-        withSequence(withTiming(0.75, { duration: 1000 }), withTiming(1, { duration: 1000 })),
-        -1,
-      )
-    }
-  }, [deck.due_count])
-
-  const badgeStyle = useAnimatedStyle(() => ({ opacity: pulse.value }))
-
-  const mastery = deck.card_count > 0 ? deck.mastered_count / deck.card_count : 0
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.deckCard, { backgroundColor: c.bgSecondary, opacity: pressed ? 0.88 : 1 }]}
-    >
-      {/* Left color stripe — the deck's identity color, consistent everywhere it appears */}
-      <View style={[styles.deckStripe, { backgroundColor: deck.color }]} />
-
-      {/* Content */}
-      <View style={styles.deckContent}>
-        <Text style={[styles.deckTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]} numberOfLines={1}>
-          {deck.title}
-        </Text>
-        <Text style={[styles.deckMeta, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-          {deck.card_count} ta karta · {deck.mastered_count} ta o'rganildi
-        </Text>
-        {/* Mastery bar */}
-        <View style={[styles.masteryTrack, { backgroundColor: c.bgTertiary }]}>
-          <View style={[styles.masteryFill, { backgroundColor: c.success, width: `${Math.round(mastery * 100)}%` as any }]} />
-        </View>
-      </View>
-
-      {/* Right: due badge or checkmark */}
-      {deck.due_count > 0 ? (
-        <Animated.View style={[styles.dueBadge, { backgroundColor: c.accentPrimary }, badgeStyle]}>
-          <Text style={[styles.dueBadgeText, { color: c.textInverse, fontFamily: typography.fontFamily.bold }]}>
-            {deck.due_count > 99 ? '99+' : deck.due_count}
-          </Text>
-        </Animated.View>
-      ) : deck.card_count > 0 ? (
-        <Check size={16} color={c.success} weight="bold" />
-      ) : null}
-
-      <CaretRight size={12} color={c.textDisabled} style={{ marginLeft: 4 }} />
-    </Pressable>
-  )
-}
-
 // ── Overall stats card ────────────────────────────────────────────────────────
 
 function StatsCard({ onPressDue }: { onPressDue: () => void }) {
@@ -332,7 +272,7 @@ function EmptyState({ onCreate, onBrowsePublic }: { onCreate: () => void; onBrow
   )
 }
 
-// ── Public deck card ──────────────────────────────────────────────────────────
+// ── Public decks tab content ─────────────────────────────────────────────────
 
 const SORT_TABS: { key: DeckSort; label: string }[] = [
   { key: 'popular',   label: 'Mashhur' },
@@ -340,74 +280,13 @@ const SORT_TABS: { key: DeckSort; label: string }[] = [
   { key: 'top_rated', label: 'Eng yaxshi' },
 ]
 
-function PublicDeckCard({ deck, featured, onPress }: { deck: PublicDeckItem; featured?: boolean; onPress: () => void }) {
-  const { c } = useTheme()
-  const isOfficial  = deck.badge_type === 'official'
-  const creatorName = isOfficial ? 'Sahifalab' : deck.creator ? deck.creator.name : 'Anonim foydalanuvchi'
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.deckCard,
-        featured && styles.deckCardFeatured,
-        { backgroundColor: c.bgSecondary, opacity: pressed ? 0.88 : 1, height: undefined, paddingVertical: 14 },
-      ]}
-    >
-      <View style={[styles.deckStripe, { backgroundColor: deck.color }]} />
-      <View style={[styles.deckContent, { gap: 5 }]}>
-        <View style={styles.titleRow}>
-          <Text style={[styles.deckTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]} numberOfLines={1}>
-            {deck.title}
-          </Text>
-          {isOfficial && (
-            <View style={[styles.officialBadge, { backgroundColor: c.accentPrimaryMuted }]}>
-              <SealCheck size={11} color={c.accentPrimary} weight="fill" />
-              <Text style={[styles.officialBadgeText, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                Sahifalab
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.creatorRow}>
-          {!isOfficial && <Avatar uri={deck.creator?.avatar_url} name={deck.creator?.name} size={20} />}
-          <Text
-            style={[
-              styles.creatorLine,
-              { color: deck.creator || isOfficial ? c.textSecondary : c.textDisabled, fontFamily: typography.fontFamily.regular },
-            ]}
-            numberOfLines={1}
-          >
-            {creatorName}
-          </Text>
-        </View>
-
-        <Text style={[styles.statsLine, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]} numberOfLines={1}>
-          📇 {deck.card_count} ta karta · ⬇️ {deck.clone_count} nusxa · {deck.rating_count > 0 ? `⭐ ${deck.rating_avg.toFixed(1)} (${deck.rating_count})` : 'Baholanmagan'}
-        </Text>
-
-        {deck.already_cloned && (
-          <View style={[styles.clonedTag, { backgroundColor: c.successMuted }]}>
-            <Text style={[styles.clonedTagText, { color: c.success, fontFamily: typography.fontFamily.medium }]}>
-              ✓ Nusxa olingan
-            </Text>
-          </View>
-        )}
-      </View>
-    </Pressable>
-  )
-}
-
-// ── Public decks tab content ─────────────────────────────────────────────────
-
 function PublicDecksTab() {
   const { c }    = useTheme()
   const router   = useRouter()
 
   const {
-    publicDecks: decks, featuredDecks: featured, filters, page, total, loading, loadingMore,
-    setFilters, fetchPublicDecks, fetchFeatured,
+    publicDecks: decks, featuredDecks: featured, filters, page, total,
+    loading, loadingMore, setFilters, fetchPublicDecks, fetchFeatured,
   } = usePublicDecksStore()
   const { category, sort, search } = filters
 
@@ -441,6 +320,36 @@ function PublicDecksTab() {
   }, [loadingMore, loading, decks.length, total, page, fetchPublicDecks])
 
   const openDeck = (id: number) => router.push(`/(screens)/public-deck/${id}` as any)
+
+  // Category grouping — only when browsing "Barchasi" with no search and decks
+  // span more than one category. Section labels are embedded as list rows so
+  // the FlatList can virtualise them without switching to SectionList.
+  type ListRow =
+    | { type: 'section'; id: string; label: string }
+    | { type: 'deck'; id: string; deck: PublicDeckItem; deckIndex: number }
+
+  const listData = useMemo((): ListRow[] => {
+    const showGroups = category === 'all' && !search.trim()
+    if (!showGroups) {
+      return decks.map((d, i) => ({ type: 'deck' as const, id: `d-${d.id}`, deck: d, deckIndex: i }))
+    }
+    const cats = [...new Set(decks.map(d => d.category ?? 'other'))]
+    if (cats.length <= 1) {
+      return decks.map((d, i) => ({ type: 'deck' as const, id: `d-${d.id}`, deck: d, deckIndex: i }))
+    }
+    const rows: ListRow[] = []
+    let di = 0
+    for (const cat of cats) {
+      const label = DECK_CATEGORIES.find(cfg => cfg.key === cat)?.label ?? 'Boshqalar'
+      rows.push({ type: 'section', id: `s-${cat}`, label })
+      for (const d of decks.filter(dk => (dk.category ?? 'other') === cat)) {
+        rows.push({ type: 'deck', id: `d-${d.id}`, deck: d, deckIndex: di++ })
+      }
+    }
+    return rows
+  }, [decks, category, search])
+
+  const isTrulyEmpty = category === 'all' && !search.trim()
 
   return (
     <View style={{ flex: 1 }}>
@@ -484,20 +393,22 @@ function PublicDecksTab() {
         })}
       </ScrollView>
 
-      {/* Sort tabs */}
-      <View style={styles.sortRow}>
-        {SORT_TABS.map(s => {
-          const active = sort === s.key
-          return (
-            <Pressable key={s.key} onPress={() => setFilters({ sort: s.key })} style={styles.sortTab}>
-              <Text style={[styles.sortText, { color: active ? c.accentPrimary : c.textSecondary, fontFamily: active ? typography.fontFamily.semibold : typography.fontFamily.regular }]}>
-                {s.label}
-              </Text>
-              {active && <View style={[styles.sortUnderline, { backgroundColor: c.accentPrimary }]} />}
-            </Pressable>
-          )
-        })}
-      </View>
+      {/* Sort tabs — only shown when there are enough decks to warrant sorting */}
+      {total >= 6 && (
+        <View style={styles.sortRow}>
+          {SORT_TABS.map(s => {
+            const active = sort === s.key
+            return (
+              <Pressable key={s.key} onPress={() => setFilters({ sort: s.key })} style={styles.sortTab}>
+                <Text style={[styles.sortText, { color: active ? c.accentPrimary : c.textSecondary, fontFamily: active ? typography.fontFamily.semibold : typography.fontFamily.regular }]}>
+                  {s.label}
+                </Text>
+                {active && <View style={[styles.sortUnderline, { backgroundColor: c.accentPrimary }]} />}
+              </Pressable>
+            )
+          })}
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.loader}>
@@ -505,9 +416,25 @@ function PublicDecksTab() {
         </View>
       ) : (
         <FlatList
-          data={decks}
-          keyExtractor={item => String(item.id)}
-          renderItem={({ item }) => <PublicDeckCard deck={item} onPress={() => openDeck(item.id)} />}
+          data={listData}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => {
+            if (item.type === 'section') {
+              return (
+                <Text style={[styles.sectionLabel, { color: c.textDisabled, fontFamily: typography.fontFamily.medium }]}>
+                  {item.label}
+                </Text>
+              )
+            }
+            return (
+              <DeckCard
+                variant="public"
+                deck={item.deck}
+                index={item.deckIndex}
+                onPress={() => openDeck(item.deck.id)}
+              />
+            )
+          }}
           contentContainerStyle={[styles.list, { paddingBottom: 100 }]}
           showsVerticalScrollIndicator={false}
           onEndReachedThreshold={0.4}
@@ -518,16 +445,37 @@ function PublicDecksTab() {
           ListHeaderComponent={
             showFeatured && featured.length > 0 ? (
               <View style={{ marginBottom: spacing.base }}>
-                <Text style={[styles.featuredLabel, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                  ⭐ Tanlangan to'plamlar
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-                  {featured.map(deck => (
-                    <View key={deck.id} style={{ width: 240 }}>
-                      <PublicDeckCard deck={deck} featured onPress={() => openDeck(deck.id)} />
-                    </View>
-                  ))}
-                </ScrollView>
+                {/* Small tag — not a big header — so content feels primary */}
+                <View style={[styles.featuredTagWrap, { backgroundColor: c.bgTertiary }]}>
+                  <Text style={[styles.featuredTag, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                    ⭐ Tavsiya etilgan
+                  </Text>
+                </View>
+                <DeckCard
+                  variant="public"
+                  deck={featured[0]}
+                  size="hero"
+                  index={0}
+                  onPress={() => openDeck(featured[0].id)}
+                />
+                {featured.length > 1 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 10, paddingTop: 10 }}
+                  >
+                    {featured.slice(1).map((deck, i) => (
+                      <View key={deck.id} style={{ width: 220 }}>
+                        <DeckCard
+                          variant="public"
+                          deck={deck}
+                          index={i + 1}
+                          onPress={() => openDeck(deck.id)}
+                        />
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
               </View>
             ) : null
           }
@@ -536,11 +484,19 @@ function PublicDecksTab() {
             <View style={styles.emptyWrap}>
               <Cards size={56} color={c.textDisabled} weight="thin" />
               <Text style={[styles.emptyTitle, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                Bu turkumda hali to'plam yo'q
+                {isTrulyEmpty
+                  ? "Hozircha ommaviy to'plamlar yo'q"
+                  : "Bu turkumda hali to'plam yo'q"}
               </Text>
-              <Text style={[styles.emptySub, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-                Boshqa turkumni tanlab ko'ring
-              </Text>
+              {isTrulyEmpty ? (
+                <Text style={[styles.emptySub, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
+                  Tez orada qo'shiladi!
+                </Text>
+              ) : (
+                <Text style={[styles.emptySub, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
+                  Boshqa turkumni tanlab ko'ring
+                </Text>
+              )}
             </View>
           }
         />
@@ -634,10 +590,12 @@ export default function FlashcardsScreen() {
               <EmptyState onCreate={openCreate} onBrowsePublic={() => setActiveTab('public')} />
             ) : (
               <>
-                {decks.map(deck => (
+                {decks.map((deck, i) => (
                   <DeckCard
                     key={deck.id}
+                    variant="mine"
                     deck={deck}
+                    index={i}
                     onPress={() => router.push(`/(screens)/flashcard-deck/${deck.id}` as any)}
                   />
                 ))}
@@ -708,46 +666,6 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: typography.size.xs, textAlign: 'center' },
   statsDivider: { width: 1, marginVertical: 4 },
 
-  // Deck card (shared shape for own decks + public decks)
-  // The color stripe is positioned absolutely rather than via alignSelf:'stretch'
-  // — stretch is unreliable for a height-less child in a row with dynamic
-  // (content-driven) height, so it could end up shorter than the card.
-  deckCard: {
-    position:      'relative',
-    minHeight:     80,
-    borderRadius:  14,
-    flexDirection: 'row',
-    alignItems:    'center',
-    overflow:      'hidden',
-    paddingLeft:   18,
-  },
-  deckCardFeatured: { minHeight: 110 },
-  deckStripe:  { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
-  deckContent: { flex: 1, gap: 3, paddingRight: 8 },
-  deckTitle:   { fontSize: typography.size.base, flexShrink: 1 },
-  deckMeta:    { fontSize: typography.size.xs, lineHeight: 16 },
-  masteryTrack: { height: 4, borderRadius: 2, width: 120, overflow: 'hidden', marginTop: 2 },
-  masteryFill:  { height: 4, borderRadius: 2 },
-  dueBadge: {
-    width:          28,
-    height:         28,
-    borderRadius:   14,
-    alignItems:     'center',
-    justifyContent: 'center',
-    marginRight:    4,
-  },
-  dueBadgeText: { fontSize: 12 },
-
-  // Public deck card extras
-  titleRow:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  officialBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: radius.button },
-  officialBadgeText: { fontSize: 10 },
-  creatorRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  creatorLine: { fontSize: 13, flexShrink: 1 },
-  statsLine:   { fontSize: 11 },
-  clonedTag:   { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.button, marginTop: 2 },
-  clonedTagText: { fontSize: 11 },
-
   // Empty state
   emptyWrap: { alignItems: 'center', gap: 10, paddingTop: 60, paddingBottom: 40 },
   emptyTitle: { fontSize: typography.size.base, marginTop: 8 },
@@ -795,7 +713,25 @@ const styles = StyleSheet.create({
   sortUnderline: { height: 2, borderRadius: 1, marginTop: 6 },
 
   list: { padding: spacing.screenMargin, paddingTop: spacing.xs, gap: 10 },
-  featuredLabel: { fontSize: typography.size.base, marginBottom: spacing.sm },
+
+  // Featured hero tag — small chip above the hero card, not a big section header
+  featuredTagWrap: {
+    alignSelf:         'flex-start',
+    paddingHorizontal:  10,
+    paddingVertical:    5,
+    borderRadius:       20,
+    marginBottom:       spacing.sm,
+  },
+  featuredTag: { fontSize: typography.size.xs },
+
+  // Category section label inside the grouped FlatList
+  sectionLabel: {
+    fontSize:      typography.size.xs,
+    textTransform: 'uppercase' as const,
+    letterSpacing:  0.8,
+    marginTop:      spacing.base,
+    marginBottom:   4,
+  },
 
   // Sheet (create/edit deck)
   backdrop: {

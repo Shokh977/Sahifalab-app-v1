@@ -1,6 +1,9 @@
 import { create } from 'zustand'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { flashcards as flashcardsApi } from '../lib/api'
 import type { FlashcardDeck, Flashcard, FlashcardStats } from '../lib/types'
+
+const DECKS_CACHE_KEY = 'sahifalab_my_decks_v1'
 
 interface FlashcardState {
   decks:        FlashcardDeck[]
@@ -28,10 +31,22 @@ export const useFlashcardStore = create<FlashcardState>((set, get) => ({
 
   fetchDecks: async () => {
     if (get().loading) return
+
+    // Warm the UI from cache before the network responds.
+    // The screen only shows a spinner when loading && decks.length === 0,
+    // so pre-loading the cache means no spinner on repeat opens.
+    if (get().decks.length === 0) {
+      try {
+        const raw = await AsyncStorage.getItem(DECKS_CACHE_KEY)
+        if (raw) set({ decks: JSON.parse(raw) })
+      } catch {}
+    }
+
     set({ loading: true, error: null })
     try {
       const decks = await flashcardsApi.listDecks()
       set({ decks })
+      AsyncStorage.setItem(DECKS_CACHE_KEY, JSON.stringify(decks)).catch(() => {})
     } catch (e: any) {
       set({ error: e?.message ?? 'Xatolik yuz berdi' })
     } finally { set({ loading: false }) }
