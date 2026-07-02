@@ -335,13 +335,12 @@ export default function FlashcardStudyScreen() {
     // Fire review in background (don't block UI)
     flashcardsApi.reviewCard(currentCard.id, { rating, time_spent_ms: timeMs })
       .then(result => {
-        const xpGained = result.xp_awarded
-        if (xpGained > 0) {
+        // Deck mastery bonus (50 XP) — fires once when 100% of cards are mastered
+        if (result.deck_bonus_xp > 0) {
           const floatId = ++xpFloatIdRef.current
-          setXpFloats(prev => [...prev, { id: floatId, xp: xpGained, color: c.accentPrimary }])
+          setXpFloats(prev => [...prev, { id: floatId, xp: result.deck_bonus_xp, color: c.accentPrimary }])
           setTimeout(() => setXpFloats(prev => prev.filter(f => f.id !== floatId)), 700)
-          setTotalXP(t => t + xpGained)
-          if (result.deck_bonus_xp > 0) setTotalXP(t => t + result.deck_bonus_xp)
+          setTotalXP(t => t + result.deck_bonus_xp)
         }
         if (result.newly_mastered && deck) {
           setMasteryAfter(prev => Math.min(1, prev + (1 / deck.card_count)))
@@ -359,13 +358,14 @@ export default function FlashcardStudyScreen() {
       next.splice(insertAt, 0, currentCard)
       advanceCard(next, 'left')
     } else if (remaining.length === 0) {
-      // Session done — award session XP + goal
+      // Session done — show XP instantly (ceil(card_count/5)), confirm from server
       const totalMs = Date.now() - startTimeRef.current
+      const expectedXP = deck ? Math.ceil(deck.card_count / 5) : 0
+      setTotalXP(t => t + expectedXP)
       flashcardsApi.completeSession(deckId, {
         total_time_ms: totalMs,
         cards_reviewed: initialQueueRef.current || reviewed + 1,
       }).then(result => {
-        setTotalXP(t => t + result.xp_awarded)
         patchUser({ streak_days: result.streak_days })
         fetchDecks()
         if (result.challenges_completed?.length > 0) {
