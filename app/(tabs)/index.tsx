@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, RefreshControl, StyleSheet,
   Pressable, Linking,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -128,9 +129,21 @@ function HeroBanner() {
   const [content,   setContent]   = useState<HeroContent | null>(null)
   const [dismissed, setDismissed] = useState(false)
 
-  useEffect(() => { hero.get().then(setContent) }, [])
+  useEffect(() => {
+    hero.get().then(async c => {
+      if (!c) return
+      const key = `sahifalab_hero_dismissed_${c.id}`
+      const wasDismissed = await AsyncStorage.getItem(key).catch(() => null)
+      if (!wasDismissed) setContent(c)
+    })
+  }, [])
 
   if (!content || dismissed) return null
+
+  const handleDismiss = () => {
+    setDismissed(true)
+    AsyncStorage.setItem(`sahifalab_hero_dismissed_${content.id}`, '1').catch(() => {})
+  }
 
   const handlePress = () => {
     if (content.cta_link) Linking.openURL(content.cta_link).catch(() => {})
@@ -165,7 +178,7 @@ function HeroBanner() {
           </View>
         )}
       </View>
-      <Pressable onPress={() => setDismissed(true)} hitSlop={10} style={heroBannerStyles.dismiss}>
+      <Pressable onPress={handleDismiss} hitSlop={10} style={heroBannerStyles.dismiss}>
         <X size={14} color={c.textDisabled} strokeWidth={2} />
       </Pressable>
     </Pressable>

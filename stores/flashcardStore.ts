@@ -7,6 +7,8 @@ interface FlashcardState {
   stats:        FlashcardStats | null
   loading:      boolean
   statsLoading: boolean
+  error:        string | null
+  statsError:   string | null
 
   fetchDecks:    () => Promise<void>
   fetchStats:    () => Promise<void>
@@ -21,25 +23,29 @@ export const useFlashcardStore = create<FlashcardState>((set, get) => ({
   stats:        null,
   loading:      false,
   statsLoading: false,
+  error:        null,
+  statsError:   null,
 
   fetchDecks: async () => {
     if (get().loading) return
-    set({ loading: true })
+    set({ loading: true, error: null })
     try {
       const decks = await flashcardsApi.listDecks()
       set({ decks })
-    } catch {}
-    finally { set({ loading: false }) }
+    } catch (e: any) {
+      set({ error: e?.message ?? 'Xatolik yuz berdi' })
+    } finally { set({ loading: false }) }
   },
 
   fetchStats: async () => {
     if (get().statsLoading) return
-    set({ statsLoading: true })
+    set({ statsLoading: true, statsError: null })
     try {
       const stats = await flashcardsApi.getStats()
       set({ stats })
-    } catch {}
-    finally { set({ statsLoading: false }) }
+    } catch (e: any) {
+      set({ statsError: e?.message ?? 'Xatolik yuz berdi' })
+    } finally { set({ statsLoading: false }) }
   },
 
   addDeck: (deck) => set(s => ({ decks: [deck, ...s.decks] })),

@@ -1,10 +1,11 @@
 /**
  * Deck Detail screen — shows hero study card, mastery progress, and card list.
  */
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, Pressable, ScrollView, Modal,
-  TextInput, Alert, ActivityIndicator,
+  TextInput, Alert, ActivityIndicator, Animated as RNAnimated,
+  Platform, KeyboardAvoidingView,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
@@ -163,6 +164,195 @@ function CardSheet({ visible, deckId, deckColor, editing, onClose, onSaved }: Ca
   )
 }
 
+// ── Edit Deck sheet ───────────────────────────────────────────────────────────
+
+interface DeckEditSheetProps {
+  visible: boolean
+  deck:    FlashcardDeck
+  onClose: () => void
+  onSaved: (deck: FlashcardDeck) => void
+}
+
+function DeckEditSheet({ visible, deck, onClose, onSaved }: DeckEditSheetProps) {
+  const { c }  = useTheme()
+  const insets = useSafeAreaInsets()
+
+  const [title,  setTitle]  = useState('')
+  const [desc,   setDesc]   = useState('')
+  const [color,  setColor]  = useState(PRESET_COLORS[0])
+  const [saving, setSaving] = useState(false)
+
+  const [rendered, setRendered] = useState(visible)
+  const backdropAnim = useRef(new RNAnimated.Value(0)).current
+  const sheetAnim    = useRef(new RNAnimated.Value(400)).current
+
+  useEffect(() => {
+    if (visible) {
+      setRendered(true)
+      RNAnimated.parallel([
+        RNAnimated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        RNAnimated.spring(sheetAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]).start()
+    } else {
+      RNAnimated.parallel([
+        RNAnimated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        RNAnimated.timing(sheetAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setRendered(false); sheetAnim.setValue(400) })
+    }
+  }, [visible])
+
+  useEffect(() => {
+    if (visible) {
+      setTitle(deck.title ?? '')
+      setDesc(deck.description ?? '')
+      setColor(deck.color ?? PRESET_COLORS[0])
+    }
+  }, [visible, deck])
+
+  const save = async () => {
+    if (!title.trim()) return
+    setSaving(true)
+    try {
+      const updated = await flashcardsApi.updateDeck(deck.id, {
+        title:       title.trim(),
+        description: desc.trim() || undefined,
+        color,
+      })
+      onSaved(updated)
+    } catch (e: any) {
+      Alert.alert('Xatolik', e.message ?? 'Saqlashda xatolik yuz berdi')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!rendered) return null
+
+  return (
+    <Modal transparent visible={rendered} onRequestClose={onClose} statusBarTranslucent>
+      <RNAnimated.View style={[deckEditStyles.backdrop, { opacity: backdropAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </RNAnimated.View>
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={deckEditStyles.kav}>
+        <RNAnimated.View
+          style={[
+            deckEditStyles.sheet,
+            {
+              backgroundColor: c.bgSecondary,
+              paddingBottom:   insets.bottom + spacing.base,
+              transform:       [{ translateY: sheetAnim }],
+            },
+          ]}
+        >
+          <View style={[styles.sheetHandle, { backgroundColor: c.border }]} />
+          <View style={styles.sheetHeader}>
+            <Text style={[styles.sheetTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+              To'plamni tahrirlash
+            </Text>
+            <Pressable onPress={onClose} hitSlop={12}>
+              <X size={22} color={c.textSecondary} />
+            </Pressable>
+          </View>
+
+          <ScrollView contentContainerStyle={{ gap: spacing.base, paddingBottom: 8 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <View style={{ gap: 6 }}>
+              <Text style={[styles.inputLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                To'plam nomi
+              </Text>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Masalan: Inglizcha so'zlar"
+                placeholderTextColor={c.textDisabled}
+                style={[deckEditStyles.textInput, { backgroundColor: c.bgInput, color: c.textPrimary, borderColor: c.border, fontFamily: typography.fontFamily.regular }]}
+                maxLength={200}
+                autoFocus
+              />
+            </View>
+
+            <View style={{ gap: 6 }}>
+              <Text style={[styles.inputLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                Izoh (ixtiyoriy)
+              </Text>
+              <TextInput
+                value={desc}
+                onChangeText={setDesc}
+                placeholder="Bu to'plam haqida..."
+                placeholderTextColor={c.textDisabled}
+                style={[deckEditStyles.textInput, { backgroundColor: c.bgInput, color: c.textPrimary, borderColor: c.border, fontFamily: typography.fontFamily.regular, minHeight: 72 }]}
+                multiline
+                maxLength={500}
+              />
+            </View>
+
+            <View style={{ gap: 10 }}>
+              <Text style={[styles.inputLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                Rang
+              </Text>
+              <View style={deckEditStyles.colorRow}>
+                {PRESET_COLORS.map(hex => (
+                  <Pressable
+                    key={hex}
+                    onPress={() => setColor(hex)}
+                    style={[deckEditStyles.colorSwatch, { backgroundColor: hex, borderColor: color === hex ? c.textPrimary : 'transparent' }]}
+                  >
+                    {color === hex && <Check size={14} color="#fff" weight="bold" />}
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <Pressable
+              onPress={save}
+              disabled={saving || !title.trim()}
+              style={({ pressed }) => [
+                deckEditStyles.saveBtn,
+                { backgroundColor: title.trim() ? c.accentPrimary : c.bgTertiary, opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              {saving
+                ? <ActivityIndicator color={c.textInverse} size="small" />
+                : <Text style={[deckEditStyles.saveBtnText, { color: title.trim() ? c.textInverse : c.textDisabled, fontFamily: typography.fontFamily.semibold }]}>
+                    Saqlash
+                  </Text>
+              }
+            </Pressable>
+          </ScrollView>
+        </RNAnimated.View>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
+}
+
+const deckEditStyles = StyleSheet.create({
+  backdrop:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  kav:       { flex: 1, justifyContent: 'flex-end' },
+  sheet: {
+    borderTopLeftRadius:  20,
+    borderTopRightRadius: 20,
+    padding:              spacing.screenMargin,
+    paddingTop:           12,
+    gap:                  spacing.base,
+  },
+  textInput: {
+    borderWidth: 1, borderRadius: radius.input,
+    paddingHorizontal: spacing.base, paddingVertical: 12,
+    fontSize: typography.size.base,
+  },
+  colorRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  colorSwatch: {
+    width: 36, height: 36, borderRadius: 18,
+    borderWidth: 2.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  saveBtn: {
+    height: 52, borderRadius: radius.button,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  saveBtnText: { fontSize: typography.size.base },
+})
+
 // ── Card row ──────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
@@ -233,6 +423,7 @@ export default function DeckDetailScreen() {
   const [menuOpen,  setMenuOpen]  = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editCard,  setEditCard]  = useState<Flashcard | null>(null)
+  const [deckEditOpen,     setDeckEditOpen]     = useState(false)
   const [publishSheetOpen, setPublishSheetOpen] = useState(false)
   const [ratingSheetOpen,  setRatingSheetOpen]  = useState(false)
   const [myRating,         setMyRating]         = useState<number | null>(null)
@@ -518,7 +709,7 @@ export default function DeckDetailScreen() {
         <Pressable style={styles.menuOverlay} onPress={() => setMenuOpen(false)}>
           <View style={[styles.menuCard, { backgroundColor: c.bgElevated, borderColor: c.border, minWidth: 180 }]}>
             <Pressable
-              onPress={() => { setMenuOpen(false); Alert.alert('Tahrirlash', "To'plam tahrirlash sahifasi ochiladi") }}
+              onPress={() => { setMenuOpen(false); setDeckEditOpen(true) }}
               style={styles.menuItem}
             >
               <PencilSimple size={16} color={c.textPrimary} />
@@ -550,6 +741,17 @@ export default function DeckDetailScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      <DeckEditSheet
+        visible={deckEditOpen}
+        deck={deck}
+        onClose={() => setDeckEditOpen(false)}
+        onSaved={updated => {
+          setDeck(updated)
+          updateDeck(updated)
+          setDeckEditOpen(false)
+        }}
+      />
 
       <CardSheet
         visible={sheetOpen}

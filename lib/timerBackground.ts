@@ -22,11 +22,12 @@ const CHANNEL_ID       = 'focus-timer'
 // ── Saved state (persisted across app restarts) ───────────────────────────────
 
 export interface SavedTimerState {
-  targetEnd:      number    // abs ms when current phase ends
-  plannedMinutes: number
-  phase:          'focus' | 'break'
-  currentSession: number
-  totalSessions:  number
+  targetEnd:         number    // abs ms when current phase ends
+  plannedMinutes:    number
+  phase:             'focus' | 'break'
+  currentSession:    number
+  totalSessions:     number
+  completedSessions: number    // focus sessions whose XP has been awarded
 }
 
 export async function saveTimerState(s: SavedTimerState) {

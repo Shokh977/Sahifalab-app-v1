@@ -218,6 +218,7 @@ export default function FlashcardStudyScreen() {
   const sessionSecRef     = useRef(0)
   const sessionTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const submitRatingRef   = useRef<(rating: number) => void>(() => {})
+  const initialQueueRef   = useRef(0)   // unique card count (excludes re-queued retries)
   const [sessionSec,    setSessionSec]  = useState(0)
   const [xpFloats,      setXpFloats]    = useState<XPFloatItem[]>([])
   const xpFloatIdRef    = useRef(0)
@@ -257,6 +258,7 @@ export default function FlashcardStudyScreen() {
         if (session.cards.length === 0) {
           setDone(true)
         } else {
+          initialQueueRef.current = session.cards.length
           setQueue(session.cards)
         }
       } catch (e: any) {
@@ -361,7 +363,7 @@ export default function FlashcardStudyScreen() {
       const totalMs = Date.now() - startTimeRef.current
       flashcardsApi.completeSession(deckId, {
         total_time_ms: totalMs,
-        cards_reviewed: reviewed + 1,
+        cards_reviewed: initialQueueRef.current || reviewed + 1,
       }).then(result => {
         setTotalXP(t => t + result.xp_awarded)
         patchUser({ streak_days: result.streak_days })

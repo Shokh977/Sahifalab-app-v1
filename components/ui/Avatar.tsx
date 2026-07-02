@@ -18,7 +18,7 @@ export const Avatar = React.memo(function Avatar({ uri, name, size = 32, level, 
   const tier        = level ? getLevelTier(level) : null
   const borderColor = tier ? tier.border : c.border
   const initials    = name
-    ? name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)
+    ? name.split(' ').filter(p => p.length > 0).map(p => p[0]).join('').toUpperCase().slice(0, 2) || '?'
     : '?'
 
   const containerStyle = {

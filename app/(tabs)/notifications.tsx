@@ -350,7 +350,11 @@ export default function NotificationsTab() {
 
   const handleNotifPress = useCallback(async (item: NotifItem) => {
     if (!item.is_read) {
-      notifs.markRead(item.id)
+      notifs.markRead(item.id).catch(() => {
+        // Revert optimistic update on failure
+        setItems(prev => prev.map(it => it.id === item.id ? { ...it, is_read: false } : it))
+        decrement(-1)
+      })
       setItems(prev => prev.map(it => it.id === item.id ? { ...it, is_read: true } : it))
       decrement(1)
     }

@@ -263,7 +263,7 @@ function TimerScreen() {
     setupTimerNotifications()
 
     // If the app was restarted while a timer was running, restore it
-    loadTimerState().then(saved => {
+    loadTimerState().then(async saved => {
       if (!saved) return
       if (saved.targetEnd > Date.now()) {
         // Timer still has time left — restore live state
@@ -282,9 +282,11 @@ function TimerScreen() {
         // Timer ended while app was closed — credit the completed focus session
         clearTimerState()
         if (saved.phase === 'focus') {
-          focus.complete(saved.plannedMinutes).catch(() => {
+          try {
+            await focus.complete(saved.plannedMinutes)
+          } catch {
             useOfflineQueueStore.getState().enqueue(saved.plannedMinutes)
-          })
+          }
         }
       }
     })

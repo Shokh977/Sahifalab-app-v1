@@ -11,6 +11,15 @@ import { typography, spacing, radius } from '../../lib/constants'
 import { playFocusSound, playBreakSound } from '../../lib/timerSounds'
 import { cancelStreakReminder } from '../../lib/streakNotifications'
 import { useDashboardStore } from '../../stores/dashboardStore'
+import {
+  loadTimerState,
+  saveTimerState,
+  clearTimerState,
+  scheduleAllNotifications,
+  cancelAllTimerNotifications,
+  setupTimerNotifications,
+  type SavedTimerState,
+} from '../../lib/timerBackground'
 
 // expo modules lazy-required for Expo Go compatibility
 let Notifications: any = null
@@ -143,6 +152,65 @@ function SoundRow({ track }: { track: SoundTrack }) {
   )
 }
 
+// ── Fast-forward helper (used on mount when app was closed mid-session) ────────
+
+function fastForwardState(saved: SavedTimerState, now: number): {
+  phase:             'focus' | 'break'
+  currentSession:    number
+  completedSessions: number
+  targetEnd:         number
+  allDone:           boolean
+  missedFocusSessions: number
+} {
+  const focusMs = saved.plannedMinutes * 60_000
+  const bMs     = (saved.plannedMinutes <= 25 ? 5 : 10) * 60_000
+
+  // Build the ordered list of phases that come AFTER the saved phase ended.
+  type Slot = { phase: 'focus' | 'break'; durationMs: number }
+  const timeline: Slot[] = []
+  let completed = saved.completedSessions
+  let missed    = 0
+
+  if (saved.phase === 'focus') {
+    // Saved focus phase just elapsed → that session is done
+    completed++
+    missed++
+    for (let i = 0; i < saved.totalSessions - completed; i++) {
+      timeline.push({ phase: 'break', durationMs: bMs })
+      timeline.push({ phase: 'focus', durationMs: focusMs })
+    }
+  } else {
+    // Saved break phase just elapsed → remaining focus sessions
+    const left = saved.totalSessions - completed
+    for (let i = 0; i < left; i++) {
+      timeline.push({ phase: 'focus', durationMs: focusMs })
+      if (i < left - 1) timeline.push({ phase: 'break', durationMs: bMs })
+    }
+  }
+
+  if (timeline.length === 0) {
+    return { allDone: true, phase: 'focus', currentSession: saved.totalSessions, completedSessions: completed, targetEnd: 0, missedFocusSessions: missed }
+  }
+
+  let t = saved.targetEnd
+  for (const slot of timeline) {
+    if (now < t + slot.durationMs) {
+      return {
+        allDone:           false,
+        phase:             slot.phase,
+        currentSession:    slot.phase === 'focus' ? completed + 1 : completed,
+        completedSessions: completed,
+        targetEnd:         t + slot.durationMs,
+        missedFocusSessions: missed,
+      }
+    }
+    t += slot.durationMs
+    if (slot.phase === 'focus') { completed++; missed++ }
+  }
+
+  return { allDone: true, phase: 'focus', currentSession: saved.totalSessions, completedSessions: completed, targetEnd: 0, missedFocusSessions: missed }
+}
+
 export default function FocusTimerScreen() {
   const { c } = useTheme()
 
@@ -193,21 +261,65 @@ export default function FocusTimerScreen() {
   // Keep refs in sync so callbacks always see latest values
   useEffect(() => { totalSessionsRef.current = totalSessions }, [totalSessions])
 
+  // ── One-time setup: notification permissions + restore state from storage ────
+  useEffect(() => {
+    setupTimerNotifications().catch(() => {})
+
+    loadTimerState().then(async (saved) => {
+      if (!saved) return
+      const now = Date.now()
+
+      let phase             = saved.phase
+      let targetEnd         = saved.targetEnd
+      let completed         = saved.completedSessions
+      let missedFocus       = 0
+
+      if (now >= saved.targetEnd) {
+        const r = fastForwardState(saved, now)
+        if (r.allDone) {
+          clearTimerState().catch(() => {})
+          // Award XP silently for every session completed while app was closed
+          for (let i = 0; i < r.missedFocusSessions; i++) {
+            await useTimerStore.getState().completeSession(saved.plannedMinutes).catch(() => {})
+          }
+          return
+        }
+        phase       = r.phase
+        targetEnd   = r.targetEnd
+        completed   = r.completedSessions
+        missedFocus = r.missedFocusSessions
+      }
+
+      // Award XP for sessions missed while closed, then restore live timer
+      for (let i = 0; i < missedFocus; i++) {
+        await useTimerStore.getState().completeSession(saved.plannedMinutes).catch(() => {})
+      }
+
+      completedSessionsRef.current = completed
+      setCompletedSessions(completed)
+
+      useTimerStore.setState({
+        plannedMinutes: saved.plannedMinutes,
+        totalSessions:  saved.totalSessions,
+        phase,
+        status:         'active',
+        secondsLeft:    Math.max(1, Math.ceil((targetEnd - now) / 1000)),
+        _targetEnd:     targetEnd,
+        _pauseLeft:     0,
+        currentSession: phase === 'focus' ? completed + 1 : completed,
+      })
+    }).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const sessionDoneRef = useRef<() => Promise<void>>(async () => {})
 
   // ── Phase-transition handler ────────────────────────────────────────────────
   const handleSessionDone = useCallback(async () => {
     if (phase === 'focus') {
-      // Focus finished → award XP, notify, then auto-start break
+      // Focus finished → award XP, notify, start break immediately
       if (soundEnabled) playBreakSound().catch(() => {})
       if (vibrateEnabled) Haptics?.notificationAsync(Haptics?.NotificationFeedbackType?.Success)
-
-      if (Notifications) {
-        Notifications.scheduleNotificationAsync({
-          content: { title: 'Seans tugadi! 🎉', body: 'Ajoyib! Dam oling.', sound: true },
-          trigger: null,
-        }).catch(() => {})
-      }
 
       const result = await onSessionComplete()
       const newCompleted = completedSessionsRef.current + 1
@@ -215,7 +327,30 @@ export default function FocusTimerScreen() {
       setCompletedSessions(newCompleted)
       setTotalXpEarned(prev => prev + result.xpAwarded)
       setLevelUp(result.levelUp)
-      setShowXP(true)
+
+      // ── Start break IMMEDIATELY — do NOT wait for the XP animation ────────────
+      // (Waiting for animation in the background would delay/lose the break start)
+      startBreak()
+
+      // Persist break phase so app-close+reopen can restore correctly
+      const s = useTimerStore.getState()
+      if (s._targetEnd) {
+        saveTimerState({
+          targetEnd:         s._targetEnd,
+          plannedMinutes:    s.plannedMinutes,
+          phase:             'break',
+          currentSession:    newCompleted,
+          totalSessions:     totalSessionsRef.current,
+          completedSessions: newCompleted,
+        }).catch(() => {})
+        scheduleAllNotifications({
+          currentPhaseEndMs: s._targetEnd,
+          currentPhase:      'break',
+          currentSession:    newCompleted,
+          totalSessions:     totalSessionsRef.current,
+          plannedMinutes:    s.plannedMinutes,
+        }).catch(() => {})
+      }
 
       // Patch today_minutes and cancel the 20:00 reminder if goal is now met
       const dashState = useDashboardStore.getState()
@@ -225,14 +360,13 @@ export default function FocusTimerScreen() {
       dashState.patchFocusStats({ today_minutes: newMinutes })
       if (newMinutes >= dailyGoal) cancelStreakReminder().catch(() => {})
 
+      // XP animation is purely cosmetic — fire and forget
+      setShowXP(true)
       Animated.sequence([
         Animated.timing(xpAnim, { toValue: 1, duration: 400, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }),
         Animated.delay(2000),
         Animated.timing(xpAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start(() => {
-        setShowXP(false)
-        startBreak()
-      })
+      ]).start(() => setShowXP(false))
 
     } else {
       // Break finished → check if all sessions done
@@ -241,36 +375,41 @@ export default function FocusTimerScreen() {
         if (soundEnabled) playFocusSound().catch(() => {})
         if (vibrateEnabled) Haptics?.notificationAsync(Haptics?.NotificationFeedbackType?.Success)
 
-        if (Notifications) {
-          Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'Barcha seanslar tugadi! 🏆',
-              body: `${completedSessionsRef.current} seans muvaffaqiyatli bajarildi!`,
-              sound: true,
-            },
-            trigger: null,
-          }).catch(() => {})
-        }
+        clearTimerState().catch(() => {})
+        cancelAllTimerNotifications().catch(() => {})
 
         setShowCompletion(true)
         Animated.spring(completionAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }).start()
 
       } else {
-        // More sessions remaining → start next focus session
+        // More sessions remaining → start next focus session immediately
         if (soundEnabled) playFocusSound().catch(() => {})
         if (vibrateEnabled) Haptics?.impactAsync(Haptics?.ImpactFeedbackStyle?.Medium)
 
-        if (Notifications) {
-          Notifications.scheduleNotificationAsync({
-            content: { title: "Tanaffus tugadi! 💪", body: 'Yana diqqat seansi boshlaylik!', sound: true },
-            trigger: null,
+        completeBreak()
+
+        const s = useTimerStore.getState()
+        if (s._targetEnd) {
+          const nextSession = completedSessionsRef.current + 1
+          saveTimerState({
+            targetEnd:         s._targetEnd,
+            plannedMinutes:    s.plannedMinutes,
+            phase:             'focus',
+            currentSession:    nextSession,
+            totalSessions:     totalSessionsRef.current,
+            completedSessions: completedSessionsRef.current,
+          }).catch(() => {})
+          scheduleAllNotifications({
+            currentPhaseEndMs: s._targetEnd,
+            currentPhase:      'focus',
+            currentSession:    nextSession,
+            totalSessions:     totalSessionsRef.current,
+            plannedMinutes:    s.plannedMinutes,
           }).catch(() => {})
         }
-
-        completeBreak()
       }
     }
-  }, [phase, onSessionComplete, xpAnim, completionAnim, startBreak, completeBreak, soundEnabled, vibrateEnabled])
+  }, [phase, onSessionComplete, xpAnim, completionAnim, startBreak, completeBreak, soundEnabled, vibrateEnabled, plannedMinutes])
 
   useEffect(() => { sessionDoneRef.current = handleSessionDone }, [handleSessionDone])
 
@@ -323,8 +462,20 @@ export default function FocusTimerScreen() {
   function handlePlayPause() {
     if (status === 'active') {
       pause()
+      cancelAllTimerNotifications().catch(() => {})
     } else if (status === 'paused') {
       resume()
+      // Reschedule all notifications from the resumed _targetEnd
+      const s = useTimerStore.getState()
+      if (s._targetEnd) {
+        scheduleAllNotifications({
+          currentPhaseEndMs: s._targetEnd,
+          currentPhase:      s.phase,
+          currentSession:    s.phase === 'focus' ? completedSessionsRef.current + 1 : completedSessionsRef.current,
+          totalSessions:     totalSessionsRef.current,
+          plannedMinutes:    s.plannedMinutes,
+        }).catch(() => {})
+      }
     } else {
       // Fresh start — reset session tracking
       completedSessionsRef.current = 0
@@ -333,6 +484,25 @@ export default function FocusTimerScreen() {
       setShowCompletion(false)
       completionAnim.setValue(0)
       start()
+      // Persist and schedule all phase-transition notifications
+      const s = useTimerStore.getState()
+      if (s._targetEnd) {
+        saveTimerState({
+          targetEnd:         s._targetEnd,
+          plannedMinutes:    s.plannedMinutes,
+          phase:             'focus',
+          currentSession:    1,
+          totalSessions:     s.totalSessions,
+          completedSessions: 0,
+        }).catch(() => {})
+        scheduleAllNotifications({
+          currentPhaseEndMs: s._targetEnd,
+          currentPhase:      'focus',
+          currentSession:    1,
+          totalSessions:     s.totalSessions,
+          plannedMinutes:    s.plannedMinutes,
+        }).catch(() => {})
+      }
     }
   }
 
@@ -343,6 +513,8 @@ export default function FocusTimerScreen() {
     setShowCompletion(false)
     completionAnim.setValue(0)
     reset()
+    clearTimerState().catch(() => {})
+    cancelAllTimerNotifications().catch(() => {})
   }
 
   // Session progress dots for the current run

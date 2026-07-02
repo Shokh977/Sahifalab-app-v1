@@ -27,6 +27,7 @@ interface PublicDecksState {
   total:         number
   loading:       boolean
   loadingMore:   boolean
+  error:         string | null
   rateQueue:     RateQueueItem[]
   reportQueue:   ReportQueueItem[]
 
@@ -57,6 +58,7 @@ export const usePublicDecksStore = create<PublicDecksState>((set, get) => ({
   total:         0,
   loading:       false,
   loadingMore:   false,
+  error:         null,
   rateQueue:     [],
   reportQueue:   [],
 
@@ -64,7 +66,7 @@ export const usePublicDecksStore = create<PublicDecksState>((set, get) => ({
 
   fetchPublicDecks: async (page = 1) => {
     const { filters } = get()
-    set(page === 1 ? { loading: true } : { loadingMore: true })
+    set(page === 1 ? { loading: true, error: null } : { loadingMore: true })
     try {
       const res = await flashcardsApi.listPublicDecks({
         category: filters.category, sort: filters.sort, search: filters.search.trim() || undefined,
@@ -75,8 +77,9 @@ export const usePublicDecksStore = create<PublicDecksState>((set, get) => ({
         total: res.total,
         page,
       }))
-    } catch {}
-    finally { set({ loading: false, loadingMore: false }) }
+    } catch (e: any) {
+      if (page === 1) set({ error: e?.message ?? 'Xatolik yuz berdi' })
+    } finally { set({ loading: false, loadingMore: false }) }
   },
 
   fetchFeatured: async () => {
