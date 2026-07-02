@@ -213,10 +213,11 @@ export default function FlashcardStudyScreen() {
   const [milestoneDays,     setMilestoneDays]     = useState(0)
   const [milestoneBonusXp,  setMilestoneBonusXp]  = useState(0)
 
-  const startTimeRef    = useRef(Date.now())
-  const cardStartRef    = useRef(Date.now())
-  const sessionSecRef   = useRef(0)
-  const sessionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const startTimeRef      = useRef(Date.now())
+  const cardStartRef      = useRef(Date.now())
+  const sessionSecRef     = useRef(0)
+  const sessionTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null)
+  const submitRatingRef   = useRef<(rating: number) => void>(() => {})
   const [sessionSec,    setSessionSec]  = useState(0)
   const [xpFloats,      setXpFloats]    = useState<XPFloatItem[]>([])
   const xpFloatIdRef    = useRef(0)
@@ -259,6 +260,10 @@ export default function FlashcardStudyScreen() {
           setQueue(session.cards)
         }
       } catch (e: any) {
+        if (sessionTimerRef.current) {
+          clearInterval(sessionTimerRef.current)
+          sessionTimerRef.current = null
+        }
         Alert.alert('Xatolik', e.message)
         if (router.canGoBack()) router.back()
         else router.replace(`/(screens)/flashcard-deck/${deckId}` as any)
@@ -380,16 +385,19 @@ export default function FlashcardStudyScreen() {
     }
   }, [currentCard, deck, queue, cardIndex, reviewed, deckId, c.accentPrimary])
 
+  // Keep ref in sync so the gesture handler always calls the latest version
+  useEffect(() => { submitRatingRef.current = submitRating }, [submitRating])
+
   // ── Swipe gesture ──────────────────────────────────────────────────────────
   const swipeGesture = Gesture.Pan()
     .onEnd(e => {
       if (!flipped) return
       if (e.translationX < -SWIPE_THRESHOLD) {
-        runOnJS(submitRating)(1)  // forgot
+        runOnJS(submitRatingRef.current)(1)  // forgot
       } else if (e.translationX > SWIPE_THRESHOLD) {
-        runOnJS(submitRating)(3)  // good
+        runOnJS(submitRatingRef.current)(3)  // good
       } else if (e.translationY < -SWIPE_THRESHOLD * 0.7) {
-        runOnJS(submitRating)(2)  // hard
+        runOnJS(submitRatingRef.current)(2)  // hard
       }
     })
 

@@ -23,6 +23,7 @@ export const useFlashcardStore = create<FlashcardState>((set, get) => ({
   statsLoading: false,
 
   fetchDecks: async () => {
+    if (get().loading) return
     set({ loading: true })
     try {
       const decks = await flashcardsApi.listDecks()
@@ -32,6 +33,7 @@ export const useFlashcardStore = create<FlashcardState>((set, get) => ({
   },
 
   fetchStats: async () => {
+    if (get().statsLoading) return
     set({ statsLoading: true })
     try {
       const stats = await flashcardsApi.getStats()

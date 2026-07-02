@@ -574,7 +574,7 @@ export default function FlashcardsScreen() {
     else             addDeck(deck)
     setSheetOpen(false)
     fetchStats()
-  }, [editingDeck])
+  }, [editingDeck, updateDeck, addDeck, fetchStats])
 
   const startDueReview = () => {
     const dueDeck = [...decks].sort((a, b) => b.due_count - a.due_count)[0]
