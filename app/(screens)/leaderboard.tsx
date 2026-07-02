@@ -215,15 +215,15 @@ function RankRow({
 type TabKey = 'global' | 'friends'
 
 const PERIODS: { key: LeaderboardPeriod; label: string }[] = [
-  { key: 'week',  label: 'Son 7 kun' },
-  { key: 'month', label: 'Bu oy'     },
-  { key: 'all',   label: 'Hammasi'   },
+  { key: 'week',  label: 'Bu hafta' },
+  { key: 'month', label: 'Bu oy'    },
+  { key: 'all',   label: 'Hammasi'  },
 ]
 
 const PERIOD_INFO: Record<LeaderboardPeriod, { title: string; body: string }> = {
-  week:  { title: "Oxirgi 7 kunlik reyting", body: "So'nggi 7 kun ichida yig'ilgan XP bo'yicha hisoblanadi."           },
-  month: { title: 'Oylik reyting',           body: "Joriy oy 1-sanasidan (Toshkent vaqti) yig'ilgan XP bo'yicha."      },
-  all:   { title: "Umumiy reyting",          body: "Barcha vaqt davomida yig'ilgan umumiy XP bo'yicha."                 },
+  week:  { title: "Haftalik reyting", body: "Joriy hafta dushanbasidan (Toshkent vaqti) yig'ilgan XP bo'yicha." },
+  month: { title: 'Oylik reyting',    body: "Joriy oy 1-sanasidan (Toshkent vaqti) yig'ilgan XP bo'yicha."     },
+  all:   { title: "Umumiy reyting",   body: "Barcha vaqt davomida yig'ilgan umumiy XP bo'yicha."                },
 }
 
 export default function LeaderboardScreen() {
@@ -362,7 +362,7 @@ export default function LeaderboardScreen() {
             {activeTab === 'friends'
               ? "Kuzatilayotganlar yo'q"
               : period === 'week'
-                ? "Oxirgi 7 kunda faollik yo'q"
+                ? "Bu hafta faollik yo'q"
                 : period === 'month'
                   ? "Bu oy faollik yo'q"
                   : "Ma'lumot yo'q"}

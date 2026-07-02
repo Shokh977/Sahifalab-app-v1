@@ -11,6 +11,7 @@ import { shareProfile } from '../../lib/share'
 import { useTheme } from '../../hooks/useTheme'
 import { useProfileStore } from '../../stores/profileStore'
 import { useAuthStore } from '../../stores/authStore'
+import { useDashboardStore } from '../../stores/dashboardStore'
 import {
   focusStats,
   profile as profileApi,
@@ -322,6 +323,7 @@ export default function ProfileTab() {
   const router   = useRouter()
   const { ownProfile, loadOwnProfile } = useProfileStore()
   const authUser = useAuthStore(s => s.user)
+  const dashData = useDashboardStore(s => s.data)
 
   const [streak,             setStreak]             = useState(0)
   const [totalFocusMinutes,  setTotalFocusMinutes]  = useState(0)
@@ -332,20 +334,32 @@ export default function ProfileTab() {
     type: 'followers', visible: false,
   })
 
+  // Sync streak/rank from dashboard store whenever it updates — avoids separate API calls
+  // when the dashboard tab has already fetched this data.
+  useEffect(() => {
+    if (dashData?.focusStats) {
+      setStreak(dashData.focusStats.streak_days ?? 0)
+      setTotalFocusMinutes(dashData.focusStats.total_focus_minutes ?? 0)
+    }
+    if (dashData?.myLeaderRank != null) setRank(dashData.myLeaderRank)
+  }, [dashData])
+
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true)
-    try {
-      await Promise.all([
-        loadOwnProfile(),
-        focusStats.get().then(s => {
-          setStreak(s.streak_days ?? 0)
-          setTotalFocusMinutes(s.total_focus_minutes ?? 0)
-        }),
-        leaderboard.weekly('week').then(r => setRank(r.my_rank ?? null)).catch(() => {}),
-      ])
-    } catch {}
+    const tasks: Promise<any>[] = [loadOwnProfile()]
+    // Only call these endpoints if dashboard hasn't already loaded the data
+    if (!dashData?.focusStats) {
+      tasks.push(focusStats.get().then(s => {
+        setStreak(s.streak_days ?? 0)
+        setTotalFocusMinutes(s.total_focus_minutes ?? 0)
+      }))
+    }
+    if (dashData?.myLeaderRank == null) {
+      tasks.push(leaderboard.weekly('week').then(r => setRank(r.my_rank ?? null)).catch(() => {}))
+    }
+    try { await Promise.all(tasks) } catch {}
     setLoading(false)
-  }, [loadOwnProfile])
+  }, [loadOwnProfile, dashData])
 
   useEffect(() => { load() }, [])
 

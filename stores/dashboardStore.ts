@@ -77,9 +77,7 @@ async function loadCache(): Promise<DashboardData | null> {
   try {
     const raw = await AsyncStorage.getItem(CACHE_KEY)
     if (!raw) return null
-    const parsed: DashboardData = JSON.parse(raw)
-    if (Date.now() - parsed.fetchedAt > CACHE_TTL) return null
-    return parsed
+    return JSON.parse(raw) as DashboardData   // caller checks TTL — always return what we have
   } catch {
     return null
   }
@@ -198,15 +196,23 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   fetch: async () => {
     if (get().loading) return
 
-    // If data is already fresh (within TTL) skip the round-trip entirely
+    // Already have fresh in-memory data — nothing to do
     const existing = get().data
     if (existing && Date.now() - existing.fetchedAt < CACHE_TTL) return
 
     set({ loading: true, error: null })
 
-    // Serve stale cache immediately while fetching fresh
+    // Serve any cached data immediately — even stale — so the screen renders
+    // from cache instead of showing a blank skeleton for 4-5 s.
     const cached = await loadCache()
-    if (cached) set({ data: cached })
+    if (cached) {
+      set({ data: cached })
+      // Cache is still fresh (cold restart within TTL) — no network call needed
+      if (Date.now() - cached.fetchedAt < CACHE_TTL) {
+        set({ loading: false })
+        return
+      }
+    }
 
     try {
       const fresh = await fetchAll()
