@@ -41,8 +41,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.USE_EXACT_ALARM"
+        "android.permission.SCHEDULE_EXACT_ALARM"
       ],
       "intentFilters": [
         {
@@ -98,7 +97,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Profil rasmini o'zgartirish uchun rasmlaringizga ruxsat kerak"
+          "photosPermission": "Profil rasmini o'zgartirish uchun rasmlaringizga ruxsat kerak",
+          "usesAndroidPhotoPicker": true
         }
       ],
       [
