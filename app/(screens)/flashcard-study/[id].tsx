@@ -358,9 +358,10 @@ export default function FlashcardStudyScreen() {
       next.splice(insertAt, 0, currentCard)
       advanceCard(next, 'left')
     } else if (remaining.length === 0) {
-      // Session done — show XP instantly (ceil(card_count/5)), confirm from server
+      // Session done — show XP instantly based on cards reviewed this session
       const totalMs = Date.now() - startTimeRef.current
-      const expectedXP = deck ? Math.ceil(deck.card_count / 5) : 0
+      const sessionCardCount = initialQueueRef.current || reviewed + 1
+      const expectedXP = Math.ceil(sessionCardCount / 5)
       setTotalXP(t => t + expectedXP)
       flashcardsApi.completeSession(deckId, {
         total_time_ms: totalMs,

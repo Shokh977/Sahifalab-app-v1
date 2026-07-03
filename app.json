@@ -28,7 +28,8 @@
     },
     "android": {
       "package": "com.sahifalab.app",
-      "versionCode": 5,
+      "versionCode": 6,
+      "blockedPermissions": ["android.permission.USE_EXACT_ALARM"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0D0D0F"
