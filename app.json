@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.sahifalab.app",
-      "versionCode": 7,
+      "versionCode": 8,
       "blockedPermissions": [
         "android.permission.USE_EXACT_ALARM",
         "android.permission.SCHEDULE_EXACT_ALARM",
@@ -149,7 +149,8 @@
           }
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "./plugins/withRemoveAlarmPermission"
     ],
     "experiments": {
       "typedRoutes": true
