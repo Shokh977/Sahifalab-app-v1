@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
   ActivityIndicator, RefreshControl, Modal, FlatList,
-  Image, Animated, Dimensions,
+  Image, Animated, Dimensions, findNodeHandle,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -20,9 +20,13 @@ import {
 } from '../../lib/api'
 import { Avatar } from '../../components/ui/Avatar'
 import { HeroLevelCard } from '../../components/profile/HeroLevelCard'
+import { TrophyRoom } from '../../components/profile/TrophyRoom'
+import { BadgeHeaderRow } from '../../components/profile/BadgeHeaderRow'
 import { typography, spacing, radius, getLevelTier } from '../../lib/constants'
 import { LEVEL_TITLES, getLevelInfo, getLevelEmoji } from '../../lib/levelTitles'
+import { pickTopBadges } from '../../lib/badges'
 import type { ProfileData } from '../../lib/types'
+import type { BadgeGroups } from '../../lib/api'
 
 const { width: SCREEN_W } = Dimensions.get('window')
 const GRID_COLS = 5
@@ -327,6 +331,10 @@ export default function ProfileTab() {
 
   const [streak,             setStreak]             = useState(0)
   const [totalFocusMinutes,  setTotalFocusMinutes]  = useState(0)
+  const [badges,             setBadges]             = useState<BadgeGroups | null>(null)
+  const [badgesLoading,      setBadgesLoading]      = useState(true)
+  const scrollRef = useRef<ScrollView>(null)
+  const trophyRef = useRef<View>(null)
   const [rank,               setRank]               = useState<number | null>(null)
   const [loading,     setLoading]     = useState(true)
   const [refreshing,  setRefreshing]  = useState(false)
@@ -357,6 +365,7 @@ export default function ProfileTab() {
     if (dashData?.myLeaderRank == null) {
       tasks.push(leaderboard.weekly('week').then(r => setRank(r.my_rank ?? null)).catch(() => {}))
     }
+    tasks.push(profileApi.getMyBadges().then(setBadges).catch(() => {}).finally(() => setBadgesLoading(false)))
     try { await Promise.all(tasks) } catch {}
     setLoading(false)
   }, [loadOwnProfile, dashData])
@@ -390,10 +399,12 @@ export default function ProfileTab() {
   }
 
   const p = ownProfile as ProfileData
+  const { shown: topBadges, remaining: topBadgesRemaining } = badges ? pickTopBadges(badges.groups) : { shown: [], remaining: 0 }
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.accentPrimary} />
@@ -441,6 +452,22 @@ export default function ProfileTab() {
                   </Text>
                 </Pressable>
               </View>
+
+              <BadgeHeaderRow
+                badges={topBadges}
+                remaining={topBadgesRemaining}
+                borderColor={c.bgSecondary}
+                onPressMore={() => {
+                  const scrollHandle = findNodeHandle(scrollRef.current)
+                  if (scrollHandle && trophyRef.current) {
+                    trophyRef.current.measureLayout(
+                      scrollHandle,
+                      (_x, y) => scrollRef.current?.scrollTo({ y, animated: true }),
+                      () => {},
+                    )
+                  }
+                }}
+              />
             </View>
           </View>
         </View>
@@ -496,10 +523,18 @@ export default function ProfileTab() {
           {/* Teacher banner */}
           <TeacherBanner role={authUser?.role ?? ''} status={authUser?.status ?? 'active'} router={router} c={c} />
 
-          {/* Achievements section header */}
+          {/* Trofey Xonasi */}
+          <View ref={trophyRef}>
+            <Text style={[styles.sectionLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.bold, marginBottom: spacing.sm }]}>
+              TROFEY XONASI
+            </Text>
+            <TrophyRoom data={badges} loading={badgesLoading} variant="private" />
+          </View>
+
+          {/* Rank grid section header */}
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.bold }]}>
-              YUTUQLAR
+              UNVONLAR
             </Text>
             <Pressable hitSlop={8}>
               <Text style={[styles.sectionAll, { color: c.accentPrimary, fontFamily: typography.fontFamily.medium }]}>

@@ -6,6 +6,7 @@ import { Trophy, Crown } from 'phosphor-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import type { LeaderboardEntry } from '../../lib/api'
+import { TopBadgeIndicator } from '../profile/TopBadgeIndicator'
 
 const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32']
 
@@ -42,12 +43,15 @@ const EntryRow = React.memo(function EntryRow({ entry, index }: { entry: Leaderb
         </View>
       )}
       <View style={styles.nameWrap}>
-        <Text
-          style={[styles.name, { color: entry.is_me ? c.accentPrimary : c.textPrimary, fontFamily: typography.fontFamily.medium }]}
-          numberOfLines={1}
-        >
-          {entry.is_me ? 'Siz' : entry.first_name}
-        </Text>
+        <View style={styles.nameRow}>
+          <Text
+            style={[styles.name, { color: entry.is_me ? c.accentPrimary : c.textPrimary, fontFamily: typography.fontFamily.medium }]}
+            numberOfLines={1}
+          >
+            {entry.is_me ? 'Siz' : entry.first_name}
+          </Text>
+          <TopBadgeIndicator topBadge={entry.top_badge} />
+        </View>
         <Text style={[styles.level, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
           Daraja {entry.level}
         </Text>
@@ -136,7 +140,8 @@ const styles = StyleSheet.create({
     overflow:     'hidden',
   },
   nameWrap: { flex: 1 },
-  name:  { fontSize: typography.size.sm },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  name:  { fontSize: typography.size.sm, flexShrink: 1 },
   level: { fontSize: typography.size.xs },
   score: { fontSize: typography.size.sm },
 

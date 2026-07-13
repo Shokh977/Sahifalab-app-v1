@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, useRouter } from 'expo-router'
 import { ArrowLeft, Info } from 'lucide-react-native'
 import { RoleBadge } from '../../components/ui/RoleBadge'
+import { TopBadgeIndicator } from '../../components/profile/TopBadgeIndicator'
 import { useTheme } from '../../hooks/useTheme'
 import { useAuthStore } from '../../stores/authStore'
 import { leaderboard, type LeaderboardEntry, type LeaderboardPeriod } from '../../lib/api'
@@ -105,6 +106,7 @@ function Podium({ entries, authId, c, onPress }: {
             {entry.first_name}{isMe ? ' (Sen)' : ''}
           </Text>
           <RoleBadge accountType={entry.account_type} size={12} />
+          <TopBadgeIndicator topBadge={entry.top_badge} />
         </View>
         <Text style={[
           styles.podiumXP,
@@ -186,6 +188,7 @@ function RankRow({
           {entry.first_name}{isMe ? ' (Sen)' : ''}
         </Text>
         <RoleBadge accountType={entry.account_type} size={13} />
+        <TopBadgeIndicator topBadge={entry.top_badge} />
       </View>
 
       {/* Level badge */}

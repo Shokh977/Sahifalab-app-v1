@@ -407,6 +407,44 @@ export const profile = {
 
   getMutualConnections: (userId: number) =>
     request<{ count: number; users: MutualUser[] }>(`/api/v1/connections/mutual/${userId}`, { auth: true }),
+
+  // Trofey Xonasi (step-24)
+  getMyBadges: () =>
+    request<BadgeGroups>('/api/profile/me/badges', { auth: true }),
+
+  getUserBadges: (identifier: string | number) =>
+    request<BadgeGroups>(`/api/profile/${identifier}/badges`, { auth: true }),
+}
+
+// ── Badges (Trofey Xonasi, step-24) ────────────────────────────────────────────
+
+export interface Badge {
+  key:                 string
+  name:                string
+  description:         string
+  group:               'challenges' | 'stages' | 'achievements'
+  tier:                'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'legend' | null
+  earned:              boolean
+  earned_at:           string | null
+  challenge_color:     string | null
+  challenge_cover_url: string | null
+  reward_xp:           number | null
+}
+
+export interface BadgeGroups {
+  groups: {
+    challenges:   Badge[]
+    stages:       Badge[]
+    achievements: Badge[]
+  }
+  summary: { earned_count: number; total_count: number }
+}
+
+export interface TopBadge {
+  key:   string
+  kind:  'challenge' | 'stage' | 'achievement'
+  name:  string
+  color: string | null
 }
 
 export interface HeatmapDay {
@@ -1127,6 +1165,7 @@ export interface LeaderboardEntry {
   minutes:      number  // focus minutes in the selected period
   is_me:        boolean
   account_type?: string
+  top_badge?:   TopBadge | null
 }
 
 type _OldLbRow = {
@@ -1498,6 +1537,8 @@ export interface Challenge {
   badge_key:         string | null
   color:             string
   icon:              string
+  cover_image_url:   string | null
+  participant_avatars: string[]
   is_featured:       boolean
   max_participants:  number | null
   joined:            boolean

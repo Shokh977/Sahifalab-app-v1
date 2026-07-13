@@ -96,6 +96,20 @@ export async function shareFlashcardDeck(opts: {
   try { await Share.share({ message: msg }) } catch {}
 }
 
+export async function shareChallengeCompletion(opts: {
+  title:    string
+  rewardXp: number
+  rank?:    number | null
+}) {
+  const lines = [`🏆 Men "${opts.title}" musobaqasini yakunladim!`]
+  const stats: string[] = []
+  if (opts.rewardXp > 0) stats.push(`+${opts.rewardXp} XP`)
+  if (opts.rank)         stats.push(`#${opts.rank}-o'rin`)
+  if (stats.length) lines.push(stats.join(' · '))
+  lines.push(appFooter('musobaqalar'))
+  try { await Share.share({ message: lines.join('\n') }) } catch {}
+}
+
 export async function shareCertificateImage(opts: {
   imageUri: string
   courseTitle: string

@@ -191,6 +191,7 @@ export interface PublicDeckCreator {
   id:         number
   name:       string
   avatar_url: string | null
+  top_badge?: import('./api').TopBadge | null
 }
 
 export interface PublicDeckItem {
@@ -288,11 +289,11 @@ export interface ReviewResult {
 }
 
 export interface CompleteSessionResult {
-  ok:                   boolean
-  xp_awarded:           number
-  flash_minutes:        number
-  today_minutes:        number
-  streak_days:          number
-  goal_met:             boolean
-  challenges_completed: Array<{ key: string; title: string; bonus_xp: number }>
+  ok:                boolean
+  xp_awarded:        number
+  flash_minutes:     number
+  today_minutes:     number
+  streak_days:       number
+  goal_met:          boolean
+  stages_completed:  Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number }>
 }

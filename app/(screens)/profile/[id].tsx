@@ -1,7 +1,7 @@
-import React, { useEffect, useCallback, useState } from 'react'
+import React, { useEffect, useCallback, useState, useRef } from 'react'
 import {
   View, Text, StyleSheet, ActivityIndicator, Pressable,
-  ScrollView, Modal, FlatList, Image, RefreshControl, Linking,
+  ScrollView, Modal, FlatList, Image, RefreshControl, Linking, findNodeHandle,
 } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -21,8 +21,12 @@ import { Avatar } from '../../../components/ui/Avatar'
 import { HeroLevelCard } from '../../../components/profile/HeroLevelCard'
 import { CompareModal, type CompareUser } from '../../../components/profile/CompareModal'
 import { ConfirmModal } from '../../../components/ui/ConfirmModal'
+import { TrophyRoom } from '../../../components/profile/TrophyRoom'
+import { BadgeHeaderRow } from '../../../components/profile/BadgeHeaderRow'
+import { pickTopBadges } from '../../../lib/badges'
 import { typography, spacing, radius } from '../../../lib/constants'
 import type { ProfileData, ProfileCertificate, TeacherProfileData } from '../../../lib/types'
+import type { BadgeGroups } from '../../../lib/api'
 import { useDashboardStore } from '../../../stores/dashboardStore'
 
 // ── XP Ring Avatar ────────────────────────────────────────────────────────────
@@ -599,6 +603,11 @@ export default function PublicProfileScreen() {
   const [mutualLoading,      setMutualLoading]      = useState(false)
   const [showMutualModal,    setShowMutualModal]     = useState(false)
 
+  const [badges,        setBadges]        = useState<BadgeGroups | null>(null)
+  const [badgesLoading, setBadgesLoading] = useState(true)
+  const scrollRef = useRef<ScrollView>(null)
+  const trophyRef = useRef<View>(null)
+
   const profileData = cache[Number(id)]?.data ?? null
   const isOwn       = !!authUser && authUser.telegram_id === Number(id)
   const isTeacher   = profileData?.account_type === 'teacher' || profileData?.role === 'teacher' || profileData?.account_type === 'admin' || profileData?.role === 'admin'
@@ -617,6 +626,16 @@ export default function PublicProfileScreen() {
   }, [id, loadPublicProfile])
 
   useEffect(() => { load() }, [load])
+
+  // Fetch badges — earned-only (public profile), never locked
+  useEffect(() => {
+    if (!id || isOwn) return
+    setBadgesLoading(true)
+    profileApi.getUserBadges(id)
+      .then(setBadges)
+      .catch(() => {})
+      .finally(() => setBadgesLoading(false))
+  }, [id, isOwn])
 
   // Fetch mutual connections for the chip avatars
   useEffect(() => {
@@ -712,6 +731,7 @@ export default function PublicProfileScreen() {
 
   const p        = profileData as ProfileData
   const topCerts = ((p.certificates ?? []) as ProfileCertificate[]).slice(0, 3)
+  const topBadges = badges ? pickTopBadges(badges.groups) : { shown: [], remaining: 0 }
 
   function fmtDate(iso: string | null): string {
     if (!iso) return ''
@@ -721,6 +741,7 @@ export default function PublicProfileScreen() {
   return (
     <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.accentPrimary} />}
       >
@@ -795,6 +816,22 @@ export default function PublicProfileScreen() {
                 </Text>
               </Pressable>
             </View>
+
+            <BadgeHeaderRow
+              badges={topBadges.shown}
+              remaining={topBadges.remaining}
+              borderColor={c.bgPrimary}
+              onPressMore={() => {
+                const scrollHandle = findNodeHandle(scrollRef.current)
+                if (scrollHandle && trophyRef.current) {
+                  trophyRef.current.measureLayout(
+                    scrollHandle,
+                    (_x, y) => scrollRef.current?.scrollTo({ y, animated: true }),
+                    () => {},
+                  )
+                }
+              }}
+            />
           </View>
         </View>
 
@@ -832,6 +869,9 @@ export default function PublicProfileScreen() {
             longestStreak={p.longest_streak ?? 0}
             totalFocusMinutes={Math.round((p.focus_hours ?? 0) * 60)}
           />
+          <View ref={trophyRef} style={{ marginTop: spacing.base }}>
+            <TrophyRoom data={badges} loading={badgesLoading} variant="public" />
+          </View>
 
           {/* ── TEACHER-SPECIFIC SECTIONS ── */}
           {isTeacher && (

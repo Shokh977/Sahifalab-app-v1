@@ -12,6 +12,7 @@ import {
 
 import { useTheme } from '../../hooks/useTheme'
 import { Avatar } from '../ui/Avatar'
+import { TopBadgeIndicator } from '../profile/TopBadgeIndicator'
 import { typography, spacing, radius } from '../../lib/constants'
 import type { FlashcardDeck, PublicDeckItem } from '../../lib/types'
 
@@ -220,6 +221,7 @@ export function DeckCard(props: DeckCardProps) {
               >
                 {creatorName}
               </Text>
+              {!isOfficial && <TopBadgeIndicator topBadge={creator?.top_badge} />}
             </View>
           )}
 
