@@ -699,9 +699,18 @@ export const lessons = {
   getMyCertificates: () =>
     request<CourseCertificate[]>('/api/lessons/my-course-certificates', { auth: true }),
 
-  getDownloadUrl: (lessonId: number) =>
-    request<{ download_url: string; expires_in: number }>(
-      `/api/lessons/${lessonId}/download-url`, { auth: true },
+  getDownloadUrl: (lessonId: number, quality: '360p' | '480p' | '720p' = '480p') =>
+    request<{
+      url: string; quality: string; size_bytes: number | null
+      expires_at: string; expires_in: number; lesson_id: number; course_id: number
+    }>(
+      `/api/lessons/${lessonId}/download-url?quality=${quality}`, { auth: true },
+    ),
+
+  verifyDownloads: (lessonIds: number[]) =>
+    request<{ allowed: number[]; revoked: number[] }>(
+      '/api/lessons/downloads/verify',
+      { method: 'POST', body: JSON.stringify({ lesson_ids: lessonIds }), auth: true },
     ),
 
   getVideoPosition: (lessonId: number) =>
@@ -874,6 +883,9 @@ export const focus = {
       level:               number
       level_up:            boolean
       achievements_earned: Array<{ id: string; name: string; description: string; xp: number }>
+      stages_completed:    Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number }>
+      challenges_completed:  Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
+      challenges_progressed: Array<{ challenge_id: string; slug: string; title: string; progress_value: number; target_value: number }>
     }>(
       '/api/focus/complete',
       { method: 'POST', body: JSON.stringify({ minutes, local_date: localDate() }), auth: true },
@@ -1435,10 +1447,11 @@ export const ambientSounds = {
   proxyUrl: (id: number) => `${API_URL}/api/audio/proxy/${id}`,
 }
 
-// ── Focus challenges ──────────────────────────────────────────────────────────
+// ── Focus / streak stages ─────────────────────────────────────────────────────
 
-export interface StreakChallenge {
+export interface StreakStage {
   key:           string
+  stage_number:  number
   title:         string
   description:   string
   required_days: number
@@ -1450,10 +1463,12 @@ export interface StreakChallenge {
   progress_pct:  number
 }
 
-export const focusChallenges = {
-  list: () =>
-    request<StreakChallenge[]>('/api/focus/challenges', { auth: true })
-      .catch(() => [] as StreakChallenge[]),
+export const focusStages = {
+  /** All 10 tree stages with live per-user earned status — the single
+   * canonical stage-progress endpoint (see backend focus.py GET /stages). */
+  stages: () =>
+    request<StreakStage[]>('/api/focus/stages', { auth: true })
+      .catch(() => [] as StreakStage[]),
 
   activeCount: () =>
     request<{ count: number }>('/api/focus/active-count')
@@ -1462,6 +1477,73 @@ export const focusChallenges = {
   heartbeat: () =>
     request<{ ok: boolean }>('/api/focus/heartbeat', { method: 'POST', auth: true })
       .catch(() => ({ ok: false })),
+}
+
+// ── Musobaqalar (cohort challenges, step-21/22) ───────────────────────────────
+
+export interface Challenge {
+  id:                string
+  slug:              string
+  title:             string
+  description:       string | null
+  metric:            string
+  target_value:      number   // minutes
+  starts_at:         string
+  ends_at:           string
+  join_deadline:     string | null
+  status:            'upcoming' | 'active' | 'ended' | 'cancelled'
+  participant_count: number
+  completion_count:  number
+  reward_xp:         number
+  badge_key:         string | null
+  color:             string
+  icon:              string
+  is_featured:       boolean
+  max_participants:  number | null
+  joined:            boolean
+  progress_value:    number
+  completed_at:      string | null
+  rank:              number | null
+}
+
+export interface ChallengeLeaderboardEntry {
+  rank:            number
+  user_id:         number
+  first_name:      string
+  username:        string | null
+  photo_url:       string | null
+  progress_value:  number
+  completed_at:    string | null
+}
+
+export interface ChallengeDetail extends Challenge {
+  leaderboard: ChallengeLeaderboardEntry[]
+}
+
+export const challenges = {
+  list: (status: 'upcoming' | 'active' | 'ended' | 'all' | 'upcoming_active' = 'upcoming_active') =>
+    request<Challenge[]>(`/api/challenges?status=${status}`, { auth: true })
+      .catch(() => [] as Challenge[]),
+
+  mine: () =>
+    request<Challenge[]>('/api/challenges/me', { auth: true })
+      .catch(() => [] as Challenge[]),
+
+  get: (slug: string) =>
+    request<ChallengeDetail>(`/api/challenges/${slug}`, { auth: true }),
+
+  join: (id: string) =>
+    request<{ ok: boolean; challenge_id: string; joined_at: string; progress_value: number }>(
+      `/api/challenges/${id}/join`, { method: 'POST', auth: true },
+    ),
+
+  leave: (id: string) =>
+    request<{ ok: boolean }>(`/api/challenges/${id}/leave`, { method: 'DELETE', auth: true }),
+
+  leaderboard: (id: string, limit = 50, offset = 0) =>
+    request<{ leaderboard: ChallengeLeaderboardEntry[]; caller: { rank: number; progress_value: number; completed_at: string | null } | null }>(
+      `/api/challenges/${id}/leaderboard?limit=${limit}&offset=${offset}`, { auth: true },
+    ),
 }
 
 // ── Activity feed ─────────────────────────────────────────────────────────────

@@ -11,9 +11,13 @@ export default function TabLayout() {
       <Tabs.Screen name="study"         options={{ title: "O'qish" }} />
       <Tabs.Screen name="courses"       options={{ title: 'Kurslar' }} />
       <Tabs.Screen name="flashcards"    options={{ title: 'Kartalar' }} />
+      <Tabs.Screen name="musobaqalar"   options={{ title: 'Musobaqalar' }} />
+      {/* Hidden from the tab bar (see AnimatedTabBar's TAB_CONFIG) — still
+          valid routes so the top-bar avatar (every screen) and the
+          notification bell can push to them. Declared last so the sliding
+          active-tab dot's index-clamping keeps working (step-22: Profil
+          replaced by Musobaqalar as a tab, kept as a route). */}
       <Tabs.Screen name="profile"       options={{ title: 'Profil' }} />
-      {/* Hidden from the tab bar (see AnimatedTabBar's TAB_CONFIG) — still a
-          valid route so the notification bell elsewhere can push to it. */}
       <Tabs.Screen name="notifications" options={{ title: 'Bildirishnoma' }} />
     </Tabs>
   )

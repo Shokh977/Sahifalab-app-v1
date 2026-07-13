@@ -17,7 +17,7 @@ import { useTimerStore } from '../../stores/timerStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { useOfflineQueueStore } from '../../stores/offlineQueueStore'
-import { focus, profile, focusStats, focusChallenges } from '../../lib/api'
+import { focus, profile, focusStats, focusStages } from '../../lib/api'
 import type { FocusStats } from '../../lib/api'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
@@ -35,6 +35,9 @@ import { AmbientPlayer } from '../../components/study/AmbientPlayer'
 import type { WeeklyStudyDay, HeatmapDay } from '../../lib/api'
 import { GoalCompleteModal } from '../../components/streak/GoalCompleteModal'
 import { MilestoneModal } from '../../components/streak/MilestoneModal'
+import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
+import { ChallengeChip } from '../../components/study/ChallengeChip'
+import { ChallengeCompletionModal, type CompletedChallenge } from '../../components/study/ChallengeCompletionModal'
 import { FileBarChart2, ChevronRight } from 'lucide-react-native'
 import {
   setupTimerNotifications, saveTimerState, clearTimerState, loadTimerState,
@@ -105,7 +108,7 @@ function ActiveUsersBadge() {
   const pulse = useSharedValue(1)
 
   useEffect(() => {
-    const fetch = () => focusChallenges.activeCount().then(r => setCount(r.count))
+    const fetch = () => focusStages.activeCount().then(r => setCount(r.count))
     fetch()
     const id = setInterval(fetch, 120_000)
     return () => clearInterval(id)
@@ -247,9 +250,12 @@ function TimerScreen() {
   const [showMilestone,    setShowMilestone]    = useState(false)
   const [milestoneDay,     setMilestoneDay]     = useState(0)
   const [milestoneBonusXp, setMilestoneBonusXp] = useState(0)
+  const [showChallengeComplete, setShowChallengeComplete] = useState(false)
+  const [completedChallenge,    setCompletedChallenge]    = useState<CompletedChallenge | null>(null)
 
   const pendingGoalModal    = useRef(false)
   const pendingMilestoneRef = useRef<{ days: number; bonusXp: number } | null>(null)
+  const pendingChallengeRef = useRef<CompletedChallenge | null>(null)
   const dailyGoalRef        = useRef(20)
   const prevTodayMinRef     = useRef(0)
   const streakDaysRef       = useRef(0)
@@ -352,8 +358,8 @@ function TimerScreen() {
   // Heartbeat while studying (focus phase only)
   useEffect(() => {
     if (status === 'active' && phase === 'focus') {
-      heartbeatRef.current = setInterval(() => focusChallenges.heartbeat(), 30_000)
-      focusChallenges.heartbeat()
+      heartbeatRef.current = setInterval(() => focusStages.heartbeat(), 30_000)
+      focusStages.heartbeat()
     } else {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current)
     }
@@ -475,6 +481,13 @@ function TimerScreen() {
       setMilestoneDay(m.days)
       setMilestoneBonusXp(m.bonusXp)
       setShowMilestone(true)
+      return
+    }
+    if (pendingChallengeRef.current) {
+      const ch = pendingChallengeRef.current
+      pendingChallengeRef.current = null
+      setCompletedChallenge(ch)
+      setShowChallengeComplete(true)
     }
   }, [])
 
@@ -516,12 +529,15 @@ function TimerScreen() {
     }).catch(() => {})
 
     // Queue any milestone from this session
+    if (result?.stagesCompleted && result.stagesCompleted.length > 0) {
+      const stage = result.stagesCompleted[0]
+      pendingMilestoneRef.current = { days: stage.required_days, bonusXp: stage.bonus_xp }
+    }
+
+    // Queue any challenge completion from this session
     if (result?.challengesCompleted && result.challengesCompleted.length > 0) {
       const ch = result.challengesCompleted[0]
-      const days = parseInt(ch.key.replace('streak_', ''), 10)
-      if (!isNaN(days)) {
-        pendingMilestoneRef.current = { days, bonusXp: ch.bonus_xp }
-      }
+      pendingChallengeRef.current = { slug: ch.slug, title: ch.title, reward_xp: ch.reward_xp, badge_key: ch.badge_key }
     }
 
     if (result?.levelUp) {
@@ -592,6 +608,9 @@ function TimerScreen() {
     >
       {/* ── Active users badge ────────────────────────────────────────────── */}
       <ActiveUsersBadge />
+
+      {/* ── Active challenge chip (Musobaqalar owns the full system) ───────── */}
+      <ChallengeChip />
 
       {/* ── Round dots (multi-session) ────────────────────────────────────── */}
       <RoundDots total={totalSessions} current={currentSession} />
@@ -838,7 +857,12 @@ function TimerScreen() {
         visible={showMilestone}
         days={milestoneDay}
         bonusXp={milestoneBonusXp}
-        onClose={() => setShowMilestone(false)}
+        onClose={() => { setShowMilestone(false); setTimeout(showNextOverlay, 300) }}
+      />
+      <ChallengeCompletionModal
+        visible={showChallengeComplete}
+        challenge={completedChallenge}
+        onClose={() => setShowChallengeComplete(false)}
       />
     </ScrollView>
   )
@@ -1102,6 +1126,9 @@ export default function StudyTab() {
   return (
     <View style={[styles.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
       <View style={[styles.topBar, { borderBottomColor: c.borderSubtle }]}>
+        <View style={styles.topBarAvatarSlot}>
+          <ProfileAvatarButton size={28} />
+        </View>
         <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
           O'qish vaqti
         </Text>
@@ -1263,6 +1290,11 @@ const styles = StyleSheet.create({
   topBarInfoBtn: {
     position: 'absolute',
     right:    spacing.screenMargin,
+  },
+
+  topBarAvatarSlot: {
+    position: 'absolute',
+    left:     spacing.screenMargin,
   },
 
   subTabBar:       { flexDirection: 'row', borderBottomWidth: 1, position: 'relative' },

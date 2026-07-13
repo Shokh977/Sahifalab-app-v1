@@ -17,13 +17,14 @@ export interface SoundTrack {
 }
 
 export interface CompletionResult {
-  xpAwarded:           number
-  totalXp:             number
-  newLevel:            number
-  levelUp:             boolean
-  achievements:        Array<{ id: string; name: string; description: string; xp: number }>
-  challengesCompleted: Array<{ key: string; title: string; bonus_xp: number }>
-  fromServer:          boolean
+  xpAwarded:        number
+  totalXp:          number
+  newLevel:         number
+  levelUp:          boolean
+  achievements:     Array<{ id: string; name: string; description: string; xp: number }>
+  stagesCompleted:  Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number }>
+  challengesCompleted: Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
+  fromServer:       boolean
 }
 
 const DEFAULT_SOUNDS: SoundTrack[] = [
@@ -211,13 +212,14 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       const xp  = res.xp_awarded
       set({ lastXP: xp })
       return {
-        xpAwarded:           xp,
-        totalXp:             res.total_xp,
-        newLevel:            res.level,
-        levelUp:             res.level_up,
-        achievements:        (res as any).achievements_earned    ?? [],
-        challengesCompleted: (res as any).challenges_completed   ?? [],
-        fromServer:          true,
+        xpAwarded:       xp,
+        totalXp:         res.total_xp,
+        newLevel:        res.level,
+        levelUp:         res.level_up,
+        achievements:    res.achievements_earned ?? [],
+        stagesCompleted: res.stages_completed    ?? [],
+        challengesCompleted: res.challenges_completed ?? [],
+        fromServer:      true,
       }
     } catch {
       // Offline — queue the session so it syncs when connectivity returns
@@ -226,7 +228,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       set({ lastXP: xp })
       return {
         xpAwarded: xp, totalXp: 0, newLevel: 1, levelUp: false,
-        achievements: [], challengesCompleted: [], fromServer: false,
+        achievements: [], stagesCompleted: [], challengesCompleted: [], fromServer: false,
       }
     }
   },

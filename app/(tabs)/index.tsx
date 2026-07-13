@@ -23,6 +23,7 @@ import { ContextualActionRow } from '../../components/dashboard/ContextualAction
 import { CourseHCard } from '../../components/dashboard/CourseHCard'
 import { CourseVCard } from '../../components/dashboard/CourseVCard'
 import { LeaderboardCard } from '../../components/dashboard/LeaderboardCard'
+import { ChallengeDashboardCard } from '../../components/dashboard/ChallengeDashboardCard'
 
 // ── Top bar ──────────────────────────────────────────────────────────────────
 
@@ -274,6 +275,11 @@ export default function HomeTab() {
 
         {/* Contextual action chips */}
         {data && <ContextualActionRow data={data} />}
+
+        {/* Musobaqalar discovery card — how challenges get found */}
+        <ChallengeDashboardCard />
+
+        <View style={styles.gap} />
 
         {/* Hero announcement (admin-managed, dismissible) */}
         <View style={{ paddingHorizontal: spacing.screenMargin }}>

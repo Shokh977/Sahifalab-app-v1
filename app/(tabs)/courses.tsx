@@ -14,6 +14,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { useCourseStore, getCachedCourseList, setCachedCourseList } from '../../stores/courseStore'
 import { courses as coursesApi, type Course, type Category } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
+import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
 
 const { width: SCREEN_W } = Dimensions.get('window')
 const HERO_H    = 210
@@ -520,13 +521,16 @@ export default function CoursesTab() {
           <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
             Kurslar
           </Text>
-          <Pressable
-            onPress={() => router.push('/(screens)/saved' as any)}
-            hitSlop={8}
-            style={[styles.heartBtn, { backgroundColor: c.bgTertiary }]}
-          >
-            <Heart size={18} color={c.textSecondary} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Pressable
+              onPress={() => router.push('/(screens)/saved' as any)}
+              hitSlop={8}
+              style={[styles.heartBtn, { backgroundColor: c.bgTertiary }]}
+            >
+              <Heart size={18} color={c.textSecondary} />
+            </Pressable>
+            <ProfileAvatarButton size={30} />
+          </View>
         </View>
         <View style={[styles.searchWrap, { backgroundColor: c.bgTertiary }]}>
           <MagnifyingGlass size={16} color={c.textDisabled} />

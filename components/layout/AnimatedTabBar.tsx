@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated, Dimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { House, Timer, GraduationCap, Cards, UserCircle } from 'phosphor-react-native'
+import { House, Timer, GraduationCap, Cards, Trophy } from 'phosphor-react-native'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import * as Haptics from 'expo-haptics'
 import { useTheme } from '../../hooks/useTheme'
@@ -12,15 +12,17 @@ const DOT_WIDTH      = 4
 
 type PhosphorIcon = React.ComponentType<{ size: number; color: string; weight: 'regular' | 'fill' }>
 
-// "notifications" is intentionally not listed here — it stays a registered
-// route (see (tabs)/_layout.tsx) for the home screen's bell icon to push to,
-// but isn't a tab button. Unread count shows on that bell instead.
+// "notifications" and "profile" are intentionally not listed here — both
+// stay registered routes (see (tabs)/_layout.tsx) so the bell icon and every
+// screen's top-bar avatar (ProfileAvatarButton) can still push to them, but
+// neither is a tab button. Profil was removed from the bar in favor of
+// Musobaqalar (step-22) — it's reachable from the avatar on every screen.
 const TAB_CONFIG: Array<{ name: string; label: string; Icon: PhosphorIcon }> = [
-  { name: 'index',      label: 'Bosh sahifa', Icon: House         as PhosphorIcon },
-  { name: 'study',      label: "O'qish",       Icon: Timer         as PhosphorIcon },
-  { name: 'courses',    label: 'Kurslar',      Icon: GraduationCap as PhosphorIcon },
-  { name: 'flashcards', label: 'Kartalar',     Icon: Cards         as PhosphorIcon },
-  { name: 'profile',    label: 'Profil',       Icon: UserCircle    as PhosphorIcon },
+  { name: 'index',       label: 'Bosh sahifa', Icon: House         as PhosphorIcon },
+  { name: 'study',       label: "O'qish",       Icon: Timer         as PhosphorIcon },
+  { name: 'courses',     label: 'Kurslar',      Icon: GraduationCap as PhosphorIcon },
+  { name: 'flashcards',  label: 'Kartalar',     Icon: Cards         as PhosphorIcon },
+  { name: 'musobaqalar', label: 'Musobaqalar',  Icon: Trophy        as PhosphorIcon },
 ]
 
 const TAB_COUNT = TAB_CONFIG.length

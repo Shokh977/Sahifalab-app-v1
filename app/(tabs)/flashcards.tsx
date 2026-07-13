@@ -21,6 +21,7 @@ import { DECK_CATEGORIES } from '../../lib/flashcardCategories'
 import { DeckCard } from '../../components/flashcards/DeckCard'
 import type { FlashcardDeck, PublicDeckItem, DeckSort, DeckCategory } from '../../lib/types'
 import { typography, spacing, radius } from '../../lib/constants'
+import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
 
 const PRESET_COLORS = [
   '#F5A623', '#FF6B6B', '#4DA6FF', '#34C759', '#AF52DE',
@@ -551,6 +552,7 @@ export default function FlashcardsScreen() {
           <Pressable onPress={openCreate} hitSlop={10}>
             <Plus size={24} color={c.accentPrimary} weight="bold" />
           </Pressable>
+          <ProfileAvatarButton size={28} />
         </View>
       </View>
 
