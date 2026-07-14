@@ -136,11 +136,13 @@ export const usePublicDecksStore = create<PublicDecksState>((set, get) => ({
   },
 
   fetchDeckPreview: async (id) => {
-    set({ previewDeck: null })
     try {
       const previewDeck = await flashcardsApi.getPublicDeck(id)
       set({ previewDeck })
-    } catch {}
+    } catch {
+      // Genuine failure (deleted/not found) — clear so the "not found" UI can react.
+      set({ previewDeck: null })
+    }
   },
 
   // Cloning needs a server-side copy — it cannot be queued offline. The UI

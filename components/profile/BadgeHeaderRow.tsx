@@ -2,7 +2,9 @@ import React from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography } from '../../lib/constants'
-import { getBadgeEmoji, getTierColor } from '../../lib/badges'
+import { getBadgeEmoji, getTierColor, isStageBadge, stageNum } from '../../lib/badges'
+import { MagicTree } from '../streak/MagicTree'
+import type { StageNumber } from '../../lib/treeTheme'
 import type { Badge } from '../../lib/api'
 
 const SIZE = 32
@@ -36,7 +38,13 @@ export function BadgeHeaderRow({ badges, remaining, borderColor, onPressMore }: 
               { marginLeft: i === 0 ? 0 : -OVERLAP, borderColor, backgroundColor: color + '22', zIndex: badges.length - i },
             ]}
           >
-            <Text style={styles.emoji}>{getBadgeEmoji(b.key)}</Text>
+            {b.group === 'stages' && isStageBadge(b.key) ? (
+              <View style={styles.treeClip}>
+                <MagicTree stage={stageNum(b.key) as StageNumber} state="alive" size="badge" simplified animate={false} />
+              </View>
+            ) : (
+              <Text style={styles.emoji}>{getBadgeEmoji(b.key)}</Text>
+            )}
           </View>
         )
       })}
@@ -55,9 +63,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   circle: {
     width: SIZE, height: SIZE, borderRadius: SIZE / 2, borderWidth: 2,
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   emoji: { fontSize: 15 },
+  treeClip: { alignItems: 'center', justifyContent: 'center', marginTop: 6 },
   more: {
     width: SIZE, height: SIZE, borderRadius: SIZE / 2, borderWidth: 2,
     alignItems: 'center', justifyContent: 'center', marginLeft: -OVERLAP,

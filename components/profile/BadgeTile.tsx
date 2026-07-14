@@ -4,8 +4,10 @@ import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, radius } from '../../lib/constants'
-import { getBadgeEmoji, getTierColor } from '../../lib/badges'
+import { getBadgeEmoji, getTierColor, isStageBadge, stageNum } from '../../lib/badges'
 import { darkenHex } from '../flashcards/DeckCard'
+import { MagicTree } from '../streak/MagicTree'
+import type { StageNumber } from '../../lib/treeTheme'
 import type { Badge } from '../../lib/api'
 
 const TILE_SIZE = 104
@@ -28,6 +30,7 @@ export function BadgeTile({ badge, onPress }: Props) {
   const { c } = useTheme()
   const locked = !badge.earned
   const isChallenge = badge.group === 'challenges'
+  const isStage = badge.group === 'stages' && isStageBadge(badge.key)
   const emoji = getBadgeEmoji(badge.key)
   const tierColor = isChallenge ? (badge.challenge_color || '#F5A623') : getTierColor(badge.tier)
 
@@ -68,7 +71,11 @@ export function BadgeTile({ badge, onPress }: Props) {
 
         {locked && <Text style={styles.lockIcon}>🔒</Text>}
 
-        <Text style={[styles.emoji, premium && styles.emojiPremium]}>{emoji}</Text>
+        {isStage ? (
+          <MagicTree stage={stageNum(badge.key) as StageNumber} state="alive" size="badge" simplified animate={false} />
+        ) : (
+          <Text style={[styles.emoji, premium && styles.emojiPremium]}>{emoji}</Text>
+        )}
 
         <Text
           numberOfLines={2}

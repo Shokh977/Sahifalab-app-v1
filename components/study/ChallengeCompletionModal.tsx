@@ -80,7 +80,7 @@ export function ChallengeCompletionModal({ visible, challenge, onClose }: Props)
               <Trophy size={56} color="#fff" />
 
               <Text style={[styles.title, { fontFamily: typography.fontFamily.bold }]}>
-                Musobaqa yakunlandi!
+                Bellashuv yakunlandi!
               </Text>
               <Text numberOfLines={2} style={[styles.challengeTitle, { fontFamily: typography.fontFamily.semibold }]}>
                 {challenge.title}

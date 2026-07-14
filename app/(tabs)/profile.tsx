@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
   ActivityIndicator, RefreshControl, Modal, FlatList,
-  Image, Animated, Dimensions, findNodeHandle,
+  Image, Animated, Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -333,8 +333,10 @@ export default function ProfileTab() {
   const [totalFocusMinutes,  setTotalFocusMinutes]  = useState(0)
   const [badges,             setBadges]             = useState<BadgeGroups | null>(null)
   const [badgesLoading,      setBadgesLoading]      = useState(true)
-  const scrollRef = useRef<ScrollView>(null)
-  const trophyRef = useRef<View>(null)
+  const scrollRef    = useRef<ScrollView>(null)
+  const rootRef       = useRef<View>(null)
+  const trophyRef      = useRef<View>(null)
+  const scrollYRef     = useRef(0)
   const [rank,               setRank]               = useState<number | null>(null)
   const [loading,     setLoading]     = useState(true)
   const [refreshing,  setRefreshing]  = useState(false)
@@ -402,9 +404,11 @@ export default function ProfileTab() {
   const { shown: topBadges, remaining: topBadgesRemaining } = badges ? pickTopBadges(badges.groups) : { shown: [], remaining: 0 }
 
   return (
-    <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
+    <View ref={rootRef} style={[styles.root, { backgroundColor: c.bgPrimary }]}>
       <ScrollView
         ref={scrollRef}
+        onScroll={e => { scrollYRef.current = e.nativeEvent.contentOffset.y }}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.accentPrimary} />
@@ -458,14 +462,12 @@ export default function ProfileTab() {
                 remaining={topBadgesRemaining}
                 borderColor={c.bgSecondary}
                 onPressMore={() => {
-                  const scrollHandle = findNodeHandle(scrollRef.current)
-                  if (scrollHandle && trophyRef.current) {
-                    trophyRef.current.measureLayout(
-                      scrollHandle,
-                      (_x, y) => scrollRef.current?.scrollTo({ y, animated: true }),
-                      () => {},
-                    )
-                  }
+                  trophyRef.current?.measure((_x, _y, _w, _h, pageX, targetPageY) => {
+                    rootRef.current?.measure((_x2, _y2, _w2, _h2, rootPageX, rootPageY) => {
+                      const y = scrollYRef.current + (targetPageY - rootPageY)
+                      scrollRef.current?.scrollTo({ y: Math.max(0, y - spacing.base), animated: true })
+                    })
+                  })
                 }}
               />
             </View>

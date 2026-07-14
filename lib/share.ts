@@ -101,7 +101,7 @@ export async function shareChallengeCompletion(opts: {
   rewardXp: number
   rank?:    number | null
 }) {
-  const lines = [`🏆 Men "${opts.title}" musobaqasini yakunladim!`]
+  const lines = [`🏆 Men "${opts.title}" bellashuvini yakunladim!`]
   const stats: string[] = []
   if (opts.rewardXp > 0) stats.push(`+${opts.rewardXp} XP`)
   if (opts.rank)         stats.push(`#${opts.rank}-o'rin`)

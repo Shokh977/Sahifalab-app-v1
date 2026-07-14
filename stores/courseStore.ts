@@ -103,13 +103,20 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
   },
 
   async markComplete(courseId, lessonId) {
-    const result = await lessonsApi.complete(lessonId)
+    // Optimistic local update first — a downloaded lesson watched offline must
+    // still count toward progress/streak/XP even if the network call fails.
     set(prev => {
       const existing = prev.progressCache[courseId] ?? new Set<number>()
       const updated  = new Set(existing)
       updated.add(lessonId)
       return { progressCache: { ...prev.progressCache, [courseId]: updated } }
     })
-    return result
+    try {
+      return await lessonsApi.complete(lessonId)
+    } catch (e) {
+      const { useOfflineLessonQueueStore } = await import('./offlineLessonQueueStore')
+      await useOfflineLessonQueueStore.getState().enqueueComplete(courseId, lessonId)
+      return { ok: true, lesson_id: lessonId, completed: true, certificate_issued: false }
+    }
   },
 }))

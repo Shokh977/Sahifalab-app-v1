@@ -11,6 +11,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { useThemeStore } from '../../stores/themeStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useDownloadStore, type DownloadQuality } from '../../stores/downloadStore'
 import { account, onboarding, auth as authApi } from '../../lib/api'
 import { TermsModal } from '../../components/ui/TermsModal'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
@@ -129,6 +130,76 @@ function GoalPickerModal({
                 {min} daqiqa
               </Text>
               {current === min && (
+                <Text style={[{ color: c.accentPrimary, fontSize: 18 }]}>✓</Text>
+              )}
+            </Pressable>
+          ))}
+          <Pressable onPress={onClose} style={[s.modalCancel, { backgroundColor: c.bgTertiary }]}>
+            <Text style={[{ color: c.textSecondary, fontFamily: typography.fontFamily.medium, fontSize: 15 }]}>Bekor</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
+    </Modal>
+  )
+}
+
+// ── Download Quality Picker Modal ───────────────────────────────────────────────
+
+function QualityPickerModal({
+  visible, current, onClose, onSelect, c,
+}: {
+  visible:  boolean
+  current:  DownloadQuality
+  onClose:  () => void
+  onSelect: (q: DownloadQuality) => void
+  c:        any
+}) {
+  const QUALITIES: { key: DownloadQuality; label: string }[] = [
+    { key: '360p', label: "Kichik (360p)" },
+    { key: '480p', label: "O'rtacha (480p)" },
+    { key: '720p', label: 'Yuqori (720p)' },
+  ]
+  const insets = useSafeAreaInsets()
+  const [mounted,    setMounted]    = useState(visible)
+  const backdropAnim = useRef(new Animated.Value(0)).current
+  const slideAnim    = useRef(new Animated.Value(400)).current
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true)
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(slideAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setMounted(false); slideAnim.setValue(400) })
+    }
+  }, [visible])
+
+  return (
+    <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      <Animated.View style={[s.sheetBackdrop, { opacity: backdropAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+      <View style={s.sheetWrap} pointerEvents="box-none">
+        <Animated.View style={[s.modalSheet, { backgroundColor: c.bgSecondary, paddingBottom: (insets.bottom || 0) + 24, transform: [{ translateY: slideAnim }] }]}>
+          <View style={[s.modalHandle, { backgroundColor: c.border }]} />
+          <Text style={[s.modalTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+            Yuklab olish sifati
+          </Text>
+          {QUALITIES.map(opt => (
+            <Pressable
+              key={opt.key}
+              onPress={() => { onSelect(opt.key); onClose() }}
+              style={[s.modalOption, { borderBottomColor: c.border }]}
+            >
+              <Text style={[s.modalOptionText, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+                {opt.label}
+              </Text>
+              {current === opt.key && (
                 <Text style={[{ color: c.accentPrimary, fontSize: 18 }]}>✓</Text>
               )}
             </Pressable>
@@ -462,6 +533,13 @@ export default function SettingsScreen() {
 
   useEffect(() => { loadSettings() }, [])
 
+  // YUKLAB OLISH
+  const { wifiOnly, defaultQuality, setWifiOnly, setDefaultQuality, load: loadDownloads } = useDownloadStore()
+  const [showQualityPicker, setShowQualityPicker] = useState(false)
+  const QUALITY_LABEL: Record<DownloadQuality, string> = { '360p': 'Kichik', '480p': "O'rtacha", '720p': 'Yuqori' }
+
+  useEffect(() => { loadDownloads() }, [])
+
   // BILDIRISHNOMALAR
   const [notifStreak,  setNotifStreak]  = useState(true)
   const [notifCourse,  setNotifCourse]  = useState(true)
@@ -614,6 +692,21 @@ export default function SettingsScreen() {
           {toggleRow("Taymer tebranishi", vibrateEnabled, setVibrateEnabled, undefined, true)}
         </SettingGroup>
 
+        {/* YUKLAB OLISH */}
+        <SectionHeader title="YUKLAB OLISH" />
+        <SettingGroup>
+          <SettingRow
+            label="Yuklab olingan darslar"
+            onPress={() => router.push('/(screens)/downloads' as any)}
+          />
+          <SettingRow
+            label="Yuklab olish sifati"
+            value={QUALITY_LABEL[defaultQuality]}
+            onPress={() => setShowQualityPicker(true)}
+          />
+          {toggleRow("Faqat Wi-Fi orqali yuklab olish", wifiOnly, setWifiOnly, undefined, true)}
+        </SettingGroup>
+
         {/* BILDIRISHNOMALAR */}
         <SectionHeader title="BILDIRISHNOMALAR" />
         <SettingGroup>
@@ -701,6 +794,15 @@ export default function SettingsScreen() {
           setDailyGoal(min)
           onboarding.setDailyGoal(min).catch(() => {})
         }}
+        c={c}
+      />
+
+      {/* Quality Picker */}
+      <QualityPickerModal
+        visible={showQualityPicker}
+        current={defaultQuality}
+        onClose={() => setShowQualityPicker(false)}
+        onSelect={setDefaultQuality}
         c={c}
       />
 

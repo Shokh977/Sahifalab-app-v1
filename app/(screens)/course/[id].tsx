@@ -13,14 +13,16 @@ import {
   BookOpen, Play, Pause, Star, Users, Clock, Globe, Calendar,
   CheckCircle, Heart, Award, Folder, Infinity as InfinityIcon,
   Smartphone, FileText, Share2, Download, Lock, Pencil, Copy, X,
-  MessageCircle, ExternalLink,
+  MessageCircle, ExternalLink, WifiOff, AlertCircle, HardDrive,
 } from 'lucide-react-native'
 import { MotiView } from 'moti'
+import * as FileSystem from 'expo-file-system/legacy'
 import { VideoPlayer } from '../../../components/courses/VideoPlayer'
 import { useTheme } from '../../../hooks/useTheme'
+import { useOnline } from '../../../hooks/useOnline'
 import { useAuthStore } from '../../../stores/authStore'
 import { useCourseStore } from '../../../stores/courseStore'
-import { useDownloadStore } from '../../../stores/downloadStore'
+import { useDownloadStore, estimateSizeMb, type DownloadQuality, type DownloadStatus } from '../../../stores/downloadStore'
 import { courses as coursesApi, lessons as lessonsApi, profile, enrollments as enrollmentsApi } from '../../../lib/api'
 import type { PendingEnrollmentStatus, EnrollmentCodeResponse } from '../../../lib/api'
 import { typography, spacing, radius, WEB_URL } from '../../../lib/constants'
@@ -116,10 +118,11 @@ const DL_R    = (DL_SIZE - 5) / 2
 const DL_CIRC = 2 * Math.PI * DL_R
 
 function DownloadBtn({
-  downloading, downloaded, dlProgress, color, onPress,
+  status, dlProgress, color, onPress,
 }: {
-  downloading: boolean; downloaded: boolean; dlProgress: number; color: string; onPress: () => void
+  status: DownloadStatus | null; dlProgress: number; color: string; onPress: () => void
 }) {
+  const downloaded = status === 'completed'
   const checkScale = useRef(new Animated.Value(downloaded ? 1 : 0)).current
 
   useEffect(() => {
@@ -131,7 +134,7 @@ function DownloadBtn({
     }).start()
   }, [downloaded])
 
-  if (downloaded) {
+  if (status === 'completed') {
     return (
       <Pressable onPress={onPress} hitSlop={12} style={styles.dlBtn}>
         <Animated.View style={{ transform: [{ scale: checkScale }] }}>
@@ -141,25 +144,46 @@ function DownloadBtn({
     )
   }
 
-  if (downloading) {
+  if (status === 'downloading' || status === 'queued') {
     const offset = DL_CIRC * (1 - Math.min(1, Math.max(0, dlProgress)))
     return (
       <Pressable onPress={onPress} hitSlop={12} style={styles.dlBtn}>
         <Svg width={DL_SIZE} height={DL_SIZE}>
           <Circle cx={DL_SIZE / 2} cy={DL_SIZE / 2} r={DL_R}
             stroke={`${color}30`} strokeWidth={2.5} fill="none" />
-          <Circle cx={DL_SIZE / 2} cy={DL_SIZE / 2} r={DL_R}
-            stroke={color} strokeWidth={2.5} fill="none"
-            strokeDasharray={`${DL_CIRC} ${DL_CIRC}`}
-            strokeDashoffset={offset}
-            strokeLinecap="round"
-            rotation="-90"
-            origin={`${DL_SIZE / 2}, ${DL_SIZE / 2}`}
-          />
+          {status === 'downloading' && (
+            <Circle cx={DL_SIZE / 2} cy={DL_SIZE / 2} r={DL_R}
+              stroke={color} strokeWidth={2.5} fill="none"
+              strokeDasharray={`${DL_CIRC} ${DL_CIRC}`}
+              strokeDashoffset={offset}
+              strokeLinecap="round"
+              rotation="-90"
+              origin={`${DL_SIZE / 2}, ${DL_SIZE / 2}`}
+            />
+          )}
         </Svg>
         <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-          <Text style={{ fontSize: 7, fontWeight: '700', color }}>{Math.round(dlProgress * 100)}</Text>
+          {status === 'downloading'
+            ? <Text style={{ fontSize: 7, fontWeight: '700', color }}>{Math.round(dlProgress * 100)}</Text>
+            : <Clock size={13} color={color} />
+          }
         </View>
+      </Pressable>
+    )
+  }
+
+  if (status === 'paused') {
+    return (
+      <Pressable onPress={onPress} hitSlop={12} style={styles.dlBtn}>
+        <Play size={15} color={color} fill={color} />
+      </Pressable>
+    )
+  }
+
+  if (status === 'failed') {
+    return (
+      <Pressable onPress={onPress} hitSlop={12} style={styles.dlBtn}>
+        <AlertCircle size={15} color="#ef4444" />
       </Pressable>
     )
   }
@@ -190,23 +214,25 @@ function WatchRing({ ratio, color, mutedColor }: { ratio: number; color: string;
 
 function LessonItem({
   lesson, current, isPlaying, completed, watchRatio, onPress, onDownload,
-  downloaded, downloading, dlProgress, c,
+  dlStatus, dlProgress, disabledOffline, c,
 }: {
   lesson: Lesson; current: boolean; isPlaying: boolean; completed: boolean
   watchRatio: number
   onPress: () => void; onDownload: () => void
-  downloaded: boolean; downloading: boolean; dlProgress: number
+  dlStatus: DownloadStatus | null; dlProgress: number
+  disabledOffline: boolean
   c: any
 }) {
   const isPdf  = lesson.lesson_type === 'material'
   const isQuiz = lesson.lesson_type === 'quiz'
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabledOffline ? undefined : onPress}
       style={[
         styles.lessonItem,
         { borderBottomColor: c.border },
         current && { backgroundColor: c.brandSubtle, borderLeftWidth: 3, borderLeftColor: c.brand },
+        disabledOffline && { opacity: 0.45 },
       ]}
     >
       <View style={styles.lessonItemIcon}>
@@ -216,6 +242,8 @@ function LessonItem({
           <FileText size={18} color={c.textMuted} />
         ) : isQuiz ? (
           <Pencil size={18} color={c.textMuted} />
+        ) : disabledOffline ? (
+          <WifiOff size={16} color={c.textMuted} />
         ) : current && isPlaying ? (
           <Pause size={18} color={c.brand} />
         ) : current ? (
@@ -235,14 +263,13 @@ function LessonItem({
         </Text>
         {lesson.duration_minutes > 0 && (
           <Text style={[styles.lessonItemMeta, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-            {fmtDuration(lesson.duration_minutes)}
+            {fmtDuration(lesson.duration_minutes)}{disabledOffline ? " · Yuklab olinmagan" : ''}
           </Text>
         )}
       </View>
       {!isPdf && !isQuiz && (
         <DownloadBtn
-          downloading={downloading}
-          downloaded={downloaded}
+          status={dlStatus}
           dlProgress={dlProgress}
           color={c.brand}
           onPress={onDownload}
@@ -254,15 +281,15 @@ function LessonItem({
 
 function EnrolledSectionRow({
   section, currentId, isVideoPlaying, progress, watchRatio, onLesson, onDownload,
-  isDownloaded, isDownloading, getDlProgress, defaultOpen, c,
+  getDlStatus, getDlProgress, isOffline, defaultOpen, c,
 }: {
   section: Section; currentId: number | null; isVideoPlaying: boolean; progress: Set<number>
   watchRatio: number
   onLesson: (l: Lesson) => void
   onDownload: (l: Lesson) => void
-  isDownloaded: (id: number) => boolean
-  isDownloading: (id: number) => boolean
+  getDlStatus: (id: number) => DownloadStatus | null
   getDlProgress: (id: number) => number
+  isOffline: boolean
   defaultOpen: boolean; c: any
 }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -289,13 +316,168 @@ function EnrolledSectionRow({
           watchRatio={l.id === currentId && !progress.has(l.id) ? watchRatio : 0}
           onPress={() => onLesson(l)}
           onDownload={() => onDownload(l)}
-          downloaded={isDownloaded(l.id)}
-          downloading={isDownloading(l.id)}
+          disabledOffline={isOffline && getDlStatus(l.id) !== 'completed' && l.lesson_type !== 'material' && l.lesson_type !== 'quiz'}
+          dlStatus={getDlStatus(l.id)}
           dlProgress={getDlProgress(l.id)}
           c={c}
         />
       ))}
     </View>
+  )
+}
+
+// ── Course-level "download all" row + sheet ────────────────────────────────────
+
+function CourseDownloadRow({ lessons, onPress, c }: { lessons: Lesson[]; onPress: () => void; c: any }) {
+  const entries = useDownloadStore(s => s.entries)
+  const downloadable = lessons.filter(l => l.lesson_type !== 'material' && l.lesson_type !== 'quiz')
+  if (downloadable.length === 0) return null
+  const relevant  = downloadable.map(l => entries[l.id]).filter((e): e is NonNullable<typeof e> => !!e)
+  const completed = relevant.filter(e => e.status === 'completed').length
+  const active    = relevant.filter(e => e.status === 'downloading' || e.status === 'queued')
+
+  if (active.length > 0) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={[cdStyles.row, { backgroundColor: c.brandSubtle, borderColor: c.brand }]}
+      >
+        <ActivityIndicator size="small" color={c.brand} />
+        <Text style={[cdStyles.text, { color: c.brand, fontFamily: typography.fontFamily.semibold }]}>
+          Yuklanmoqda: {completed}/{downloadable.length} dars
+        </Text>
+      </Pressable>
+    )
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[cdStyles.row, { backgroundColor: c.bgSecondary, borderColor: c.border }]}
+    >
+      <HardDrive size={16} color={c.brand} />
+      <Text style={[cdStyles.text, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+        {completed > 0 ? `Kursni yuklab olish (${completed}/${downloadable.length} tayyor)` : 'Kursni yuklab olish'}
+      </Text>
+      <ChevronRight size={16} color={c.textMuted} />
+    </Pressable>
+  )
+}
+
+const cdStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    marginHorizontal: spacing.base, marginTop: spacing.sm,
+    paddingHorizontal: spacing.base, paddingVertical: spacing.sm + 2,
+    borderRadius: radius.lg, borderWidth: 1,
+  },
+  text: { flex: 1, fontSize: 13 },
+})
+
+function DownloadAllSheet({
+  visible, course, lessons, onClose, c,
+}: {
+  visible: boolean; course: Course; lessons: Lesson[]; onClose: () => void; c: any
+}) {
+  const insets = useSafeAreaInsets()
+  const [mounted, setMounted] = useState(visible)
+  const backdropAnim = useRef(new Animated.Value(0)).current
+  const slideAnim    = useRef(new Animated.Value(500)).current
+  const { defaultQuality, wifiOnly, enqueueCourse } = useDownloadStore()
+  const [quality,   setQuality]   = useState<DownloadQuality>(defaultQuality)
+  const [freeBytes, setFreeBytes] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (visible) {
+      setQuality(defaultQuality)
+      FileSystem.getFreeDiskStorageAsync().then(setFreeBytes).catch(() => setFreeBytes(null))
+      setMounted(true)
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(slideAnim,    { toValue: 500, duration: 200, useNativeDriver: true }),
+      ]).start(() => { setMounted(false); slideAnim.setValue(500) })
+    }
+  }, [visible, defaultQuality])
+
+  const downloadable = lessons.filter(l => l.lesson_type !== 'material' && l.lesson_type !== 'quiz')
+  const totalMinutes = downloadable.reduce((sum, l) => sum + (l.duration_minutes || 0), 0)
+  const estMb  = estimateSizeMb(totalMinutes, quality)
+  const freeMb = freeBytes != null ? Math.round(freeBytes / 1024 / 1024) : null
+
+  const QUALITIES: { key: DownloadQuality; label: string }[] = [
+    { key: '360p', label: 'Kichik' }, { key: '480p', label: "O'rtacha" }, { key: '720p', label: 'Yuqori' },
+  ]
+
+  return (
+    <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.52)', opacity: backdropAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }} pointerEvents="box-none">
+        <Animated.View style={{
+          backgroundColor: c.bgSecondary, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          padding: spacing.xl, paddingBottom: (insets.bottom || 0) + 24, gap: 4,
+          transform: [{ translateY: slideAnim }],
+        }}>
+          <View style={{ width: 40, height: 4, borderRadius: 2, alignSelf: 'center', backgroundColor: c.border, marginBottom: spacing.sm }} />
+          <Text style={{ fontSize: 17, textAlign: 'center', color: c.textPrimary, fontFamily: typography.fontFamily.bold }}>
+            Kursni yuklab olish
+          </Text>
+          <Text style={{ fontSize: 13, textAlign: 'center', color: c.textMuted, fontFamily: typography.fontFamily.regular, marginBottom: spacing.sm }}>
+            {downloadable.length} ta dars
+          </Text>
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {QUALITIES.map(q => (
+              <Pressable
+                key={q.key}
+                onPress={() => setQuality(q.key)}
+                style={{
+                  flex: 1, paddingVertical: 10, borderRadius: radius.card, borderWidth: 1.5, alignItems: 'center',
+                  borderColor:     quality === q.key ? c.brand : c.border,
+                  backgroundColor: quality === q.key ? c.brandSubtle : c.bgTertiary,
+                }}
+              >
+                <Text style={{
+                  fontSize: 13, color: quality === q.key ? c.brand : c.textPrimary,
+                  fontFamily: quality === q.key ? typography.fontFamily.semibold : typography.fontFamily.regular,
+                }}>
+                  {q.label}
+                </Text>
+                <Text style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>
+                  ~{estimateSizeMb(totalMinutes, q.key)} MB
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={{ fontSize: 12, color: c.textMuted, marginTop: spacing.base, fontFamily: typography.fontFamily.regular, textAlign: 'center' }}>
+            {wifiOnly ? "📶 Faqat Wi-Fi orqali yuklanadi" : '📶 Wi-Fi va mobil internet orqali yuklanadi'}
+            {freeMb != null ? `\nBo'sh joy: ${freeMb >= 1024 ? (freeMb / 1024).toFixed(1) + ' GB' : freeMb + ' MB'}` : ''}
+          </Text>
+
+          <Pressable
+            onPress={() => {
+              enqueueCourse({ id: course.id, title: course.title, thumbnail_url: course.thumbnail_url }, downloadable, quality)
+              onClose()
+            }}
+            style={{ marginTop: spacing.base, paddingVertical: 14, borderRadius: radius.full, alignItems: 'center', backgroundColor: c.brand }}
+          >
+            <Text style={{ color: '#fff', fontSize: 15, fontFamily: typography.fontFamily.bold }}>
+              Yuklab olish ({downloadable.length} ta dars · ~{estMb} MB)
+            </Text>
+          </Pressable>
+          <Pressable onPress={onClose} style={{ paddingVertical: 12, alignItems: 'center' }}>
+            <Text style={{ color: c.textSecondary, fontSize: 14, fontFamily: typography.fontFamily.medium }}>Bekor qilish</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
+    </Modal>
   )
 }
 
@@ -756,7 +938,12 @@ export default function CourseDetailScreen() {
 
   const { checkEnrollment, enroll, loadProgress, markComplete, enrollmentCache, progressCache } = useCourseStore()
   const downloadStore = useDownloadStore()
-  const { startDownload, isDownloaded, isDownloading, getProgress, deleteDownload } = downloadStore
+  const {
+    enqueueLesson, pauseDownload, resumeDownload, retryDownload, deleteDownload,
+    isDownloaded, getProgress, getStatus, isPlaybackAllowed, defaultQuality,
+  } = downloadStore
+  const isOnline = useOnline()
+  const [showDownloadAllSheet, setShowDownloadAllSheet] = useState(false)
 
   const [course,         setCourse]         = useState<Course | null>(null)
   const [lessons,        setLessons]        = useState<Lesson[]>([])
@@ -868,10 +1055,24 @@ export default function CourseDetailScreen() {
     setVideoLoading(true); setIsVideoPlaying(false)
 
     ;(async () => {
-      // 1. Local offline download (plays without network)
+      // 1. Local offline download — always preferred, even when online (faster, no data)
       const localUri = downloadStore.entries[currentLesson.id]?.fileUri
       if (localUri) {
+        if (!isPlaybackAllowed(currentLesson.id) && !isOnline) {
+          if (!cancelled) {
+            setVideoUri(null); setEmbedUrl(null); setVideoLoading(false)
+            Alert.alert(
+              'Tasdiqlash kerak',
+              "Yuklab olingan darslarni davom ettirish uchun internetga ulanib, hisobingizni tasdiqlang.",
+            )
+          }
+          return
+        }
         if (!cancelled) { setVideoUri(localUri); setEmbedUrl(null); setVideoLoading(false) }
+        return
+      }
+      if (!isOnline) {
+        if (!cancelled) { setVideoUri(null); setEmbedUrl(null); setVideoLoading(false) }
         return
       }
       // 2. Direct HLS / MP4 from list response
@@ -901,7 +1102,7 @@ export default function CourseDetailScreen() {
     })()
 
     return () => { cancelled = true }
-  }, [currentLesson?.id, currentIsDownloaded])
+  }, [currentLesson?.id, currentIsDownloaded, isOnline])
 
   // ── Wishlist toggle ────────────────────────────────────────────────────────
   async function toggleWishlist() {
@@ -991,8 +1192,33 @@ export default function CourseDetailScreen() {
   }
 
   // ── Download lesson ────────────────────────────────────────────────────────
-  function handleDownload(_lesson: Lesson) {
-    Alert.alert('Tez Kunda', 'Oflayn yuklab olish funksiyasi tez orada ishga tushadi.')
+  function handleDownload(lesson: Lesson) {
+    if (!course) return
+    const status = getStatus(lesson.id)
+    if (status === 'downloading' || status === 'queued') {
+      pauseDownload(lesson.id)
+    } else if (status === 'paused') {
+      resumeDownload(lesson.id)
+    } else if (status === 'failed') {
+      const errMsg = downloadStore.entries[lesson.id]?.error ?? "noma'lum xatolik"
+      Alert.alert(
+        'Yuklab bo\'lmadi',
+        errMsg,
+        [
+          { text: 'Bekor', style: 'cancel' },
+          { text: 'Qayta urinish', onPress: () => retryDownload(lesson.id) },
+        ],
+      )
+    } else if (status === 'completed') {
+      setConfirm({
+        visible: true,
+        title: "Yuklamani o'chirish",
+        message: `"${lesson.title}" oflayn fayli o'chiriladi.`,
+        onConfirm: () => { setConfirm(s => ({ ...s, visible: false })); deleteDownload(lesson.id) },
+      })
+    } else {
+      enqueueLesson(lesson, { id: course.id, title: course.title, thumbnail_url: course.thumbnail_url }, defaultQuality)
+    }
   }
 
   // ── Refresh reviews after submission ──────────────────────────────────────
@@ -1181,6 +1407,11 @@ export default function CourseDetailScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
             >
+              <CourseDownloadRow
+                lessons={lessons}
+                onPress={() => setShowDownloadAllSheet(true)}
+                c={c}
+              />
               {sections.map((sec, i) => (
                 <EnrolledSectionRow
                   key={i} section={sec}
@@ -1190,9 +1421,9 @@ export default function CourseDetailScreen() {
                   watchRatio={videoWatchRatio}
                   onLesson={selectLesson}
                   onDownload={handleDownload}
-                  isDownloaded={isDownloaded}
-                  isDownloading={isDownloading}
+                  getDlStatus={getStatus}
                   getDlProgress={getProgress}
+                  isOffline={!isOnline}
                   defaultOpen={i === 0 || sec.lessons.some(l => l.id === currentLesson?.id)}
                   c={c}
                 />
@@ -1677,6 +1908,16 @@ export default function CourseDetailScreen() {
         onConfirm={confirm.onConfirm}
         onCancel={() => setConfirm(s => ({ ...s, visible: false }))}
       />
+
+      {course && (
+        <DownloadAllSheet
+          visible={showDownloadAllSheet}
+          course={course}
+          lessons={lessons}
+          onClose={() => setShowDownloadAllSheet(false)}
+          c={c}
+        />
+      )}
     </SafeAreaView>
   )
 }

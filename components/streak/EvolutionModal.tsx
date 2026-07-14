@@ -79,11 +79,12 @@ function FadeUp({ opacity, translateY, style, children }: {
 export interface EvolutionModalProps {
   visible:  boolean
   toStage:  StageNumber
+  bonusXp?: number
   onClose:  () => void
   onShare?: () => void
 }
 
-export function EvolutionModal({ visible, toStage, onClose, onShare }: EvolutionModalProps) {
+export function EvolutionModal({ visible, toStage, bonusXp = 0, onClose, onShare }: EvolutionModalProps) {
   const insets  = useSafeAreaInsets()
   const stageMeta   = TREE_STAGES[toStage - 1]
   const nextMeta    = TREE_STAGES[toStage] ?? null   // may be null at stage 10
@@ -240,6 +241,16 @@ export function EvolutionModal({ visible, toStage, onClose, onShare }: Evolution
             </Text>
           </FadeUp>
 
+          {/* XP earned — the tree evolving IS the reward moment, show both together */}
+          {bonusXp > 0 && (
+            <FadeUp opacity={blurbOp} translateY={blurbY} style={styles.xpWrap}>
+              <Text style={styles.xpEmoji}>⚡</Text>
+              <Text style={[styles.xpText, { fontFamily: typography.fontFamily.bold }]}>
+                +{bonusXp} XP
+              </Text>
+            </FadeUp>
+          )}
+
           {/* Next milestone preview */}
           {nextMeta && (
             <FadeUp opacity={blurbOp} translateY={blurbY} style={styles.nextWrap}>
@@ -380,6 +391,19 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     maxWidth:   280,
   },
+
+  xpWrap: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    marginTop:         spacing.xs,
+    paddingHorizontal: spacing.base,
+    paddingVertical:   6,
+    borderRadius:      radius.full,
+    backgroundColor:   'rgba(255,214,10,0.14)',
+  },
+  xpEmoji: { fontSize: 15 },
+  xpText:  { fontSize: 15, color: '#ffd60a' },
 
   nextWrap: { marginTop: spacing.xs },
   nextLabel: {

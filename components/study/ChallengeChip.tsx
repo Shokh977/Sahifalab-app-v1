@@ -5,10 +5,31 @@ import { Trophy } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { challenges as challengesApi, type Challenge } from '../../lib/api'
+import { fmtMetricValue, fmtMetricGoal } from '../../lib/challenges'
 
-function fmtHours(minutes: number): string {
-  const h = minutes / 60
-  return h % 1 === 0 ? `${h}` : h.toFixed(1)
+/** One-line summary + 0-1 progress fraction, type-aware (step-25). */
+function summaryFor(ch: Challenge): { text: string; pct: number } {
+  switch (ch.challenge_type) {
+    case 'consistency': {
+      const required = ch.required_days ?? 0
+      return { text: `${ch.title} · ${ch.qualifying_days}/${required} kun`, pct: required > 0 ? ch.qualifying_days / required : 0 }
+    }
+    case 'sprint':
+      return { text: `${ch.title} · ${ch.rank != null ? `#${ch.rank}` : '—'}`, pct: 0 }
+    case 'team': {
+      const mine  = ch.team === 'A' ? ch.team_a_total : ch.team_b_total
+      const other = ch.team === 'A' ? ch.team_b_total : ch.team_a_total
+      const total = Math.max(1, mine + other)
+      return { text: `${ch.title} · ${fmtMetricGoal(mine, ch.metric)}`, pct: mine / total }
+    }
+    default: {
+      const target = ch.target_value ?? 0
+      return {
+        text: `${ch.title} · ${fmtMetricValue(ch.progress_value, ch.metric)}/${fmtMetricGoal(target, ch.metric)}`,
+        pct: target > 0 ? ch.progress_value / target : 0,
+      }
+    }
+  }
 }
 
 /**
@@ -26,7 +47,7 @@ export function ChallengeChip() {
     let cancelled = false
     challengesApi.mine().then(list => {
       if (cancelled) return
-      const active = list.find(x => x.status === 'active' && !x.completed_at)
+      const active = list.find(x => x.status === 'active' && !x.completed_at && !x.is_winner && !x.failed_at)
       setCh(active ?? null)
     }).catch(() => {})
     return () => { cancelled = true }
@@ -34,7 +55,8 @@ export function ChallengeChip() {
 
   if (!ch) return null
 
-  const pct = Math.min(100, Math.round((ch.progress_value / ch.target_value) * 100))
+  const { text, pct } = summaryFor(ch)
+  const pctClamped = Math.min(100, Math.round(pct * 100))
 
   return (
     <Pressable
@@ -43,10 +65,10 @@ export function ChallengeChip() {
     >
       <Trophy size={14} color={ch.color} />
       <Text numberOfLines={1} style={[styles.text, { color: ch.color, fontFamily: typography.fontFamily.semibold }]}>
-        {ch.title} · {fmtHours(ch.progress_value)}/{fmtHours(ch.target_value)} soat
+        {text}
       </Text>
       <View style={[styles.track, { backgroundColor: ch.color + '33' }]}>
-        <View style={[styles.fill, { backgroundColor: ch.color, width: `${pct}%` as any }]} />
+        <View style={[styles.fill, { backgroundColor: ch.color, width: `${pctClamped}%` as any }]} />
       </View>
     </Pressable>
   )

@@ -38,7 +38,11 @@ const TIER_RANK: Record<string, number> = {
   legend: 6, diamond: 5, platinum: 4, gold: 3, silver: 2, bronze: 1,
 }
 
-function stageNum(key: string): number {
+export function isStageBadge(key: string): boolean {
+  return key.startsWith('stage_')
+}
+
+export function stageNum(key: string): number {
   return parseInt(key.replace('stage_', ''), 10) || 0
 }
 

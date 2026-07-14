@@ -33,7 +33,7 @@ const INFO_LINES = [
   {
     emoji: '💡',
     title: 'Paketlar qanchalik tejamkor?',
-    body:  "1 ta — 200 XP  ·  3 ta — 500 XP (17% tejasiz)  ·  5 ta — 750 XP (25% tejasiz)  ·  10 ta — 1200 XP (40% tejasiz)",
+    body:  "1 ta — 200 XP  ·  3 ta — 500 XP (17% tejasiz)  ·  5 ta — 750 XP (25% tejasiz). Bir vaqtda ko'pi bilan 5 ta freeze saqlash mumkin.",
   },
 ]
 
@@ -66,10 +66,14 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
   }, [visible])
 
   const PURCHASE_ENABLED = true
+  // Mirrors the server-side cap (streaks.py MAX_FREEZE_COUNT) — kept here
+  // only for a friendlier pre-purchase UI; the server is the actual guard.
+  const MAX_FREEZE_COUNT = 5
 
   const selectedPkg = packages.find(p => p.count === selected)
   const canAfford   = selectedPkg ? currentXp >= selectedPkg.xp_cost : true
-  const btnDisabled = !PURCHASE_ENABLED || !selected || !canAfford || loading
+  const fitsCap     = selectedPkg ? freezeCount + selectedPkg.count <= MAX_FREEZE_COUNT : true
+  const btnDisabled = !PURCHASE_ENABLED || !selected || !canAfford || !fitsCap || loading
 
   async function handlePurchase() {
     if (btnDisabled) return
@@ -172,6 +176,8 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
             {packages.map(pkg => {
               const isSelected = selected === pkg.count
               const affordable = currentXp >= pkg.xp_cost
+              const withinCap  = freezeCount + pkg.count <= MAX_FREEZE_COUNT
+              const selectable = affordable && withinCap
               return (
                 <Pressable
                   key={pkg.count}
@@ -180,10 +186,10 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
                     {
                       backgroundColor: isSelected ? '#60a5fa22' : c.bgTertiary,
                       borderColor:     isSelected ? '#60a5fa'   : c.border,
-                      opacity:         affordable ? 1 : 0.4,
+                      opacity:         selectable ? 1 : 0.4,
                     },
                   ]}
-                  onPress={() => affordable && setSelected(pkg.count)}
+                  onPress={() => selectable && setSelected(pkg.count)}
                 >
                   <Text style={styles.iceEmoji}>🧊</Text>
                   <Text style={[styles.pkgCount, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>

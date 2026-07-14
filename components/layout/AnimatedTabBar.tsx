@@ -22,7 +22,7 @@ const TAB_CONFIG: Array<{ name: string; label: string; Icon: PhosphorIcon }> = [
   { name: 'study',       label: "O'qish",       Icon: Timer         as PhosphorIcon },
   { name: 'courses',     label: 'Kurslar',      Icon: GraduationCap as PhosphorIcon },
   { name: 'flashcards',  label: 'Kartalar',     Icon: Cards         as PhosphorIcon },
-  { name: 'musobaqalar', label: 'Musobaqalar',  Icon: Trophy        as PhosphorIcon },
+  { name: 'musobaqalar', label: 'Bellashuv',    Icon: Trophy        as PhosphorIcon },
 ]
 
 const TAB_COUNT = TAB_CONFIG.length

@@ -4,7 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { getBadgeEmoji, getTierColor } from '../../lib/badges'
+import { getBadgeEmoji, getTierColor, isStageBadge, stageNum } from '../../lib/badges'
+import { MagicTree } from '../streak/MagicTree'
+import type { StageNumber } from '../../lib/treeTheme'
 import type { Badge } from '../../lib/api'
 
 interface Props {
@@ -38,6 +40,7 @@ export function BadgeDetailSheet({ badge, onClose }: Props) {
   if (!badge) return null
 
   const isChallenge = badge.group === 'challenges'
+  const isStage = badge.group === 'stages' && isStageBadge(badge.key)
   const color = isChallenge ? (badge.challenge_color || '#F5A623') : getTierColor(badge.tier)
 
   return (
@@ -57,9 +60,16 @@ export function BadgeDetailSheet({ badge, onClose }: Props) {
             <X size={20} color={c.textSecondary} />
           </Pressable>
 
-          <View style={[styles.artWrap, { backgroundColor: color + '22', borderColor: color, opacity: badge.earned ? 1 : 0.45 }]}>
-            <Text style={styles.art}>{getBadgeEmoji(badge.key)}</Text>
-          </View>
+          {isStage ? (
+            <View style={[styles.treeWrap, { backgroundColor: color + '18', opacity: badge.earned ? 1 : 0.45 }]}>
+              {/* Full-detail tree here — plenty of room, no "mushing" concern like the small grid tile */}
+              <MagicTree stage={stageNum(badge.key) as StageNumber} state="alive" size="thumb" animate={badge.earned} />
+            </View>
+          ) : (
+            <View style={[styles.artWrap, { backgroundColor: color + '22', borderColor: color, opacity: badge.earned ? 1 : 0.45 }]}>
+              <Text style={styles.art}>{getBadgeEmoji(badge.key)}</Text>
+            </View>
+          )}
 
           <Text style={[styles.name, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
             {badge.name}
@@ -112,6 +122,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginTop: spacing.sm,
   },
   art: { fontSize: 44 },
+  treeWrap: {
+    width: 100, height: 116, borderRadius: radius.lg,
+    alignItems: 'center', justifyContent: 'flex-end', marginTop: spacing.sm,
+    overflow: 'hidden',
+  },
   name: { fontSize: typography.size.lg, textAlign: 'center', marginTop: spacing.sm },
   lockedPill: { paddingHorizontal: spacing.sm, paddingVertical: 5, borderRadius: radius.full },
   lockedPillText: { fontSize: 12 },

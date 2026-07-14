@@ -14,45 +14,24 @@ import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { challenges as challengesApi, type Challenge } from '../../lib/api'
 import { shareChallengeCompletion } from '../../lib/share'
+import {
+  daysLeft, daysUntil, fmtMetricValue, fmtMetricGoal, paceHint,
+  percentileFraming, computePercentile, teamStandingLine, METRIC_UNIT_LABEL,
+  metricCtaRoute, metricCtaLabel, challengeGoalText,
+} from '../../lib/challenges'
 import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
 import { ChallengeCoverImage } from '../../components/study/ChallengeCoverImage'
 import { ChallengeProgressRing } from '../../components/study/ChallengeProgressRing'
 import { ParticipantAvatarStack } from '../../components/study/ParticipantAvatarStack'
+import { ConsistencyDayDots, type DayDotState } from '../../components/study/ConsistencyDayDots'
+import { TeamHeadToHeadBar } from '../../components/study/TeamHeadToHeadBar'
 
 // Musobaqalar shows challenge cards ONLY — no tree, no Bosqichlar, no
 // achievements, no leaderboard (the leaderboard lives in the challenge
 // detail screen). Grouped: Faol (joined + running) → Ochiq (joinable) →
-// Yakunlangan (collapsed history). See step-22 (structure) and step-23
-// (cover-image card redesign).
-
-function daysLeft(iso: string): number {
-  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000))
-}
-
-function fmtHours(minutes: number): string {
-  const h = minutes / 60
-  return h % 1 === 0 ? `${h}` : h.toFixed(1)
-}
-
-// Warm, never-shaming pace hint — see step-23 acceptance criteria.
-function paceHint(ch: Challenge): string {
-  const now = Date.now()
-  const startMs = new Date(ch.starts_at).getTime()
-  const endMs   = new Date(ch.ends_at).getTime()
-  const totalMs = Math.max(1, endMs - startMs)
-  const expectedByNow = ch.target_value * Math.min(1, Math.max(0, (now - startMs) / totalMs))
-
-  if (ch.progress_value >= expectedByNow * 1.05) {
-    return "Rejadan oldindasiz! 🔥"
-  }
-  const remainingDays = daysLeft(ch.ends_at)
-  const remainingMin  = Math.max(0, ch.target_value - ch.progress_value)
-  if (remainingDays <= 0 || remainingMin / Math.max(1, remainingDays) > 180) {
-    return "Har daqiqa muhim — davom eting! 💪"
-  }
-  const perDay = Math.round(remainingMin / remainingDays)
-  return `Kuniga ~${perDay} daqiqa — yetib borasiz! 💪`
-}
+// Yakunlangan (collapsed history). See step-22 (structure), step-23
+// (cover-image redesign), step-25 (metrics/types/team battles — the Faol
+// card body now differs by challenge_type; everything else is unchanged).
 
 // ── Entrance animation wrapper — fade + slide up, staggered, capped at 6 ──────
 
@@ -108,7 +87,7 @@ export default function MusobaqalarScreen() {
     setMine(prev => [...prev, { ...ch, joined: true, progress_value: 0, completed_at: null, rank: null }])
     try {
       await challengesApi.join(ch.id)
-      load(true)  // quiet background re-sync (real rank, etc.)
+      load(true)  // quiet background re-sync (real rank, team assignment, etc.)
     } catch (e: any) {
       // revert on failure
       setMine(prev => prev.filter(x => x.id !== ch.id))
@@ -119,17 +98,22 @@ export default function MusobaqalarScreen() {
     }
   }
 
-  const active    = mine.filter(c => c.status === 'active' && !c.completed_at)
-  const completedOrEnded = mine.filter(c => c.status === 'ended' || !!c.completed_at)
+  const active    = mine.filter(c => c.status === 'active' && !c.completed_at && !c.is_winner && !c.failed_at)
+  // Joined-but-not-started-yet — must never be lost between the Faol filter
+  // (requires status === 'active') and the Ochiq list (only shows what the
+  // caller hasn't joined). Without this bucket, joining an upcoming
+  // challenge makes its card vanish entirely until it starts.
+  const upcomingJoined = mine.filter(c => c.status === 'upcoming')
+  const completedOrEnded = mine.filter(c => c.status === 'ended' || !!c.completed_at || c.is_winner || !!c.failed_at)
   const endedVisible = showAllEnded ? completedOrEnded : completedOrEnded.slice(0, 3)
 
-  const hasAnything = active.length > 0 || open.length > 0 || completedOrEnded.length > 0
+  const hasAnything = active.length > 0 || upcomingJoined.length > 0 || open.length > 0 || completedOrEnded.length > 0
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
       <View style={[styles.topBar, { borderBottomColor: c.borderSubtle }]}>
         <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-          Musobaqalar
+          Bellashuv
         </Text>
         <ProfileAvatarButton size={28} />
       </View>
@@ -142,10 +126,10 @@ export default function MusobaqalarScreen() {
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🏆</Text>
           <Text style={[styles.emptyTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            Hozircha faol musobaqa yo'q
+            Hozircha faol bellashuv yo'q
           </Text>
           <Text style={[styles.emptyDesc, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-            Tez orada yangi musobaqalar qo'shiladi!
+            Tez orada yangi bellashuv qo'shiladi!
           </Text>
         </View>
       ) : (
@@ -162,10 +146,19 @@ export default function MusobaqalarScreen() {
                   <ActiveCard
                     ch={ch} c={c}
                     onPress={() => router.push(`/(screens)/challenge/${ch.slug}` as any)}
-                    onStartFocus={() => router.push('/(tabs)/study' as any)}
+                    onStartFocus={() => router.push(metricCtaRoute(ch.metric) as any)}
                     onShare={() => shareChallengeCompletion({ title: ch.title, rewardXp: ch.reward_xp, rank: ch.rank })}
                   />
                 </CardEntrance>
+              ))}
+            </View>
+          )}
+
+          {upcomingJoined.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionLabel, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>Tez orada boshlanadi</Text>
+              {upcomingJoined.map(ch => (
+                <UpcomingMineRow key={ch.id} ch={ch} c={c} onPress={() => router.push(`/(screens)/challenge/${ch.slug}` as any)} />
               ))}
             </View>
           )}
@@ -208,14 +201,13 @@ export default function MusobaqalarScreen() {
   )
 }
 
-// ── Faol card — the hero card: cover image, animated ring, pace hint ──────────
+// ── Faol card — the hero card: cover image + a body that differs by type ─────
 
 function ActiveCard({ ch, c, onPress, onStartFocus, onShare }: {
   ch: Challenge; c: any; onPress: () => void; onStartFocus: () => void; onShare: () => void
 }) {
   const [pressed, setPressed] = useState(false)
   const completed = !!ch.completed_at
-  const pct = ch.target_value > 0 ? ch.progress_value / ch.target_value : 0
 
   return (
     <Pressable
@@ -246,36 +238,130 @@ function ActiveCard({ ch, c, onPress, onStartFocus, onShare }: {
               ✅ Yakunlandi{ch.rank != null ? ` · #${ch.rank}-o'rin` : ''}
             </Text>
           </View>
+        ) : ch.challenge_type === 'consistency' ? (
+          <ConsistencyBody ch={ch} c={c} />
+        ) : ch.challenge_type === 'sprint' ? (
+          <SprintBody ch={ch} c={c} />
+        ) : ch.challenge_type === 'team' ? (
+          <TeamBody ch={ch} c={c} />
         ) : (
-          <View style={styles.progressRow}>
-            <ChallengeProgressRing progress={pct} color={ch.color} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.hoursText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                {fmtHours(ch.progress_value)} / {fmtHours(ch.target_value)} soat
-              </Text>
-              {ch.rank != null && (
-                <Text style={[styles.rankText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                  Reyting: #{ch.rank}
-                </Text>
-              )}
-            </View>
-          </View>
-        )}
-
-        {!completed && (
-          <Text style={[styles.paceText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
-            {paceHint(ch)}
-          </Text>
+          <CumulativeBody ch={ch} c={c} />
         )}
 
         <Pressable
           onPress={completed ? onShare : onStartFocus}
           style={[styles.ctaBtn, { backgroundColor: ch.color }]}
         >
-          <Text style={styles.ctaBtnText}>{completed ? 'Ulashish' : 'Fokusni boshlash'}</Text>
+          <Text style={styles.ctaBtnText}>{completed ? 'Ulashish' : metricCtaLabel(ch.metric)}</Text>
         </Pressable>
       </View>
     </Pressable>
+  )
+}
+
+// ── cumulative body — animated ring, hours/units, rank, pace hint ────────────
+
+function CumulativeBody({ ch, c }: { ch: Challenge; c: any }) {
+  const target = ch.target_value ?? 0
+  const pct = target > 0 ? ch.progress_value / target : 0
+  return (
+    <>
+      <View style={styles.progressRow}>
+        <ChallengeProgressRing progress={pct} color={ch.color} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.hoursText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+            {fmtMetricValue(ch.progress_value, ch.metric)} / {fmtMetricGoal(target, ch.metric)}
+          </Text>
+          {ch.rank != null && (
+            <Text style={[styles.rankText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+              Reyting: #{ch.rank}
+            </Text>
+          )}
+        </View>
+      </View>
+      <Text style={[styles.paceText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+        {paceHint(ch)}
+      </Text>
+    </>
+  )
+}
+
+// ── consistency body — day dots (abstract: qualifying vs remaining) ──────────
+
+function ConsistencyBody({ ch, c }: { ch: Challenge; c: any }) {
+  const required = ch.required_days ?? 0
+  const qualifying = Math.min(ch.qualifying_days, required)
+  const days: DayDotState[] = Array.from({ length: Math.max(required, 1) }, (_, i) => i < qualifying ? 'filled' : 'hollow')
+
+  return (
+    <>
+      <Text style={[styles.consistencyGoal, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+        Har kuni kamida {fmtMetricGoal(ch.daily_minimum ?? 0, ch.metric)}
+      </Text>
+      <ConsistencyDayDots days={days} color={ch.color} label={`${qualifying} / ${required}`} />
+      <Text style={[styles.paceText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+        {ch.misses_used > 0
+          ? `🔥 ${ch.current_run} kunlik seriya · ${Math.max(0, (ch.allowed_misses ?? 0) - ch.misses_used)} ta imkoniyat qoldi`
+          : `🔥 ${ch.current_run} kunlik seriya`}
+      </Text>
+    </>
+  )
+}
+
+// ── sprint body — rank is the hero number, percentile framing under it ───────
+
+function SprintBody({ ch, c }: { ch: Challenge; c: any }) {
+  return (
+    <>
+      <View style={styles.sprintRow}>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={[styles.sprintRank, { color: ch.color, fontFamily: typography.fontFamily.bold }]}>
+            {ch.rank != null ? `#${ch.rank}` : '—'}
+          </Text>
+          <Text style={[styles.sprintRankLabel, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+            sizning o'rningiz
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.hoursText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+            {fmtMetricGoal(ch.progress_value, ch.metric)}
+          </Text>
+          {ch.winner_count != null && (
+            <Text style={[styles.rankText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+              🏆 Top {ch.winner_count} g'olib bo'ladi
+            </Text>
+          )}
+        </View>
+      </View>
+      <Text style={[styles.paceText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+        {percentileFraming(computePercentile(ch.rank, ch.participant_count))}
+      </Text>
+    </>
+  )
+}
+
+// ── team body — the head-to-head bar, your contribution, invitation line ─────
+
+function TeamBody({ ch, c }: { ch: Challenge; c: any }) {
+  const myColor = ch.team === 'A' ? ch.team_a_color : ch.team_b_color
+  return (
+    <>
+      <TeamHeadToHeadBar
+        teamAName={ch.team_a_name ?? "Guruh A"} teamAColor={ch.team_a_color ?? '#F5A623'} teamATotal={ch.team_a_total}
+        teamBName={ch.team_b_name ?? "Guruh B"} teamBColor={ch.team_b_color ?? '#5AC8FA'} teamBTotal={ch.team_b_total}
+        fmtValue={v => fmtMetricGoal(v, ch.metric)}
+      />
+      <Text style={[styles.paceText, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+        Sizning hissangiz: {fmtMetricGoal(ch.progress_value, ch.metric)}{myColor ? ' 🔵' : ''}
+      </Text>
+      <Text style={[styles.paceText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+        {teamStandingLine(
+          ch.team === 'A' ? ch.team_a_total : ch.team_b_total,
+          ch.team === 'A' ? ch.team_b_total : ch.team_a_total,
+          ch.metric,
+        )}
+      </Text>
+    </>
   )
 }
 
@@ -307,7 +393,7 @@ function OpenCard({ ch, c, joining, onPress, onJoin }: {
         <View style={styles.openRow}>
           <Text style={styles.openRowEmoji}>🎯</Text>
           <Text style={[styles.openRowText, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]} numberOfLines={1}>
-            {Math.round(daysBetween(ch.starts_at, ch.ends_at))} kun ichida {fmtHours(ch.target_value)} soat fokus
+            {challengeGoalText(ch)}
           </Text>
         </View>
         {ch.reward_xp > 0 && (
@@ -340,14 +426,52 @@ function OpenCard({ ch, c, joining, onPress, onJoin }: {
   )
 }
 
-function daysBetween(a: string, b: string): number {
-  return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000))
+// ── Tez orada row — joined but not started yet; a holding state so the ───────
+// card doesn't disappear between "Faol" (requires status active) and
+// "Ochiq" (only unjoined challenges) until the challenge actually starts.
+
+function UpcomingMineRow({ ch, c, onPress }: { ch: Challenge; c: any; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.endedRow, { borderColor: c.border }]}>
+      {ch.cover_image_url ? (
+        <Image source={{ uri: ch.cover_image_url }} style={styles.endedThumb} contentFit="cover" cachePolicy="memory-disk" />
+      ) : (
+        <View style={[styles.endedThumb, styles.endedThumbFallback, { backgroundColor: ch.color + '22' }]}>
+          <Trophy size={22} color={ch.color} />
+        </View>
+      )}
+      <View style={{ flex: 1 }}>
+        <Text numberOfLines={1} style={[styles.endedTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+          {ch.title}
+        </Text>
+        <Text style={[styles.endedSub, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+          ✓ Qo'shildingiz · {daysUntil(ch.starts_at)} kundan keyin boshlanadi
+        </Text>
+      </View>
+      <ChevronRight size={16} color={c.textMuted} />
+    </Pressable>
+  )
 }
 
 // ── Yakunlangan row — compact history, no big image, no negative styling ──────
 
+function endedResultText(ch: Challenge): string {
+  if (ch.challenge_type === 'team') {
+    return ch.is_winner ? "G'olib guruh! 🏆" : 'Yakunlandi'
+  }
+  if (ch.challenge_type === 'sprint') {
+    return ch.is_winner ? `G'olib · #${ch.final_rank}-o'rin` : ch.final_rank != null ? `#${ch.final_rank}-o'rin` : 'Yakunlandi'
+  }
+  if (ch.challenge_type === 'consistency') {
+    return ch.completed_at
+      ? `Seriya yakunlandi · ${ch.qualifying_days} kun`
+      : `${ch.qualifying_days}/${ch.required_days ?? 0} kun`
+  }
+  return `${fmtMetricValue(ch.progress_value, ch.metric)}/${fmtMetricValue(ch.target_value ?? 0, ch.metric)} ${METRIC_UNIT_LABEL[ch.metric]}`
+}
+
 function EndedRow({ ch, c, onPress }: { ch: Challenge; c: any; onPress: () => void }) {
-  const won = !!ch.completed_at
+  const won = !!ch.completed_at || ch.is_winner
   return (
     <Pressable onPress={onPress} style={[styles.endedRow, { borderColor: won ? c.success : c.border }]}>
       {ch.cover_image_url ? (
@@ -362,8 +486,7 @@ function EndedRow({ ch, c, onPress }: { ch: Challenge; c: any; onPress: () => vo
           {ch.title}
         </Text>
         <Text style={[styles.endedSub, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-          {fmtHours(ch.progress_value)}/{fmtHours(ch.target_value)} soat
-          {ch.rank != null ? ` · #${ch.rank}` : ''}
+          {endedResultText(ch)}
         </Text>
       </View>
       {won && <Text style={styles.endedBadge}>🏅</Text>}
@@ -413,6 +536,14 @@ const styles = StyleSheet.create({
   paceText: { fontSize: 13 },
   ctaBtn: { paddingVertical: 13, borderRadius: radius.lg, alignItems: 'center' },
   ctaBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // Consistency body
+  consistencyGoal: { fontSize: 14 },
+
+  // Sprint body
+  sprintRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
+  sprintRank: { fontSize: 32, lineHeight: 36 },
+  sprintRankLabel: { fontSize: 11, textAlign: 'center' },
 
   // Ochiq card
   openBody: { padding: spacing.base, gap: spacing.sm },

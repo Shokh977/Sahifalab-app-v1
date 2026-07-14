@@ -369,14 +369,11 @@ export default function FlashcardStudyScreen() {
       }).then(result => {
         patchUser({ streak_days: result.streak_days })
         fetchDecks()
-        if (result.challenges_completed?.length > 0) {
-          const ch = result.challenges_completed[0]
-          const days = parseInt(ch.key.replace('streak_', ''), 10)
-          if (!isNaN(days)) {
-            setMilestoneDays(days)
-            setMilestoneBonusXp(ch.bonus_xp)
-            setMilestoneVisible(true)
-          }
+        if (result.stages_completed?.length > 0) {
+          const stage = result.stages_completed[0]
+          setMilestoneDays(stage.required_days)
+          setMilestoneBonusXp(stage.bonus_xp)
+          setMilestoneVisible(true)
         }
       }).catch(() => {})
 

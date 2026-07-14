@@ -11,7 +11,7 @@ export default function TabLayout() {
       <Tabs.Screen name="study"         options={{ title: "O'qish" }} />
       <Tabs.Screen name="courses"       options={{ title: 'Kurslar' }} />
       <Tabs.Screen name="flashcards"    options={{ title: 'Kartalar' }} />
-      <Tabs.Screen name="musobaqalar"   options={{ title: 'Musobaqalar' }} />
+      <Tabs.Screen name="musobaqalar"   options={{ title: 'Bellashuv' }} />
       {/* Hidden from the tab bar (see AnimatedTabBar's TAB_CONFIG) — still
           valid routes so the top-bar avatar (every screen) and the
           notification bell can push to them. Declared last so the sliding

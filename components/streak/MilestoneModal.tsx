@@ -17,14 +17,18 @@ interface Props {
   onClose:    () => void
 }
 
+// Matches the 10 canonical tree stages (streak_stages table / lib/treeTheme.ts
+// TREE_STAGES) — keep in sync if the stage day-thresholds ever change.
 const MILESTONE_META: Record<number, { emoji: string; title: string; color: string }> = {
-  3:   { emoji: '🥉', title: 'Birinchi qadam',    color: '#cd7f32' },
+  1:   { emoji: '🌰', title: 'Boshlandi!',         color: '#cd7f32' },
+  3:   { emoji: '🌱', title: 'Birinchi qadam',     color: '#8fbf5f' },
   7:   { emoji: '🥈', title: 'Bir hafta!',         color: '#c0c0c0' },
   14:  { emoji: '🥇', title: 'Ikki hafta!',        color: '#FFD700' },
   30:  { emoji: '🏆', title: 'Bir oy!',            color: '#F5A623' },
-  60:  { emoji: '🎖️', title: 'Ikki oy!',           color: '#60a5fa' },
-  100: { emoji: '💎', title: 'Yuz kun!',           color: '#a78bfa' },
-  200: { emoji: '👑', title: 'Ikki yuz kun!',      color: '#f472b6' },
+  50:  { emoji: '✨', title: 'Sehrli daraxt!',     color: '#60a5fa' },
+  75:  { emoji: '🦋', title: 'Gullab-yashnadi!',   color: '#f472b6' },
+  120: { emoji: '📜', title: 'Qadimiy bilim!',     color: '#a78bfa' },
+  200: { emoji: '☁️', title: 'Samoviy daraxt!',    color: '#38bdf8' },
   365: { emoji: '🌟', title: 'Bir yil! Efsona!',   color: '#34d399' },
 }
 

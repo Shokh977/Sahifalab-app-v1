@@ -1520,13 +1520,17 @@ export const focusStages = {
 
 // ── Musobaqalar (cohort challenges, step-21/22) ───────────────────────────────
 
+export type ChallengeMetric = 'focus_minutes' | 'flashcard_reviews' | 'lessons_completed' | 'courses_completed' | 'tests_passed'
+export type ChallengeType   = 'cumulative' | 'consistency' | 'sprint' | 'team'
+
 export interface Challenge {
   id:                string
   slug:              string
   title:             string
   description:       string | null
-  metric:            string
-  target_value:      number   // minutes
+  metric:            ChallengeMetric
+  challenge_type:    ChallengeType
+  target_value:      number | null   // minutes (or metric unit) — null for sprint/team
   starts_at:         string
   ends_at:           string
   join_deadline:     string | null
@@ -1541,10 +1545,39 @@ export interface Challenge {
   participant_avatars: string[]
   is_featured:       boolean
   max_participants:  number | null
+  // consistency
+  daily_minimum:     number | null
+  required_days:     number | null
+  allowed_misses:    number | null
+  // sprint
+  winner_count:      number | null
+  // team
+  team_a_name:       string | null
+  team_a_color:      string | null
+  team_a_icon:       string | null
+  team_b_name:       string | null
+  team_b_color:      string | null
+  team_b_icon:       string | null
+  team_a_total:      number
+  team_b_total:      number
+  // caller participation
   joined:            boolean
   progress_value:    number
   completed_at:      string | null
   rank:              number | null
+  team:              'A' | 'B' | null
+  qualifying_days:   number
+  current_run:       number
+  misses_used:       number
+  failed_at:         string | null
+  final_rank:        number | null
+  is_winner:         boolean
+}
+
+export interface ChallengeDailyProgress {
+  day:       string
+  value:     number
+  qualified: boolean
 }
 
 export interface ChallengeLeaderboardEntry {
@@ -1554,11 +1587,27 @@ export interface ChallengeLeaderboardEntry {
   username:        string | null
   photo_url:       string | null
   progress_value:  number
+  team?:           'A' | 'B' | null
   completed_at:    string | null
 }
 
 export interface ChallengeDetail extends Challenge {
-  leaderboard: ChallengeLeaderboardEntry[]
+  leaderboard:     ChallengeLeaderboardEntry[]
+  daily_progress:  ChallengeDailyProgress[]
+}
+
+export interface TeamContributor {
+  user_id:         number
+  first_name:      string
+  photo_url:       string | null
+  progress_value:  number
+}
+
+export interface TeamLeaderboard {
+  team_a: { name: string | null; color: string | null; icon: string | null; total: number; top: TeamContributor[] }
+  team_b: { name: string | null; color: string | null; icon: string | null; total: number; top: TeamContributor[] }
+  caller_team: 'A' | 'B' | null
+  caller_contribution: number
 }
 
 export const challenges = {
@@ -1574,7 +1623,7 @@ export const challenges = {
     request<ChallengeDetail>(`/api/challenges/${slug}`, { auth: true }),
 
   join: (id: string) =>
-    request<{ ok: boolean; challenge_id: string; joined_at: string; progress_value: number }>(
+    request<{ ok: boolean; challenge_id: string; joined_at: string; progress_value: number; team: 'A' | 'B' | null }>(
       `/api/challenges/${id}/join`, { method: 'POST', auth: true },
     ),
 
@@ -1582,9 +1631,16 @@ export const challenges = {
     request<{ ok: boolean }>(`/api/challenges/${id}/leave`, { method: 'DELETE', auth: true }),
 
   leaderboard: (id: string, limit = 50, offset = 0) =>
-    request<{ leaderboard: ChallengeLeaderboardEntry[]; caller: { rank: number; progress_value: number; completed_at: string | null } | null }>(
+    request<{
+      leaderboard: ChallengeLeaderboardEntry[]
+      total_participants: number
+      caller: { rank: number; progress_value: number; completed_at: string | null; percentile: number | null } | null
+    }>(
       `/api/challenges/${id}/leaderboard?limit=${limit}&offset=${offset}`, { auth: true },
     ),
+
+  teamLeaderboard: (id: string, topN = 10) =>
+    request<TeamLeaderboard>(`/api/challenges/${id}/team-leaderboard?top_n=${topN}`, { auth: true }),
 }
 
 // ── Activity feed ─────────────────────────────────────────────────────────────

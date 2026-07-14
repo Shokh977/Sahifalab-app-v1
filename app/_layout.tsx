@@ -15,12 +15,15 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../stores/authStore'
 import { useDashboardStore } from '../stores/dashboardStore'
+import { useStreakStagesStore } from '../stores/streakStagesStore'
 import { syncStreakReminderWithPrefs } from '../lib/streakNotifications'
 import { useThemeStore } from '../stores/themeStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { useNotifToastStore } from '../stores/notifToastStore'
 import { usePendingDeepLinkStore } from '../stores/pendingDeepLinkStore'
 import { useOfflineQueueStore } from '../stores/offlineQueueStore'
+import { useOfflineLessonQueueStore } from '../stores/offlineLessonQueueStore'
+import { useDownloadStore } from '../stores/downloadStore'
 import { usePublicDecksStore } from '../stores/publicDecksStore'
 import { useOnline } from '../hooks/useOnline'
 import { OfflineBanner } from '../components/ui/OfflineBanner'
@@ -295,6 +298,7 @@ export default function RootLayout() {
     if (isAuthenticated && !isLoading) {
       // Prefetch dashboard data immediately so home tab renders with data already loaded
       useDashboardStore.getState().fetch()
+      useStreakStagesStore.getState().fetchStages()
       registerPushToken()
       fetchUnreadCount()
       syncStreakReminderWithPrefs()
@@ -320,12 +324,15 @@ export default function RootLayout() {
   // ── Offline queue: load on mount, flush when network restores ─────────────
   useEffect(() => {
     useOfflineQueueStore.getState().loadFromStorage()
+    useOfflineLessonQueueStore.getState().loadFromStorage()
     usePublicDecksStore.getState().loadQueuesFromStorage()
+    useDownloadStore.getState().load()
   }, [])
 
   useEffect(() => {
     if (isOnline && !wasOnlineRef.current && isAuthenticated) {
       useOfflineQueueStore.getState().flush()
+      useOfflineLessonQueueStore.getState().flush()
       usePublicDecksStore.getState().flushQueues()
     }
     wasOnlineRef.current = isOnline

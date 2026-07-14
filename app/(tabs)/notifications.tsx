@@ -43,6 +43,11 @@ const TITLES: Record<string, string> = {
   streak_reminder:     "Seriya eslatmasi",
   new_content:         "Yangi dars",
   deck_clone_milestone: "To'plamingiz mashhur bo'lmoqda! 🎉",
+  connection_achievement:      'Yangi yutuq',
+  connection_course_published: 'Yangi kurs',
+  deck_content_flagged:        "To'plam tekshiruvda",
+  deck_child_safety_flagged:   '⚠️ Bolalar xavfsizligi',
+  deck_auto_hidden_reports:    "To'plam yashirildi",
 }
 
 function notifTitle(type: string): string {
@@ -78,6 +83,21 @@ function notifBody(type: string, meta: Record<string, any>): string {
     deck_clone_milestone: meta.deck_title
       ? `🎉 Sizning "${meta.deck_title}" to'plamingiz ${meta.clone_count} marta nusxa olindi!`
       : "To'plamingiz mashhur bo'lmoqda!",
+    connection_achievement: meta.achievement === 'course_completed'
+      ? `${actor} "${meta.course_title ?? 'kurs'}"ni yakunladi! 🎓`
+      : meta.achievement === 'quiz_passed'
+      ? `${actor} testni ${meta.score ?? ''}% natija bilan topshirdi! 🏆`
+      : meta.achievement === 'level_up'
+      ? `${actor} ${meta.level_name ?? 'yangi'} darajasiga ko'tarildi! ⭐`
+      : `${actor} yangi yutuqqa erishdi!`,
+    connection_course_published: meta.course_title
+      ? `${actor} yangi kurs e'lon qildi: "${meta.course_title}"`
+      : `${actor} yangi kurs e'lon qildi.`,
+    deck_content_flagged:      "Bitta to'plam tekshiruv uchun belgilandi. Admin panelda ko'rib chiqing.",
+    deck_child_safety_flagged: "⚠️ Bolalar xavfsizligi bo'yicha to'plam belgilandi — zudlik bilan ko'rib chiqing!",
+    deck_auto_hidden_reports:  meta.report_count
+      ? `Ko'p shikoyat (${meta.report_count}) tufayli to'plam avtomatik yashirildi.`
+      : "Ko'p shikoyat tufayli to'plam avtomatik yashirildi.",
   }
   return map[type] ?? 'Yangi bildirishnoma'
 }
@@ -108,6 +128,13 @@ function resolveRoute(type: string, meta: Record<string, any>): string | null {
       return '/(tabs)/study'
     case 'deck_clone_milestone':
       return meta.deck_id ? `/(screens)/flashcard-deck/${meta.deck_id}` : null
+    case 'connection_achievement':
+      return meta.actor_id ? `/(screens)/profile/${meta.actor_id}` : null
+    case 'connection_course_published':
+      return meta.course_id ? `/(screens)/course/${meta.course_id}` : '/(tabs)/courses'
+    // deck_content_flagged / deck_child_safety_flagged / deck_auto_hidden_reports are
+    // admin-only moderation alerts with no dedicated mobile screen — handled via the
+    // web admin panel. No route here is intentional, not a gap.
     default:
       return null
   }
@@ -158,6 +185,14 @@ function getIconCfg(type: string): { Icon: LucideIcon; color: string; bg: string
       return { Icon: Bell,           color: '#4DA6FF', bg: 'rgba(77,166,255,0.12)'  }
     case 'teacher_approved':
       return { Icon: GraduationCap,  color: '#E8792F', bg: 'rgba(232,121,47,0.12)' }
+    case 'connection_achievement':
+      return { Icon: Trophy,         color: '#FFD700', bg: 'rgba(255,215,0,0.12)'   }
+    case 'connection_course_published':
+      return { Icon: GraduationCap,  color: '#4DA6FF', bg: 'rgba(77,166,255,0.12)'  }
+    case 'deck_content_flagged':
+    case 'deck_child_safety_flagged':
+    case 'deck_auto_hidden_reports':
+      return { Icon: Info,           color: '#FF6B6B', bg: 'rgba(255,107,107,0.12)' }
     default:
       return { Icon: Info,           color: '#9B9BA4', bg: 'rgba(155,155,164,0.12)' }
   }
@@ -189,6 +224,11 @@ const TYPE_GROUP: Record<string, string> = {
   payout:              'Moliya',
   welcome:             'Tizim',
   teacher_approved:    'Tizim',
+  connection_achievement:      'Ijtimoiy',
+  connection_course_published: 'Ijtimoiy',
+  deck_content_flagged:        'Tizim',
+  deck_child_safety_flagged:   'Tizim',
+  deck_auto_hidden_reports:    'Tizim',
 }
 
 const TABS = [

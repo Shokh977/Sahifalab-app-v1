@@ -317,15 +317,15 @@ function Particles({ seed, n, opts }: {
   )
 }
 
-function Seed({ uid }: { uid: string }) {
+function Seed({ uid, simplified }: { uid: string; simplified?: boolean }) {
   return (
     <G>
-      <Ground uid={uid} glowy />
-      <Ellipse cx={CX} cy={346} rx={30} ry={14} fill={`url(#sfAura${uid})`} opacity={0.72} />
+      <Ground uid={uid} glowy={!simplified} />
+      {!simplified && <Ellipse cx={CX} cy={346} rx={30} ry={14} fill={`url(#sfAura${uid})`} opacity={0.72} />}
       <Ellipse cx={CX} cy={344} rx={11} ry={14} fill="#7a5a3c" />
       <Ellipse cx={156.5} cy={340} rx={5} ry={7} fill="#a9825a" opacity={0.85} />
       <Path d="M160 332 q3 4 0 8 q-3 -4 0 -8 Z" fill="#9fe89a" />
-      <Sparkles seed={1} n={7} opts={{ x0:130, y0:300, w:60, h:54, s:2.6, fill:'#ffe6a0' }} />
+      {!simplified && <Sparkles seed={1} n={7} opts={{ x0:130, y0:300, w:60, h:54, s:2.6, fill:'#ffe6a0' }} />}
     </G>
   )
 }
@@ -625,6 +625,8 @@ const SIZES: Record<TreeSize, { w: number; h: number }> = {
   hero:  { w: 280, h: 350 },
   card:  { w: 160, h: 200 },
   thumb: { w: 80,  h: 100 },
+  badge: { w: 40,  h: 50 },   // Trofey Xonasi badge tiles (step-24)
+  micro: { w: 16,  h: 20 },   // top-badge indicator next to names (step-24)
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -635,6 +637,14 @@ export interface MagicTreeProps {
   size?:      TreeSize | 'auto'  // 'auto' scales with stage
   uid?:       string
   animate?:   boolean
+  /**
+   * Badge-mode rendering (step-24 amendment) — silhouette + palette only,
+   * with every particle/glow/decoration layer dropped. Naively shrinking
+   * the full illustration to ~40px mushes the fine detail; recognizability
+   * at that size comes from shape + color, not sparkles. Always implies
+   * animate=false (a badge is a static keepsake, not a live scene).
+   */
+  simplified?: boolean
 }
 
 // stage 1 → 90×112, stage 10 → 240×300  (viewBox 4:5 ratio maintained)
@@ -643,14 +653,14 @@ function autoSize(stage: number): { w: number; h: number } {
   return { w, h: Math.round(w * 1.25) }
 }
 
-export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp, animate = true }: MagicTreeProps) {
+export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp, animate = true, simplified = false }: MagicTreeProps) {
   const uid     = uidProp ?? `${stage}_${state}`
   const id      = Math.max(1, Math.min(10, stage)) as StageNumber
   const pal     = stagePalettes[id]
   const geom    = getGeom(id)
   const dims    = size === 'auto' ? autoSize(id) : SIZES[size]
-  const dead    = state === 'dead'
-  const frozen  = state === 'frozen'
+  const dead    = !simplified && state === 'dead'
+  const frozen  = !simplified && state === 'frozen'
   const reduced = useReducedMotion()
   const lfCount = id <= 3 ? 3 : id <= 6 ? 5 : 7
 
@@ -660,7 +670,7 @@ export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp,
     return () => sub.remove()
   }, [])
 
-  const animEnabled = animate && !frozen && !dead && !reduced && appActive
+  const animEnabled = animate && !simplified && !frozen && !dead && !reduced && appActive
 
   const stateFilter = frozen ? `url(#sfFrozen${uid})` : dead ? `url(#sfDead${uid})` : undefined
 
@@ -671,8 +681,8 @@ export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp,
       {/* All tree content wrapped in state filter; overlays rendered above without filter */}
       <G filter={stateFilter}>
 
-      {/* Layer 0: breathing aura (stage 6+) */}
-      {id >= 6 && (
+      {/* Layer 0: breathing aura (stage 6+) — dropped in badge mode */}
+      {id >= 6 && !simplified && (
         <BreathingAura
           cx={CX}
           cy={f(GY - id*9 - 40)}
@@ -684,8 +694,8 @@ export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp,
         />
       )}
 
-      {/* Celestial halo sparkle ring (stages 9-10) */}
-      {id >= 9 && (
+      {/* Celestial halo sparkle ring (stages 9-10) — dropped in badge mode */}
+      {id >= 9 && !simplified && (
         <SpinHalo id={id} enabled={animEnabled}>
           <G transform={`translate(${CX} ${id === 10 ? 160 : 190})`} opacity={0.45}>
             <Sparkles
@@ -697,11 +707,11 @@ export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp,
       )}
 
       {/* Stage 1: seed */}
-      {id === 1 ? <Seed uid={uid} /> : geom && (
+      {id === 1 ? <Seed uid={uid} simplified={simplified} /> : geom && (
         <>
-          <Ground uid={uid} glowy={id <= 3} />
+          <Ground uid={uid} glowy={id <= 3 && !simplified} />
 
-          {id <= 7 && (
+          {id <= 7 && !simplified && (
             <G>
               <G transform={`translate(0 ${300 - id*8})`}>
                 <Path d="M40 0 q40 -8 80 0" stroke={pal.rim} strokeWidth={2} fill="none" opacity={0.38} />
@@ -712,28 +722,28 @@ export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp,
             </G>
           )}
 
-          {/* Layer 3: sway group — trunk + canopy + canopy decorations */}
+          {/* Layer 3: sway group — trunk + canopy (+ canopy decorations, dropped in badge mode) */}
           <SwayGroup dur={geom.swayDur} amt={geom.swayAmt} enabled={animEnabled}>
-            {id === 8 && <Runes x={CX} by={geom.trunk.by} h={geom.trunk.h} />}
+            {id === 8 && !simplified && <Runes x={CX} by={geom.trunk.by} h={geom.trunk.h} />}
             <Trunk uid={uid} t={geom.trunk} />
             <Canopy lobes={geom.lobes} pal={pal} opacity={dead ? 0.55 : 1} />
 
-            {!dead && id === 5 && (
+            {!dead && !simplified && id === 5 && (
               <>
                 <Dots seed={id}   lobes={geom.lobes} fill="#ffe39a" n={8} />
                 <Dots seed={id+1} lobes={geom.lobes} fill="#ffd0e6" n={5} />
               </>
             )}
-            {!dead && id === 6  && <Dots seed={id} lobes={geom.lobes} fill="#bff0ff" n={12} />}
-            {!dead && id === 7  && <Blossoms seed={id} lobes={geom.lobes} n={14} />}
-            {!dead && id === 8  && <GoldLeaves seed={id} lobes={geom.lobes} n={16} />}
-            {!dead && id === 9  && (
+            {!dead && !simplified && id === 6  && <Dots seed={id} lobes={geom.lobes} fill="#bff0ff" n={12} />}
+            {!dead && !simplified && id === 7  && <Blossoms seed={id} lobes={geom.lobes} n={14} />}
+            {!dead && !simplified && id === 8  && <GoldLeaves seed={id} lobes={geom.lobes} n={16} />}
+            {!dead && !simplified && id === 9  && (
               <>
                 <Dots seed={id}   lobes={geom.lobes} fill="#d7c6ff" n={14} />
                 <Dots seed={id+2} lobes={geom.lobes} fill="#bfe6ff" n={8} />
               </>
             )}
-            {!dead && id === 10 && (
+            {!dead && !simplified && id === 10 && (
               <>
                 <GoldLeaves seed={id} lobes={geom.lobes} n={18} />
                 <Dots seed={id} lobes={geom.lobes} fill="#bfe6ff" n={14} />
@@ -741,11 +751,11 @@ export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp,
             )}
           </SwayGroup>
 
-          {/* Layer 5a: floating leaves */}
-          <AnimatedLeaves seed={id} n={lfCount} fill={pal.mid} enabled={animEnabled} />
+          {/* Layer 5a: floating leaves — dropped in badge mode */}
+          {!simplified && <AnimatedLeaves seed={id} n={lfCount} fill={pal.mid} enabled={animEnabled} />}
 
-          {/* Stage 7: butterflies */}
-          {id === 7 && !dead && (
+          {/* Stage 7: butterflies — dropped in badge mode */}
+          {id === 7 && !dead && !simplified && (
             <>
               <AnimatedButterfly x={118} y={200} fill="#ff9ecb" delay={0}   dur={8.5} enabled={animEnabled} />
               <AnimatedButterfly x={210} y={168} fill="#ffc6e4" delay={3.2} dur={9.0} enabled={animEnabled} />
@@ -753,8 +763,8 @@ export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp,
             </>
           )}
 
-          {/* Layer 5b: rising particles */}
-          {!dead && id >= 9 ? (
+          {/* Layer 5b: rising particles — dropped entirely in badge mode */}
+          {simplified ? null : !dead && id >= 9 ? (
             <>
               <AnimatedParticles
                 seed={id}

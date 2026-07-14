@@ -11,17 +11,19 @@ import ViewShot from 'react-native-view-shot'
 import * as Sharing from 'expo-sharing'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { streaks as streaksApi } from '../../lib/api'
-import type { StreakDetail, StreakCalendarDay } from '../../lib/api'
+import { streaks as streaksApi, focusStages } from '../../lib/api'
+import type { StreakDetail, StreakCalendarDay, StreakStage } from '../../lib/api'
 import { FreezeSheet } from '../../components/streak/FreezeSheet'
 import { StreakLostModal } from '../../components/streak/StreakLostModal'
 import { EvolutionModal } from '../../components/streak/EvolutionModal'
 import { MagicTree } from '../../components/streak/MagicTree'
 import { StreakHeroBackground } from '../../components/streak/StreakHeroBackground'
+import { StagesPath } from '../../components/streak/StagesPath'
 import { stageFromStreak, TREE_STAGES } from '../../lib/treeTheme'
 import type { TreeState, StageNumber } from '../../lib/treeTheme'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
+import { useStreakStagesStore } from '../../stores/streakStagesStore'
 import { syncWidget } from '../../lib/syncWidget'
 
 let Haptics: any = null
@@ -31,14 +33,15 @@ try { Haptics = require('expo-haptics') } catch {}
 
 const WEEKDAY_LABELS = ['Du', 'Se', 'Cho', 'Pa', 'Ju', 'Sh', 'Ya']
 
+// General (non-stage) XP sources — the streak-stage bonuses are no longer
+// listed here as static rows; they're rendered live from the server by
+// <StagesPath> below (see "Bosqichlar" section), which shows each user's
+// actual earned/current/future status instead of the same 4 rows for
+// everyone regardless of progress.
 const XP_ROWS = [
   { label: '⏱ Fokus taymer',      value: '1.66 XP/daq', sub: '≈ 100 XP / soat' },
   { label: '📝 Test topshirish',   value: '+25 XP',      sub: 'Kunlik limit: 100 XP' },
   { label: '🎓 Kurs tugatish',     value: '+200 XP',     sub: 'Bir marta, har kurs' },
-  { label: '🔥 7 kunlik seriya',   value: '+50 XP',      sub: 'Bonus' },
-  { label: '⚡ 14 kunlik seriya',  value: '+120 XP',     sub: 'Bonus' },
-  { label: '🏆 30 kunlik seriya',  value: '+300 XP',     sub: 'Bonus' },
-  { label: '👑 100 kunlik seriya', value: '+1000 XP',    sub: 'Afsonaviy bonus' },
 ]
 
 // ── Calendar colours ─────────────────────────────────────────────────────────
@@ -238,6 +241,8 @@ export default function StreakDetailScreen() {
   const [prevStreakDays, setPrevStreakDays] = useState(0)
   const [showEvolution,  setShowEvolution]  = useState(false)
   const [evolutionStage, setEvolutionStage] = useState<StageNumber>(1)
+  const [evolutionXp,    setEvolutionXp]    = useState(0)
+  const [stages,         setStages]         = useState<StreakStage[]>([])
   const hasShownLostRef    = useRef(false)
   const prevStageRef       = useRef<number>(
     stageFromStreak(dashData?.focusStats.streak_days ?? user?.streak_days ?? 0)
@@ -273,10 +278,14 @@ export default function StreakDetailScreen() {
     setLoadError(null)
     try {
       const telegramId = useAuthStore.getState().user?.telegram_id
-      const res = await streaksApi.detail(telegramId, calDaysRef.current)
+      const [res, stageRows] = await Promise.all([
+        streaksApi.detail(telegramId, calDaysRef.current),
+        focusStages.stages(),
+      ])
       // A newer load() has already started — discard this stale response
       if (gen !== loadGenRef.current) return
       setLocalFreeze(res.freeze_count)
+      setStages(stageRows)
       // Show streak-lost modal once per session when streak is broken.
       // Skip if the home screen already showed it (streakLostSeen in dashboardStore).
       const alreadyShown = useDashboardStore.getState().streakLostSeen
@@ -294,6 +303,7 @@ export default function StreakDetailScreen() {
         if (newStage > prevStageRef.current) {
           prevStageRef.current = newStage
           setEvolutionStage(newStage as StageNumber)
+          setEvolutionXp(stageRows.find(s => s.stage_number === newStage)?.bonus_xp ?? 0)
           setTimeout(() => setShowEvolution(true), 400)
         } else {
           prevStageRef.current = newStage
@@ -714,6 +724,14 @@ export default function StreakDetailScreen() {
           </View>
         </View>
 
+        {/* ── Bosqichlar (stage path) ──────────────────────────────────── */}
+        <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+          <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+            🌳 Bosqichlar
+          </Text>
+          <StagesPath stages={stages} />
+        </View>
+
         {/* ── XP breakdown ─────────────────────────────────────────────── */}
         <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
           <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
@@ -769,6 +787,7 @@ export default function StreakDetailScreen() {
       <EvolutionModal
         visible={showEvolution}
         toStage={evolutionStage}
+        bonusXp={evolutionXp}
         onClose={() => setShowEvolution(false)}
       />
 

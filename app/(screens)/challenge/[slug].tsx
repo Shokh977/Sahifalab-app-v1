@@ -1,27 +1,23 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { ChevronLeft, Users, Clock, Trophy, Timer, Award } from 'lucide-react-native'
+import { ChevronLeft, Users, Trophy, Timer, Award } from 'lucide-react-native'
 import { Image } from 'expo-image'
 import { useTheme } from '../../../hooks/useTheme'
 import { typography, spacing, radius } from '../../../lib/constants'
-import { challenges as challengesApi, type ChallengeDetail } from '../../../lib/api'
+import { challenges as challengesApi, type ChallengeDetail, type TeamLeaderboard } from '../../../lib/api'
 import { useAuthStore } from '../../../stores/authStore'
-
-function daysLeft(iso: string): number {
-  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000))
-}
-function daysUntil(iso: string): number {
-  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000))
-}
-function fmtHours(minutes: number): string {
-  const h = minutes / 60
-  return h % 1 === 0 ? `${h}` : h.toFixed(1)
-}
+import {
+  daysLeft, daysUntil, fmtMetricValue, fmtMetricGoal, paceHint,
+  percentileFraming, computePercentile, teamStandingLine,
+  metricCtaRoute, metricCtaLabel, challengeGoalText, metricRuleText,
+} from '../../../lib/challenges'
+import { ConsistencyDayDots, type DayDotState } from '../../../components/study/ConsistencyDayDots'
+import { TeamHeadToHeadBar } from '../../../components/study/TeamHeadToHeadBar'
 
 export default function ChallengeDetailScreen() {
   const { c }    = useTheme()
@@ -34,6 +30,7 @@ export default function ChallengeDetailScreen() {
   const [loading, setLoading]     = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [joining, setJoining]     = useState(false)
+  const [teamLb, setTeamLb]       = useState<TeamLeaderboard | null>(null)
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true)
@@ -49,6 +46,12 @@ export default function ChallengeDetailScreen() {
   }, [slug])
 
   useFocusEffect(useCallback(() => { load() }, [load]))
+
+  useEffect(() => {
+    if (data?.challenge_type === 'team' && data.joined) {
+      challengesApi.teamLeaderboard(data.id).then(setTeamLb).catch(() => {})
+    }
+  }, [data?.id, data?.challenge_type, data?.joined])
 
   async function handleJoin() {
     if (!data) return
@@ -77,22 +80,16 @@ export default function ChallengeDetailScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtnAlone} hitSlop={12}>
           <ChevronLeft size={24} color={c.textPrimary} />
         </Pressable>
-        <Text style={{ color: c.textMuted, fontFamily: typography.fontFamily.regular }}>Musobaqa topilmadi</Text>
+        <Text style={{ color: c.textMuted, fontFamily: typography.fontFamily.regular }}>Bellashuv topilmadi</Text>
       </View>
     )
   }
 
-  const pct = Math.min(100, Math.round((data.progress_value / data.target_value) * 100))
-  const paceHint = data.joined && data.status === 'active' && !data.completed_at
-    ? (() => {
-        const remainingMinutes = Math.max(0, data.target_value - data.progress_value)
-        const remainingDays = Math.max(1, daysLeft(data.ends_at))
-        const perDay = Math.round(remainingMinutes / remainingDays)
-        return perDay > 0 ? `Kuniga ~${perDay} daqiqa — yetib borasiz!` : null
-      })()
-    : null
-
+  const target = data.target_value ?? 0
+  const pct = target > 0 ? Math.min(100, Math.round((data.progress_value / target) * 100)) : 0
+  const showCumulativeProgress = data.joined && data.status === 'active' && !data.completed_at && data.challenge_type === 'cumulative'
   const callerInLeaderboard = data.leaderboard.some(l => l.user_id === myId)
+  const percentile = computePercentile(data.rank, data.participant_count)
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
@@ -143,81 +140,184 @@ export default function ChallengeDetailScreen() {
           {/* ── The goal, stated plainly ─────────────────────────────────── */}
           <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
             <Text style={[styles.goalText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-              {Math.round((new Date(data.ends_at).getTime() - new Date(data.starts_at).getTime()) / 86_400_000)} kun ichida {fmtHours(data.target_value)} soat fokus
+              {challengeGoalText(data)}
             </Text>
             <Text style={[styles.metricRule, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-              Faqat fokus taymer vaqti hisoblanadi.
+              {metricRuleText(data.metric)}
             </Text>
           </View>
 
-          {/* ── Your progress ──────────────────────────────────────────── */}
-          {data.joined && (
+          {/* ── Your progress — body differs by type (step-25) ───────────── */}
+          {data.joined && data.challenge_type === 'team' && (
+            <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+              <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                Guruhlar jangi
+              </Text>
+              <TeamHeadToHeadBar
+                teamAName={data.team_a_name ?? 'Guruh A'} teamAColor={data.team_a_color ?? '#F5A623'} teamATotal={data.team_a_total}
+                teamBName={data.team_b_name ?? 'Guruh B'} teamBColor={data.team_b_color ?? '#5AC8FA'} teamBTotal={data.team_b_total}
+                fmtValue={v => fmtMetricGoal(v, data.metric)}
+              />
+              <Text style={[styles.progressPct, { color: c.textPrimary, fontFamily: typography.fontFamily.medium, alignSelf: 'flex-start', marginTop: spacing.xs }]}>
+                Sizning hissangiz: {fmtMetricGoal(data.progress_value, data.metric)}
+              </Text>
+              {!data.completed_at && (
+                <Text style={[styles.paceHint, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                  {teamStandingLine(
+                    data.team === 'A' ? data.team_a_total : data.team_b_total,
+                    data.team === 'A' ? data.team_b_total : data.team_a_total,
+                    data.metric,
+                  )}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {data.joined && data.challenge_type === 'consistency' && (
+            <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+              <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                Sizning seriyangiz
+              </Text>
+              <ConsistencyDayDots
+                days={data.daily_progress.map((d): DayDotState =>
+                  d.qualified ? 'filled' : d.value > 0 ? 'grace' : 'hollow')}
+                color={data.color}
+                label={`${data.qualifying_days} / ${data.required_days ?? 0}`}
+              />
+              {data.failed_at ? (
+                <Text style={[styles.paceHint, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                  Seriya uzildi. Keyingi bellashuvda yana urinib ko'ring!
+                </Text>
+              ) : data.completed_at ? (
+                <Text style={[styles.completedText, { color: data.color, fontFamily: typography.fontFamily.semibold }]}>
+                  ✅ Seriyani yakunladingiz!
+                </Text>
+              ) : (
+                <Text style={[styles.paceHint, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                  🔥 {data.current_run} kunlik seriya · {Math.max(0, (data.allowed_misses ?? 0) - data.misses_used)} ta imkoniyat qoldi
+                </Text>
+              )}
+            </View>
+          )}
+
+          {data.joined && data.challenge_type === 'sprint' && !data.completed_at && (
+            <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+              <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                Sizning o'rningiz
+              </Text>
+              <Text style={[styles.progressBig, { color: data.color, fontFamily: typography.fontFamily.extrabold }]}>
+                {data.rank != null ? `#${data.rank}` : '—'}
+              </Text>
+              <Text style={[styles.paceHint, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                {percentileFraming(percentile)}
+              </Text>
+              {data.winner_count != null && (
+                <Text style={[styles.metricRule, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+                  🏆 Top {data.winner_count} g'olib bo'ladi
+                </Text>
+              )}
+            </View>
+          )}
+
+          {showCumulativeProgress && (
             <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
               <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
                 Sizning progressingiz
               </Text>
               <Text style={[styles.progressBig, { color: data.color, fontFamily: typography.fontFamily.extrabold }]}>
-                {fmtHours(data.progress_value)} / {fmtHours(data.target_value)} soat
+                {fmtMetricValue(data.progress_value, data.metric)} / {fmtMetricGoal(target, data.metric)}
               </Text>
               <View style={[styles.progressTrack, { backgroundColor: c.border }]}>
                 <View style={[styles.progressFill, { backgroundColor: data.color, width: `${pct}%` as any }]} />
               </View>
               <Text style={[styles.progressPct, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>{pct}%</Text>
-              {data.completed_at ? (
-                <Text style={[styles.completedText, { color: data.color, fontFamily: typography.fontFamily.semibold }]}>
-                  ✅ Yakunladingiz!
-                </Text>
-              ) : paceHint ? (
-                <Text style={[styles.paceHint, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                  {paceHint}
-                </Text>
-              ) : null}
+              <Text style={[styles.paceHint, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                {paceHint(data)}
+              </Text>
             </View>
           )}
 
-          {/* ── Leaderboard ────────────────────────────────────────────── */}
-          <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-            <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-              🏆 Reyting
-            </Text>
-            {data.leaderboard.length === 0 ? (
-              <Text style={[styles.emptyLb, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                Hali ishtirokchilar yo'q
+          {data.joined && data.completed_at && data.challenge_type === 'cumulative' && (
+            <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+              <Text style={[styles.completedText, { color: data.color, fontFamily: typography.fontFamily.semibold }]}>
+                ✅ Yakunladingiz!
               </Text>
-            ) : (
-              data.leaderboard.map(entry => (
-                <View key={entry.user_id} style={[styles.lbRow, { borderBottomColor: c.border }]}>
-                  <Text style={[styles.lbRank, { color: entry.rank <= 3 ? data.color : c.textMuted, fontFamily: typography.fontFamily.bold }]}>
-                    #{entry.rank}
-                  </Text>
-                  {entry.photo_url ? (
-                    <Image source={{ uri: entry.photo_url }} style={styles.lbAvatar} contentFit="cover" />
-                  ) : (
-                    <View style={[styles.lbAvatar, styles.lbAvatarFallback, { backgroundColor: data.color }]}>
-                      <Text style={styles.lbAvatarInitial}>{entry.first_name?.slice(0, 1).toUpperCase() ?? '?'}</Text>
+            </View>
+          )}
+
+          {/* ── Leaderboard — team challenges get within-team top contributors instead ── */}
+          {data.challenge_type === 'team' ? (
+            teamLb && (
+              <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+                <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                  🏆 Faol ishtirokchilar
+                </Text>
+                <View style={styles.teamCols}>
+                  {([['team_a', teamLb.team_a], ['team_b', teamLb.team_b]] as const).map(([key, team]) => (
+                    <View key={key} style={{ flex: 1, gap: spacing.xs }}>
+                      <Text numberOfLines={1} style={[styles.teamColHeader, { color: team.color ?? data.color, fontFamily: typography.fontFamily.bold }]}>
+                        {team.name}
+                      </Text>
+                      {team.top.map((p, i) => (
+                        <View key={p.user_id} style={styles.teamContribRow}>
+                          <Text style={[styles.teamContribRank, { color: c.textMuted }]}>#{i + 1}</Text>
+                          <Text numberOfLines={1} style={[styles.teamContribName, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}>
+                            {p.first_name}
+                          </Text>
+                          <Text style={[styles.teamContribValue, { color: c.textSecondary }]}>
+                            {fmtMetricValue(p.progress_value, data.metric)}
+                          </Text>
+                        </View>
+                      ))}
                     </View>
-                  )}
-                  <Text numberOfLines={1} style={[styles.lbName, { color: entry.user_id === myId ? data.color : c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
-                    {entry.first_name}{entry.user_id === myId ? ' (Siz)' : ''}
-                  </Text>
-                  {entry.completed_at && <Text style={styles.lbCheck}>✅</Text>}
-                  <Text style={[styles.lbHours, { color: c.textSecondary, fontFamily: typography.fontFamily.semibold }]}>
-                    {fmtHours(entry.progress_value)}s
+                  ))}
+                </View>
+              </View>
+            )
+          ) : (
+            <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+              <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                🏆 Reyting
+              </Text>
+              {data.leaderboard.length === 0 ? (
+                <Text style={[styles.emptyLb, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+                  Hali ishtirokchilar yo'q
+                </Text>
+              ) : (
+                data.leaderboard.map(entry => (
+                  <View key={entry.user_id} style={[styles.lbRow, { borderBottomColor: c.border }]}>
+                    <Text style={[styles.lbRank, { color: entry.rank <= 3 ? data.color : c.textMuted, fontFamily: typography.fontFamily.bold }]}>
+                      #{entry.rank}
+                    </Text>
+                    {entry.photo_url ? (
+                      <Image source={{ uri: entry.photo_url }} style={styles.lbAvatar} contentFit="cover" />
+                    ) : (
+                      <View style={[styles.lbAvatar, styles.lbAvatarFallback, { backgroundColor: data.color }]}>
+                        <Text style={styles.lbAvatarInitial}>{entry.first_name?.slice(0, 1).toUpperCase() ?? '?'}</Text>
+                      </View>
+                    )}
+                    <Text numberOfLines={1} style={[styles.lbName, { color: entry.user_id === myId ? data.color : c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+                      {entry.first_name}{entry.user_id === myId ? ' (Siz)' : ''}
+                    </Text>
+                    {entry.completed_at && <Text style={styles.lbCheck}>✅</Text>}
+                    <Text style={[styles.lbHours, { color: c.textSecondary, fontFamily: typography.fontFamily.semibold }]}>
+                      {fmtMetricValue(entry.progress_value, data.metric)}
+                    </Text>
+                  </View>
+                ))
+              )}
+              {/* Caller's own row pinned if outside the top slice returned */}
+              {data.joined && !callerInLeaderboard && data.rank != null && (
+                <View style={[styles.lbRow, styles.lbCallerRow, { borderTopColor: c.border, backgroundColor: data.color + '10' }]}>
+                  <Text style={[styles.lbRank, { color: data.color, fontFamily: typography.fontFamily.bold }]}>#{data.rank}</Text>
+                  <Text style={[styles.lbName, { flex: 1, color: data.color, fontFamily: typography.fontFamily.semibold }]}>Siz</Text>
+                  <Text style={[styles.lbHours, { color: data.color, fontFamily: typography.fontFamily.semibold }]}>
+                    {fmtMetricValue(data.progress_value, data.metric)}
                   </Text>
                 </View>
-              ))
-            )}
-            {/* Caller's own row pinned if outside the top slice returned */}
-            {data.joined && !callerInLeaderboard && data.rank != null && (
-              <View style={[styles.lbRow, styles.lbCallerRow, { borderTopColor: c.border, backgroundColor: data.color + '10' }]}>
-                <Text style={[styles.lbRank, { color: data.color, fontFamily: typography.fontFamily.bold }]}>#{data.rank}</Text>
-                <Text style={[styles.lbName, { flex: 1, color: data.color, fontFamily: typography.fontFamily.semibold }]}>Siz</Text>
-                <Text style={[styles.lbHours, { color: data.color, fontFamily: typography.fontFamily.semibold }]}>
-                  {fmtHours(data.progress_value)}s
-                </Text>
-              </View>
-            )}
-          </View>
+              )}
+            </View>
+          )}
 
           {/* ── Reward ─────────────────────────────────────────────────── */}
           <View style={[styles.section, styles.rewardSection, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
@@ -242,10 +342,10 @@ export default function ChallengeDetailScreen() {
             </Pressable>
           ) : data.status === 'active' && !data.completed_at ? (
             <Pressable
-              onPress={() => router.push('/(tabs)/study' as any)}
+              onPress={() => router.push(metricCtaRoute(data.metric) as any)}
               style={[styles.primaryBtn, { backgroundColor: data.color }]}
             >
-              <Text style={styles.primaryBtnText}>Fokusni boshlash</Text>
+              <Text style={styles.primaryBtnText}>{metricCtaLabel(data.metric)}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -273,7 +373,7 @@ const styles = StyleSheet.create({
   },
   statusStripText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
-  body: { padding: spacing.base, gap: spacing.sm, marginTop: -spacing.base },
+  body: { padding: spacing.base, gap: spacing.sm },
 
   participantCard: {
     alignItems: 'center', gap: 2, borderRadius: radius.xl, borderWidth: 1,
@@ -307,6 +407,13 @@ const styles = StyleSheet.create({
   lbName: { flex: 1, fontSize: 14 },
   lbCheck: { fontSize: 12 },
   lbHours: { fontSize: 13 },
+
+  teamCols: { flexDirection: 'row', gap: spacing.base },
+  teamColHeader: { fontSize: 14, marginBottom: 2 },
+  teamContribRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  teamContribRank: { fontSize: 11, width: 18 },
+  teamContribName: { fontSize: 12, flex: 1 },
+  teamContribValue: { fontSize: 11 },
 
   rewardSection: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rewardText: { flex: 1, fontSize: 14 },

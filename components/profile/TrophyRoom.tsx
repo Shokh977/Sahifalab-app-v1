@@ -13,7 +13,7 @@ interface Props {
 }
 
 const SECTIONS: Array<{ key: keyof BadgeGroups['groups']; label: string; emoji: string }> = [
-  { key: 'challenges',   label: 'Musobaqalar', emoji: '🏆' },
+  { key: 'challenges',   label: 'Bellashuv',   emoji: '🏆' },
   { key: 'stages',       label: 'Bosqichlar',  emoji: '🌳' },
   { key: 'achievements', label: 'Yutuqlar',    emoji: '🏅' },
 ]

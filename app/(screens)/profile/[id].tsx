@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react'
 import {
   View, Text, StyleSheet, ActivityIndicator, Pressable,
-  ScrollView, Modal, FlatList, Image, RefreshControl, Linking, findNodeHandle,
+  ScrollView, Modal, FlatList, Image, RefreshControl, Linking,
 } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -605,8 +605,10 @@ export default function PublicProfileScreen() {
 
   const [badges,        setBadges]        = useState<BadgeGroups | null>(null)
   const [badgesLoading, setBadgesLoading] = useState(true)
-  const scrollRef = useRef<ScrollView>(null)
-  const trophyRef = useRef<View>(null)
+  const scrollRef  = useRef<ScrollView>(null)
+  const rootRef    = useRef<View>(null)
+  const trophyRef  = useRef<View>(null)
+  const scrollYRef = useRef(0)
 
   const profileData = cache[Number(id)]?.data ?? null
   const isOwn       = !!authUser && authUser.telegram_id === Number(id)
@@ -739,9 +741,11 @@ export default function PublicProfileScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
+    <View ref={rootRef} style={[styles.root, { backgroundColor: c.bgPrimary }]}>
       <ScrollView
         ref={scrollRef}
+        onScroll={e => { scrollYRef.current = e.nativeEvent.contentOffset.y }}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.accentPrimary} />}
       >
@@ -822,14 +826,12 @@ export default function PublicProfileScreen() {
               remaining={topBadges.remaining}
               borderColor={c.bgPrimary}
               onPressMore={() => {
-                const scrollHandle = findNodeHandle(scrollRef.current)
-                if (scrollHandle && trophyRef.current) {
-                  trophyRef.current.measureLayout(
-                    scrollHandle,
-                    (_x, y) => scrollRef.current?.scrollTo({ y, animated: true }),
-                    () => {},
-                  )
-                }
+                trophyRef.current?.measure((_x, _y, _w, _h, pageX, targetPageY) => {
+                  rootRef.current?.measure((_x2, _y2, _w2, _h2, rootPageX, rootPageY) => {
+                    const y = scrollYRef.current + (targetPageY - rootPageY)
+                    scrollRef.current?.scrollTo({ y: Math.max(0, y - spacing.base), animated: true })
+                  })
+                })
               }}
             />
           </View>

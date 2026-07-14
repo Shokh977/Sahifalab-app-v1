@@ -276,6 +276,8 @@ export default function HomeTab() {
         {/* Contextual action chips */}
         {data && <ContextualActionRow data={data} />}
 
+        <View style={styles.gap} />
+
         {/* Musobaqalar discovery card — how challenges get found */}
         <ChallengeDashboardCard />
 
