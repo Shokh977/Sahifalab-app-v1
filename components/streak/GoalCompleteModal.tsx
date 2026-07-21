@@ -9,7 +9,8 @@ import {
 } from 'react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { TreeStage, treeStageFromStreak } from '../ui/TreeStage'
+import { MagicTree } from './MagicTree'
+import { stageFromStreak } from '../../lib/treeTheme'
 
 interface Props {
   visible:    boolean
@@ -32,7 +33,7 @@ export function GoalCompleteModal({ visible, streakDays, xpEarned, onClose }: Pr
   const scaleAnim = useRef(new Animated.Value(0.7)).current
   const opacityAnim = useRef(new Animated.Value(0)).current
   const quote = QUOTES[streakDays % QUOTES.length]
-  const stage = treeStageFromStreak(streakDays)
+  const stage = stageFromStreak(streakDays)
 
   useEffect(() => {
     if (visible) {
@@ -56,8 +57,11 @@ export function GoalCompleteModal({ visible, streakDays, xpEarned, onClose }: Pr
           styles.card,
           { backgroundColor: c.bgSecondary, borderColor: c.border, transform: [{ scale: scaleAnim }] },
         ]}>
-          {/* Tree */}
-          <TreeStage stage={stage} health="healthy" size={100} />
+          {/* Tree — same MagicTree used everywhere else (streak-detail, tree-stages,
+              StagesPath), not the separate lower-fidelity ui/TreeStage illustration
+              this modal used to render, which visibly broke "this is my tree"
+              continuity at exactly this celebratory moment. */}
+          <MagicTree stage={stage} state="alive" size="card" animate={false} />
 
           {/* Title */}
           <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>

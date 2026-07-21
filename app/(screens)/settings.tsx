@@ -586,8 +586,14 @@ export default function SettingsScreen() {
     Alert.alert('Muvaffaqiyat', "Email hisobingiz bog'landi va ma'lumotlar birlashtirildi!")
   }, [refreshUser])
 
-  const syncNotif = (key: string, val: boolean) => {
-    account.saveNotifPrefs({ [key]: val }).catch(() => {})
+  const syncNotif = (key: string, val: boolean, onChange: (v: boolean) => void) => {
+    account.saveNotifPrefs({ [key]: val }).catch(() => {
+      // The toggle already flipped optimistically (below) — without this,
+      // a failed save looked identical to a successful one, so a user could
+      // believe a notification type was on when it never actually saved.
+      onChange(!val)
+      Alert.alert('Xatolik', "Sozlama saqlanmadi. Qayta urinib ko'ring.")
+    })
     if (key === 'streak') {
       const { scheduleStreakReminder, cancelStreakReminder } = require('../../lib/streakNotifications')
       if (val) scheduleStreakReminder().catch(() => {})
@@ -632,7 +638,7 @@ export default function SettingsScreen() {
           value={value}
           onValueChange={v => {
             onChange(v)
-            if (notifKey) syncNotif(notifKey, v)
+            if (notifKey) syncNotif(notifKey, v, onChange)
           }}
           trackColor={{ false: '#767577', true: `${c.accentPrimary}55` }}
           thumbColor={value ? c.accentPrimary : '#f4f3f4'}

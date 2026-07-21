@@ -15,6 +15,10 @@ import type {
 
 export const TOKEN_KEY = 'sahifalab_jwt'
 
+// No request should hang forever — a dead connection or server-side stall
+// otherwise leaves every screen's loading spinner stuck with no recovery path.
+const REQUEST_TIMEOUT_MS = 15000
+
 // Deduplicates concurrent identical GET requests — same URL returns same Promise
 const _inflight = new Map<string, Promise<any>>()
 
@@ -54,7 +58,17 @@ export async function request<T>(
       const token = await getToken()
       if (token) headers['Authorization'] = `Bearer ${token}`
     }
-    const res  = await fetch(fullUrl, { ...init, headers })
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    let res: Response
+    try {
+      res = await fetch(fullUrl, { ...init, headers, signal: controller.signal })
+    } catch (e: any) {
+      if (e?.name === 'AbortError') throw new Error('So\'rov vaqti tugadi. Qayta urinib ko\'ring.')
+      throw e
+    } finally {
+      clearTimeout(timer)
+    }
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       const message = data?.detail ?? `HTTP ${res.status}`
@@ -581,6 +595,41 @@ export const follows = {
     ),
 }
 
+// ── Block / report (trust & safety) ──────────────────────────────────────────
+// The mobile app's social layer (feed, messenger, public profiles) had no
+// block or report mechanism at all. These hit the same backend endpoints
+// already wired up for the Telegram Mini App web frontend.
+
+export type ReportReason = 'spam' | 'harassment' | 'inappropriate_content' | 'impersonation' | 'other'
+
+export const moderation = {
+  block: (targetId: number) =>
+    request<{ ok: boolean }>(
+      `/api/v1/social/users/${targetId}/block`,
+      { method: 'POST', auth: true },
+    ),
+
+  unblock: (targetId: number) =>
+    request<{ ok: boolean }>(
+      `/api/v1/social/users/${targetId}/block`,
+      { method: 'DELETE', auth: true },
+    ),
+
+  blockedUsers: () =>
+    request<{ blocked_ids: number[] }>(
+      `/api/v1/social/users/blocked`, { auth: true },
+    ),
+
+  report: (targetType: 'post' | 'user', targetId: number, reason: ReportReason, details?: string) =>
+    request<{ ok: boolean }>(
+      `/api/v1/social/reports`,
+      {
+        method: 'POST', auth: true,
+        body: JSON.stringify({ target_type: targetType, target_id: targetId, reason, details }),
+      },
+    ),
+}
+
 // ── Courses ───────────────────────────────────────────────────────────────────
 
 export interface Category {
@@ -724,7 +773,11 @@ export const lessons = {
     request<Lesson>(`/api/lessons/${lessonId}`, { auth: true }),
 
   complete: (lessonId: number) =>
-    request<{ ok: boolean; certificate_issued: boolean }>(
+    request<{
+      ok: boolean; certificate_issued: boolean
+      challenges_completed:  Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
+      challenges_progressed: Array<{ challenge_id: string; slug: string; title: string; progress_value: number; target_value: number }>
+    }>(
       `/api/lessons/${lessonId}/complete`,
       { method: 'POST', auth: true },
     ),

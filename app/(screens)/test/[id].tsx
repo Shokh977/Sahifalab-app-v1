@@ -10,6 +10,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, useAnimatedProps,
   withSpring, withTiming, withSequence, withRepeat, Easing,
 } from 'react-native-reanimated'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useTheme } from '../../../hooks/useTheme'
 import {
   tests,
@@ -17,6 +18,30 @@ import {
   type TestSubmitAnswer, type TestSubmitResult,
 } from '../../../lib/api'
 import { typography, spacing, radius } from '../../../lib/constants'
+
+// Persisted so an in-progress attempt survives the app being backgrounded or
+// killed mid-test — previously, killing the app lost all answers with no
+// resume, unlike lesson position/notes which persist continuously.
+interface PersistedTestProgress {
+  attempt:      TestAttemptStart
+  answers:      Record<number, TestSubmitAnswer>
+  currentIndex: number
+  targetEndMs:  number | null   // absolute timestamp the timer counts down to
+}
+const progressKey = (testId: number) => `sahifalab_test_progress_${testId}`
+
+async function loadPersistedProgress(testId: number): Promise<PersistedTestProgress | null> {
+  try {
+    const raw = await AsyncStorage.getItem(progressKey(testId))
+    return raw ? (JSON.parse(raw) as PersistedTestProgress) : null
+  } catch { return null }
+}
+async function savePersistedProgress(testId: number, progress: PersistedTestProgress) {
+  try { await AsyncStorage.setItem(progressKey(testId), JSON.stringify(progress)) } catch {}
+}
+async function clearPersistedProgress(testId: number) {
+  try { await AsyncStorage.removeItem(progressKey(testId)) } catch {}
+}
 
 // ── SVG lazy-require ──────────────────────────────────────────────────────────
 let Svg: any = null, SvgCircle: any = null, SvgPath: any = null
@@ -389,26 +414,60 @@ export default function TestScreen() {
   useEffect(() => { answersRef.current = answers }, [answers])
   useEffect(() => { attemptRef.current = attempt }, [attempt])
 
+  // Absolute end timestamp, not a plain counter — deriving remaining time from
+  // Date.now() vs. this (like stores/timerStore.ts already does for the focus
+  // timer) means backgrounding the app (a call, an app switch, screen lock)
+  // can't desync the countdown the way a plain setInterval decrement does.
+  const targetEndRef = useRef<number | null>(null)
+
   const progressWidth = useSharedValue(0)
   const progressStyle = useAnimatedStyle(() => ({ width: `${progressWidth.value}%` as any }))
 
-  const startTest = useCallback(() => {
+  const startTest = useCallback(async () => {
     const testId = Number(id)
     setInitError(null)
+
+    const resumable = await loadPersistedProgress(testId)
+    if (resumable) {
+      setAttempt(resumable.attempt)
+      setAnswers(resumable.answers)
+      setCurrentIndex(resumable.currentIndex)
+      autoSubmitted.current = false
+      targetEndRef.current = resumable.targetEndMs
+      if (resumable.targetEndMs) {
+        setTimerSecs(Math.max(0, Math.ceil((resumable.targetEndMs - Date.now()) / 1000)))
+      }
+      progressWidth.value = withTiming((resumable.currentIndex + 1) / resumable.attempt.questions.length * 100, { duration: 300 })
+      setPhase('taking')
+      return
+    }
+
     tests.start(testId).then(data => {
+      const targetEndMs = data.time_limit_min ? Date.now() + data.time_limit_min * 60 * 1000 : null
       setAttempt(data)
       setAnswers({})
       setCurrentIndex(0)
       autoSubmitted.current = false
+      targetEndRef.current = targetEndMs
       if (data.time_limit_min) setTimerSecs(data.time_limit_min * 60)
       progressWidth.value = withTiming(1 / data.questions.length * 100, { duration: 300 })
       setPhase('taking')
+      savePersistedProgress(testId, { attempt: data, answers: {}, currentIndex: 0, targetEndMs })
     }).catch(() => {
       setInitError("Test yuklanmadi. Qayta urinib ko'ring.")
     })
   }, [id])
 
   useEffect(() => { startTest() }, [])
+
+  // Persist answers/position as they change so an in-progress attempt
+  // survives the app being backgrounded or killed mid-test.
+  useEffect(() => {
+    if (phase !== 'taking' || !attempt) return
+    savePersistedProgress(Number(id), {
+      attempt, answers, currentIndex, targetEndMs: targetEndRef.current,
+    })
+  }, [phase, attempt, answers, currentIndex, id])
 
   const doSubmit = useCallback(async () => {
     const att = attemptRef.current
@@ -424,29 +483,32 @@ export default function TestScreen() {
       const res = await tests.submit(att.test_id, att.attempt_id, answersArr)
       setResult(res)
       setPhase('results')
+      await clearPersistedProgress(Number(id))
     } catch {
       setPhase('taking')
       Alert.alert('Xatolik', "Javoblar yuborilmadi. Qayta urinib ko'ring.")
     }
-  }, [])
+  }, [id])
 
-  // Timer countdown
+  // Timer countdown — ticks every second just to refresh the display, but the
+  // actual remaining time is always recomputed from the wall-clock target, so
+  // a throttled/paused interval while backgrounded can't cause drift; the
+  // first tick after resuming immediately shows the true elapsed time.
   useEffect(() => {
-    if (phase !== 'taking' || !attempt?.time_limit_min) return
-    timerRef.current = setInterval(() => {
-      setTimerSecs(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!)
-          timerRef.current = null
-          if (!autoSubmitted.current) {
-            autoSubmitted.current = true
-            doSubmit()
-          }
-          return 0
+    if (phase !== 'taking' || !targetEndRef.current) return
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((targetEndRef.current! - Date.now()) / 1000))
+      setTimerSecs(remaining)
+      if (remaining <= 0) {
+        clearInterval(timerRef.current!)
+        timerRef.current = null
+        if (!autoSubmitted.current) {
+          autoSubmitted.current = true
+          doSubmit()
         }
-        return prev - 1
-      })
-    }, 1000)
+      }
+    }
+    timerRef.current = setInterval(tick, 1000)
     return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null } }
   }, [phase, attempt?.time_limit_min])
 

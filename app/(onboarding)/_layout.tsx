@@ -9,7 +9,10 @@ export default function OnboardingLayout() {
         headerShown:    false,
         contentStyle:   { backgroundColor: c.bgPrimary },
         animation:      'slide_from_right',
-        gestureEnabled: false,   // no swipe-back out of onboarding
+        // Swipe-back is allowed between onboarding steps so a user can fix an
+        // earlier answer. The first screen (interests.tsx) was entered via
+        // router.replace(), so there's nothing behind it to swipe back to.
+        gestureEnabled: true,
       }}
     />
   )

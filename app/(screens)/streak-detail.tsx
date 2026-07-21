@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  ActivityIndicator, RefreshControl, Modal, Animated, Dimensions,
+  ActivityIndicator, RefreshControl, Modal, Animated, Dimensions, Platform,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -53,7 +53,7 @@ const CAL = {
 }
 
 // ── Calendar cell ─────────────────────────────────────────────────────────────
-function CalCell({
+const CalCell = React.memo(function CalCell({
   day, c, isToday, connectLeft, connectRight, wide,
 }: {
   day:          StreakCalendarDay | null
@@ -222,7 +222,7 @@ function CalCell({
       <View style={{ flex: 1 }} />
     </View>
   )
-}
+})
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function StreakDetailScreen() {
@@ -1076,7 +1076,11 @@ const styles = StyleSheet.create({
     shadowOffset:  { width: 0, height: 2 },
     shadowOpacity: 0.55,
     shadowRadius:  7,
-    elevation:     5,
+    // Android elevation forces a per-view rasterized shadow layer, recomposited
+    // every scroll frame — up to 7 of these on screen at once (7-day view) makes
+    // scrolling noticeably heavy. iOS shadows are cheap by comparison, so only
+    // Android drops it.
+    elevation:     Platform.OS === 'android' ? 0 : 5,
   },
   calCellWide: {
     aspectRatio:    1,
@@ -1168,12 +1172,16 @@ const styles = StyleSheet.create({
     shadowOffset:   { width: 0, height: 2 },
     shadowOpacity:  0.55,
     shadowRadius:   7,
-    elevation:      5,
+    // Up to 30 of these render at once in the 30-day grid — Android elevation
+    // rasterizes a shadow layer per view and recomposites it every scroll
+    // frame, which is the main source of scroll jank on this screen. iOS
+    // shadows don't have that per-frame cost, so only Android drops it.
+    elevation:      Platform.OS === 'android' ? 0 : 5,
   },
   todayGlowRing: {
     shadowOpacity: 0.9,
     shadowRadius:  10,
-    elevation:     8,
+    elevation:     Platform.OS === 'android' ? 0 : 8,
   },
 
   // Gradient cell (overflow:hidden to clip gradient corners)

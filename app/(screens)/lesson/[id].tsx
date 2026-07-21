@@ -23,6 +23,7 @@ import { lessons as lessonsApi, courses as coursesApi } from '../../../lib/api'
 import { VideoPlayer } from '../../../components/courses/VideoPlayer'
 import { typography, spacing, radius } from '../../../lib/constants'
 import type { Lesson, Course } from '../../../lib/api'
+import { ChallengeCompletionModal, type CompletedChallenge } from '../../../components/study/ChallengeCompletionModal'
 
 // ── Lazy requires ─────────────────────────────────────────────────────────────
 
@@ -512,20 +513,38 @@ export default function LessonPlayerScreen() {
   const [readingDone,      setReadingDone]      = useState(false)
   const [xpVisible,        setXpVisible]        = useState(false)
   const [pagerH,           setPagerH]           = useState(0)
+  const [completedChallenge,    setCompletedChallenge]    = useState<CompletedChallenge | null>(null)
+  const [showChallengeComplete, setShowChallengeComplete] = useState(false)
 
   const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pagerRef      = useRef<ScrollView>(null)
+  // Set by completeCurrentLesson when a challenge just completed; handleNext
+  // stashes its navigate-or-alert continuation here instead of running it
+  // immediately, so the celebration modal isn't skipped by an instant
+  // navigation to the next lesson.
+  const pendingContinueRef = useRef<(() => void) | null>(null)
+  const justCompletedChallengeRef = useRef(false)
 
   const isCompleted = lesson
     ? (progressCache[lesson.course_id]?.has(lessonId) ?? false)
     : false
 
+  // Quiz/material lessons aren't playable from this screen's Next/Prev the
+  // same way video/reading lessons are — this screen has no quiz-taking UI,
+  // so landing on one via Next/Prev rendered a placeholder while "canComplete"
+  // still defaulted true, letting a quiz get silently marked complete without
+  // ever being taken. Skip past them, matching course/[id].tsx's own
+  // isPlayableLesson filter for its prev/next.
+  const isPlayableLesson = (l: Lesson) => l.lesson_type !== 'material' && l.lesson_type !== 'quiz'
+
   const currentIndex = siblingLessons.findIndex(l => l.id === lessonId)
-  const prevLesson   = currentIndex > 0 ? siblingLessons[currentIndex - 1] : null
-  const nextLesson   = currentIndex >= 0 && currentIndex < siblingLessons.length - 1
-    ? siblingLessons[currentIndex + 1]
+  const prevLesson   = currentIndex > 0
+    ? [...siblingLessons].slice(0, currentIndex).reverse().find(isPlayableLesson) ?? null
     : null
-  const isLastLesson = currentIndex === siblingLessons.length - 1 && siblingLessons.length > 0
+  const nextLesson   = currentIndex >= 0
+    ? siblingLessons.slice(currentIndex + 1).find(isPlayableLesson) ?? null
+    : null
+  const isLastLesson = currentIndex >= 0 && !siblingLessons.slice(currentIndex + 1).some(isPlayableLesson)
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -593,9 +612,16 @@ export default function LessonPlayerScreen() {
   }, [lessonId])
 
   const handlePositionUpdate = useCallback((sec: number) => {
-    savePosition(lessonId, sec)                                    // instant local write
-    lessonsApi.saveVideoPosition(lessonId, sec).catch(() => {})   // background API sync
-  }, [lessonId])
+    savePosition(lessonId, sec)   // instant local write
+    // Background API sync — on failure, queue it the same way markComplete
+    // does, so an offline watch session's resume position isn't silently
+    // dropped instead of retried once the network is back.
+    lessonsApi.saveVideoPosition(lessonId, sec).catch(async () => {
+      if (!lesson) return
+      const { useOfflineLessonQueueStore } = await import('../../../stores/offlineLessonQueueStore')
+      await useOfflineLessonQueueStore.getState().enqueuePosition(lesson.course_id, lessonId, sec)
+    })
+  }, [lessonId, lesson])
 
   const triggerXp = useCallback(() => {
     setXpVisible(false)
@@ -604,6 +630,7 @@ export default function LessonPlayerScreen() {
 
   const completeCurrentLesson = useCallback(async (): Promise<boolean> => {
     if (!lesson || isCompleted) return true
+    justCompletedChallengeRef.current = false
     const result = await markComplete(lesson.course_id, lessonId)
     if (result.certificate_issued) {
       setCertIssued(true)
@@ -613,6 +640,12 @@ export default function LessonPlayerScreen() {
         const cert  = certs.find(c => c.course_id === lesson.course_id)
         if (cert) setCertCode(cert.certificate_id)
       } catch {}
+    }
+    if (result.challenges_completed?.length > 0) {
+      const ch = result.challenges_completed[0]
+      justCompletedChallengeRef.current = true
+      setCompletedChallenge({ slug: ch.slug, title: ch.title, reward_xp: ch.reward_xp, badge_key: ch.badge_key })
+      setShowChallengeComplete(true)
     }
     triggerXp()
     return result.certificate_issued
@@ -635,27 +668,37 @@ export default function LessonPlayerScreen() {
     setCompleting(true)
     try {
       const certNow = await completeCurrentLesson()
-      if (nextLesson) {
-        router.replace(`/(screens)/lesson/${nextLesson.id}` as any)
-      } else {
-        // Last lesson: course completion flow
-        if (certNow || certIssued) {
-          const code = certCode   // capture ref at this moment
-          Alert.alert(
-            '🎓 Kurs tugadi!',
-            'Tabriklaymiz! Barcha darslar yakunlandi va sertifikat olindingiz!',
-            [
-              { text: 'Kursga qaytish', style: 'cancel', onPress: () => router.back() },
-              ...(code ? [{ text: "Sertifikatni ko'rish →", onPress: () => router.push(`/(screens)/certificate/${code}` as any) }] : []),
-            ],
-          )
+      const proceed = () => {
+        if (nextLesson) {
+          router.replace(`/(screens)/lesson/${nextLesson.id}` as any)
         } else {
-          Alert.alert(
-            '✅ Barcha darslar tugadi!',
-            'Tabriklaymiz! Kursning barcha darslari yakunlandi.',
-            [{ text: 'Kursga qaytish', onPress: () => router.back() }],
-          )
+          // Last lesson: course completion flow
+          if (certNow || certIssued) {
+            const code = certCode   // capture ref at this moment
+            Alert.alert(
+              '🎓 Kurs tugadi!',
+              'Tabriklaymiz! Barcha darslar yakunlandi va sertifikat olindingiz!',
+              [
+                { text: 'Kursga qaytish', style: 'cancel', onPress: () => router.back() },
+                ...(code ? [{ text: "Sertifikatni ko'rish →", onPress: () => router.push(`/(screens)/certificate/${code}` as any) }] : []),
+              ],
+            )
+          } else {
+            Alert.alert(
+              '✅ Barcha darslar tugadi!',
+              'Tabriklaymiz! Kursning barcha darslari yakunlandi.',
+              [{ text: 'Kursga qaytish', onPress: () => router.back() }],
+            )
+          }
         }
+      }
+      // A challenge-completion celebration is about to show — don't let an
+      // instant navigation to the next lesson (or a stacked Alert) cut it
+      // off. Defer until the modal's onClose fires.
+      if (justCompletedChallengeRef.current) {
+        pendingContinueRef.current = proceed
+      } else {
+        proceed()
       }
     } catch (e: any) {
       Alert.alert('Xatolik', e?.message ?? 'Saqlashda xatolik')
@@ -925,6 +968,19 @@ export default function LessonPlayerScreen() {
           )}
         </View>
       </View>
+
+      <ChallengeCompletionModal
+        visible={showChallengeComplete}
+        challenge={completedChallenge}
+        onClose={() => {
+          setShowChallengeComplete(false)
+          if (pendingContinueRef.current) {
+            const proceed = pendingContinueRef.current
+            pendingContinueRef.current = null
+            proceed()
+          }
+        }}
+      />
     </View>
   )
 }

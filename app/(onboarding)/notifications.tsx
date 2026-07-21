@@ -2,9 +2,9 @@
  * Onboarding Step 3: Enable Notifications
  * Requests OS push permission, saves FCM token, then completes onboarding.
  */
-import React, { useEffect, useRef } from 'react'
+import React from 'react'
 import {
-  View, Text, StyleSheet, Pressable, BackHandler, Platform,
+  View, Text, StyleSheet, Pressable, Platform,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -18,16 +18,26 @@ import { typography, spacing, EXPO_PROJECT_ID } from '../../lib/constants'
 let Notifications: typeof import('expo-notifications') | null = null
 try { Notifications = require('expo-notifications') } catch {}
 
+function OnboardingProgress({ step, total }: { step: number; total: number }) {
+  const { c } = useTheme()
+  return (
+    <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center', marginBottom: spacing.lg }}>
+      {Array.from({ length: total }).map((_, i) => (
+        <View key={i} style={{ width: 28, height: 4, borderRadius: 2, backgroundColor: i < step ? c.accentPrimary : c.bgTertiary }} />
+      ))}
+    </View>
+  )
+}
+
 export default function NotificationsScreen() {
   const { c }              = useTheme()
   const insets             = useSafeAreaInsets()
   const router             = useRouter()
   const { completeOnboarding } = useAuthStore()
 
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true)
-    return () => sub.remove()
-  }, [])
+  // Hardware back is intentionally left enabled here (unlike interests.tsx,
+  // the first onboarding screen) so a user can go back and fix an earlier
+  // answer instead of being stuck moving only forward.
 
   const finish = async () => {
     await completeOnboarding()
@@ -64,6 +74,10 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: c.bgPrimary }]}>
+      <View style={{ paddingTop: insets.top + spacing.xl, paddingHorizontal: spacing.lg }}>
+        <OnboardingProgress step={5} total={5} />
+      </View>
+
       {/* Centered content */}
       <View style={styles.center}>
         <StreakFlame streakDays={7} size={150} />

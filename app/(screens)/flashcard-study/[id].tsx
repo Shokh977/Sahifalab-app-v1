@@ -23,7 +23,9 @@ import { useFlashcardStore } from '../../../stores/flashcardStore'
 import { useAuthStore } from '../../../stores/authStore'
 import type { Flashcard, FlashcardDeck } from '../../../lib/types'
 import { typography, spacing, radius } from '../../../lib/constants'
-import { MilestoneModal } from '../../../components/streak/MilestoneModal'
+import { EvolutionModal } from '../../../components/streak/EvolutionModal'
+import type { StageNumber } from '../../../lib/treeTheme'
+import { ChallengeCompletionModal, type CompletedChallenge } from '../../../components/study/ChallengeCompletionModal'
 
 const { width: SW } = Dimensions.get('window')
 const CARD_W = SW - 32
@@ -209,9 +211,16 @@ export default function FlashcardStudyScreen() {
   const [done,         setDone]         = useState(false)
   const [masteryBefore, setMasteryBefore] = useState(0)
   const [masteryAfter,  setMasteryAfter]  = useState(0)
+  // Reaching a tree stage is the same event streak-detail.tsx celebrates with
+  // the full EvolutionModal — using the smaller MilestoneModal here for the
+  // identical milestone made the perceived reward swing depending on which
+  // screen happened to report it.
   const [milestoneVisible,  setMilestoneVisible]  = useState(false)
-  const [milestoneDays,     setMilestoneDays]     = useState(0)
+  const [milestoneStage,    setMilestoneStage]    = useState<StageNumber>(1)
   const [milestoneBonusXp,  setMilestoneBonusXp]  = useState(0)
+  const [completedChallenge,    setCompletedChallenge]    = useState<CompletedChallenge | null>(null)
+  const [showChallengeComplete, setShowChallengeComplete] = useState(false)
+  const pendingChallengeRef = useRef<CompletedChallenge | null>(null)
 
   const startTimeRef      = useRef(Date.now())
   const cardStartRef      = useRef(Date.now())
@@ -369,11 +378,20 @@ export default function FlashcardStudyScreen() {
       }).then(result => {
         patchUser({ streak_days: result.streak_days })
         fetchDecks()
+        if (result.challenges_completed?.length > 0) {
+          const ch = result.challenges_completed[0]
+          pendingChallengeRef.current = { slug: ch.slug, title: ch.title, reward_xp: ch.reward_xp, badge_key: ch.badge_key }
+        }
         if (result.stages_completed?.length > 0) {
           const stage = result.stages_completed[0]
-          setMilestoneDays(stage.required_days)
+          setMilestoneStage(stage.stage_number as StageNumber)
           setMilestoneBonusXp(stage.bonus_xp)
           setMilestoneVisible(true)
+        } else if (pendingChallengeRef.current) {
+          const ch = pendingChallengeRef.current
+          pendingChallengeRef.current = null
+          setCompletedChallenge(ch)
+          setShowChallengeComplete(true)
         }
       }).catch(() => {})
 
@@ -422,11 +440,24 @@ export default function FlashcardStudyScreen() {
           onHome={() => router.push('/(tabs)' as any)}
           onOther={() => router.push('/(tabs)/flashcards' as any)}
         />
-        <MilestoneModal
+        <EvolutionModal
           visible={milestoneVisible}
-          days={milestoneDays}
+          toStage={milestoneStage}
           bonusXp={milestoneBonusXp}
-          onClose={() => setMilestoneVisible(false)}
+          onClose={() => {
+            setMilestoneVisible(false)
+            if (pendingChallengeRef.current) {
+              const ch = pendingChallengeRef.current
+              pendingChallengeRef.current = null
+              setCompletedChallenge(ch)
+              setShowChallengeComplete(true)
+            }
+          }}
+        />
+        <ChallengeCompletionModal
+          visible={showChallengeComplete}
+          challenge={completedChallenge}
+          onClose={() => setShowChallengeComplete(false)}
         />
       </>
     )

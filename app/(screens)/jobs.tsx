@@ -161,12 +161,14 @@ export default function JobsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [search,     setSearch]     = useState('')
   const [applying,   setApplying]   = useState<Set<number>>(new Set())
+  const [loadError,  setLoadError]  = useState(false)
   const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const load = useCallback(async (opts: { t?: TabKey; q?: string; refresh?: boolean } = {}) => {
     const { t = tab, q = search, refresh = false } = opts
     if (refresh) setRefreshing(true)
     else setLoading(true)
+    setLoadError(false)
     try {
       const params = new URLSearchParams()
       if (q.trim()) params.set('q', q.trim())
@@ -174,7 +176,12 @@ export default function JobsScreen() {
       const endpoint = t === 'matched' ? `/api/jobs/matched${qs}` : `/api/jobs${qs}`
       const data = await request<{ jobs: Job[] } | Job[]>(endpoint, { auth: true })
       setJobs(Array.isArray(data) ? data : (data as any).jobs ?? [])
-    } catch {}
+    } catch {
+      // A failed fetch previously left `jobs` at its last value (often []),
+      // rendering the same "no jobs found" empty state as a genuine empty
+      // result — indistinguishable to the user.
+      setLoadError(true)
+    }
     finally { setLoading(false); setRefreshing(false) }
   }, [tab, search])
 
@@ -285,8 +292,17 @@ export default function JobsScreen() {
             <View style={styles.empty}>
               <Briefcase size={40} color={c.textMuted} />
               <Text style={[styles.emptyText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                {tab === 'matched' ? "Ko'nikmalaringizga mos ish topilmadi" : "Ish joylari topilmadi"}
+                {loadError
+                  ? "Ish joylarini yuklab bo'lmadi. Internetni tekshiring."
+                  : tab === 'matched' ? "Ko'nikmalaringizga mos ish topilmadi" : "Ish joylari topilmadi"}
               </Text>
+              {loadError && (
+                <Pressable onPress={() => load({ refresh: true })} style={{ marginTop: spacing.sm }}>
+                  <Text style={{ color: c.brand, fontFamily: typography.fontFamily.semibold, fontSize: typography.size.sm }}>
+                    Qayta urinish
+                  </Text>
+                </Pressable>
+              )}
             </View>
           }
         />

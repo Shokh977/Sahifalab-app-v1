@@ -272,7 +272,7 @@ export function EvolutionModal({ visible, toStage, bonusXp = 0, onClose, onShare
               onPress={onClose}
             >
               <Text style={[styles.btnSecondaryText, { fontFamily: typography.fontFamily.semibold }]}>
-                ↗ Ulashish
+                Keyinroq
               </Text>
             </Pressable>
             {/* Share */}

@@ -34,7 +34,8 @@ import { MonthlyHeatmap } from '../../components/study/MonthlyHeatmap'
 import { AmbientPlayer } from '../../components/study/AmbientPlayer'
 import type { WeeklyStudyDay, HeatmapDay } from '../../lib/api'
 import { GoalCompleteModal } from '../../components/streak/GoalCompleteModal'
-import { MilestoneModal } from '../../components/streak/MilestoneModal'
+import { EvolutionModal } from '../../components/streak/EvolutionModal'
+import type { StageNumber } from '../../lib/treeTheme'
 import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
 import { ChallengeChip } from '../../components/study/ChallengeChip'
 import { ChallengeCompletionModal, type CompletedChallenge } from '../../components/study/ChallengeCompletionModal'
@@ -247,14 +248,18 @@ function TimerScreen() {
   const [showGoalModal,    setShowGoalModal]    = useState(false)
   const [goalModalStreak,  setGoalModalStreak]  = useState(0)
   const [goalModalXp,      setGoalModalXp]      = useState(0)
+  // Reaching a tree stage is the same event streak-detail.tsx celebrates with
+  // the full EvolutionModal — using the smaller MilestoneModal here for the
+  // identical milestone made the perceived reward swing depending on which
+  // screen happened to report it.
   const [showMilestone,    setShowMilestone]    = useState(false)
-  const [milestoneDay,     setMilestoneDay]     = useState(0)
+  const [milestoneStage,   setMilestoneStage]   = useState<StageNumber>(1)
   const [milestoneBonusXp, setMilestoneBonusXp] = useState(0)
   const [showChallengeComplete, setShowChallengeComplete] = useState(false)
   const [completedChallenge,    setCompletedChallenge]    = useState<CompletedChallenge | null>(null)
 
   const pendingGoalModal    = useRef(false)
-  const pendingMilestoneRef = useRef<{ days: number; bonusXp: number } | null>(null)
+  const pendingMilestoneRef = useRef<{ stage: StageNumber; bonusXp: number } | null>(null)
   const pendingChallengeRef = useRef<CompletedChallenge | null>(null)
   const dailyGoalRef        = useRef(20)
   const prevTodayMinRef     = useRef(0)
@@ -478,7 +483,7 @@ function TimerScreen() {
     if (pendingMilestoneRef.current) {
       const m = pendingMilestoneRef.current
       pendingMilestoneRef.current = null
-      setMilestoneDay(m.days)
+      setMilestoneStage(m.stage)
       setMilestoneBonusXp(m.bonusXp)
       setShowMilestone(true)
       return
@@ -531,7 +536,7 @@ function TimerScreen() {
     // Queue any milestone from this session
     if (result?.stagesCompleted && result.stagesCompleted.length > 0) {
       const stage = result.stagesCompleted[0]
-      pendingMilestoneRef.current = { days: stage.required_days, bonusXp: stage.bonus_xp }
+      pendingMilestoneRef.current = { stage: stage.stage_number as StageNumber, bonusXp: stage.bonus_xp }
     }
 
     // Queue any challenge completion from this session
@@ -853,9 +858,9 @@ function TimerScreen() {
         xpEarned={goalModalXp}
         onClose={() => { setShowGoalModal(false); setTimeout(showNextOverlay, 300) }}
       />
-      <MilestoneModal
+      <EvolutionModal
         visible={showMilestone}
-        days={milestoneDay}
+        toStage={milestoneStage}
         bonusXp={milestoneBonusXp}
         onClose={() => { setShowMilestone(false); setTimeout(showNextOverlay, 300) }}
       />

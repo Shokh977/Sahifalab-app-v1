@@ -7,7 +7,7 @@ import { Image } from 'expo-image'
 import {
   Star, MessageCircle, Repeat2, Bookmark, BadgeCheck,
   Repeat, Eye, Share2, MoreHorizontal, Pencil, Trash2,
-  Award, GraduationCap,
+  Award, GraduationCap, Flag,
 } from 'lucide-react-native'
 import { MotiView } from 'moti'
 import { useRouter } from 'expo-router'
@@ -21,6 +21,7 @@ import { LinkText } from '../ui/LinkText'
 import { typography, spacing, radius } from '../../lib/constants'
 import { ConfirmModal } from '../ui/ConfirmModal'
 import { RoleBadge } from '../ui/RoleBadge'
+import { ReportContentSheet } from '../ui/ReportContentSheet'
 import { sharePost } from '../../lib/share'
 import type { Post } from '../../lib/types'
 
@@ -118,6 +119,7 @@ function PostCardComponent({ post, onCommentPress }: Props) {
   const [editText,  setEditText]  = useState(post.content ?? '')
   const [saving2,       setSaving2]       = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showReport, setShowReport] = useState(false)
 
   const isOwner = !!user && user.telegram_id === post.author.telegram_id
 
@@ -238,36 +240,52 @@ function PostCardComponent({ post, onCommentPress }: Props) {
           <Text style={[styles.time, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
             {formatTime(post.created_at)}
           </Text>
-          {isOwner && (
-            <Pressable onPress={() => setShowMenu(true)} hitSlop={8} style={styles.menuBtn}>
-              <MoreHorizontal size={16} color={c.textMuted} />
-            </Pressable>
-          )}
+          <Pressable onPress={() => setShowMenu(true)} hitSlop={8} style={styles.menuBtn}>
+            <MoreHorizontal size={16} color={c.textMuted} />
+          </Pressable>
         </View>
       </View>
 
-      {/* Owner dropdown menu */}
+      {/* Dropdown menu — owner gets edit/delete, everyone else gets report */}
       <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
         <Pressable style={styles.menuBackdrop} onPress={() => setShowMenu(false)}>
           <View style={[styles.menuCard, { backgroundColor: c.bgSecondary, borderColor: c.borderStrong }]}>
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => { setEditText(post.content ?? ''); setIsEditing(true); setShowMenu(false) }}
-            >
-              <Pencil size={14} color={c.textSecondary} />
-              <Text style={[styles.menuItemText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                Tahrirlash
-              </Text>
-            </Pressable>
-            <Pressable style={styles.menuItem} onPress={handleDelete}>
-              <Trash2 size={14} color="#f87171" />
-              <Text style={[styles.menuItemText, { color: '#f87171', fontFamily: typography.fontFamily.regular }]}>
-                O'chirish
-              </Text>
-            </Pressable>
+            {isOwner ? (
+              <>
+                <Pressable
+                  style={styles.menuItem}
+                  onPress={() => { setEditText(post.content ?? ''); setIsEditing(true); setShowMenu(false) }}
+                >
+                  <Pencil size={14} color={c.textSecondary} />
+                  <Text style={[styles.menuItemText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                    Tahrirlash
+                  </Text>
+                </Pressable>
+                <Pressable style={styles.menuItem} onPress={handleDelete}>
+                  <Trash2 size={14} color="#f87171" />
+                  <Text style={[styles.menuItemText, { color: '#f87171', fontFamily: typography.fontFamily.regular }]}>
+                    O'chirish
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <Pressable style={styles.menuItem} onPress={() => { setShowMenu(false); setShowReport(true) }}>
+                <Flag size={14} color={c.textSecondary} />
+                <Text style={[styles.menuItemText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                  Shikoyat qilish
+                </Text>
+              </Pressable>
+            )}
           </View>
         </Pressable>
       </Modal>
+
+      <ReportContentSheet
+        visible={showReport}
+        targetType="post"
+        targetId={post.id}
+        onClose={() => setShowReport(false)}
+      />
 
       {/* Content */}
       {isEditing ? (

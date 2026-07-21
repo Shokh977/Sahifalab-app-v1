@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import {
   ArrowLeft, Wallet, TrendingDown, CheckCircle2,
-  Clock, XCircle, ChevronRight, X,
+  Clock, XCircle, ChevronRight, X, RefreshCw,
 } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { wallet as walletApi, type WalletBalance, type PayoutRequest } from '../../lib/api'
@@ -229,8 +229,10 @@ export default function TeacherEarningsScreen() {
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [showModal,  setShowModal]  = useState(false)
+  const [error,      setError]      = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    setError(null)
     try {
       const [bal, hist] = await Promise.all([
         walletApi.balance(),
@@ -238,7 +240,9 @@ export default function TeacherEarningsScreen() {
       ])
       setBalance(bal)
       setHistory(hist.history)
-    } catch {}
+    } catch (e: any) {
+      setError(e?.message ?? 'Xatolik yuz berdi')
+    }
     finally { setLoading(false); setRefreshing(false) }
   }, [])
 
@@ -264,6 +268,21 @@ export default function TeacherEarningsScreen() {
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={c.accentPrimary} size="large" />
+        </View>
+      ) : error ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.base, paddingHorizontal: spacing.xl }}>
+          <Text style={{ color: c.error, fontFamily: typography.fontFamily.regular, textAlign: 'center' }}>
+            {error}
+          </Text>
+          <Pressable
+            onPress={() => { setLoading(true); load() }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.md, backgroundColor: c.accentPrimary }}
+          >
+            <RefreshCw size={14} color="#fff" />
+            <Text style={{ color: '#fff', fontFamily: typography.fontFamily.semibold, fontSize: typography.size.sm }}>
+              Qayta urinish
+            </Text>
+          </Pressable>
         </View>
       ) : (
         <ScrollView

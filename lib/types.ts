@@ -296,4 +296,6 @@ export interface CompleteSessionResult {
   streak_days:       number
   goal_met:          boolean
   stages_completed:  Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number }>
+  challenges_completed:  Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
+  challenges_progressed: Array<{ challenge_id: string; slug: string; title: string; progress_value: number; target_value: number }>
 }

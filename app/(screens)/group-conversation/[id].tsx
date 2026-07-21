@@ -72,22 +72,31 @@ export default function GroupConversationScreen() {
 
   const myId = useAuthStore(s => s.user?.telegram_id ?? 0)
 
-  const { groupMessages, groupsLoading, loadGroupMessages, sendGroupMessage } =
+  const { groupMessages, groupsLoading, loadGroupMessages, sendGroupMessage, subscribeGroupRealtime } =
     useMessagingStore(useShallow(s => ({
       groupMessages:    s.groupMessages,
       groupsLoading:    s.groupsLoading,
       loadGroupMessages: s.loadGroupMessages,
       sendGroupMessage:  s.sendGroupMessage,
+      subscribeGroupRealtime: s.subscribeGroupRealtime,
     })))
 
   const [draft,   setDraft]   = useState('')
   const [sending, setSending] = useState(false)
+  const [error,   setError]   = useState<string | null>(null)
   const listRef = useRef<FlatList>(null)
 
   const msgs = groupMessages[groupId] ?? []
   const isLoading = groupsLoading && msgs.length === 0
 
   useEffect(() => { loadGroupMessages(groupId) }, [groupId])
+
+  // Group chat previously had no realtime subscription at all (unlike 1:1
+  // DMs) — members only saw new messages by leaving and reopening the screen.
+  useEffect(() => {
+    if (!myId || !groupId) return
+    return subscribeGroupRealtime(groupId, myId)
+  }, [groupId, myId])
 
   useEffect(() => {
     if (msgs.length > 0) {
@@ -100,8 +109,14 @@ export default function GroupConversationScreen() {
     if (!text || sending) return
     setDraft('')
     setSending(true)
-    try { await sendGroupMessage(groupId, text) }
-    finally { setSending(false) }
+    setError(null)
+    try {
+      await sendGroupMessage(groupId, text)
+    } catch {
+      setError('Xabar yuborilmadi. Qayta urining.')
+    } finally {
+      setSending(false)
+    }
   }, [draft, sending, groupId])
 
   const renderItem = useCallback(({ item }: { item: GroupMessage }) => (
@@ -153,6 +168,12 @@ export default function GroupConversationScreen() {
           />
         )}
 
+        {error && (
+          <View style={[styles.errorBar, { backgroundColor: '#ef4444' }]}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
         {/* Input bar */}
         <View style={[styles.inputBar, { backgroundColor: c.bgSecondary, borderTopColor: c.border }]}>
           <TextInput
@@ -195,6 +216,8 @@ const styles = StyleSheet.create({
   headerName:   { fontSize: typography.size.base },
   center:       { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent:  { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, flexGrow: 1 },
+  errorBar:  { padding: spacing.sm, alignItems: 'center' },
+  errorText: { color: '#fff', fontSize: typography.size.sm },
   bubbleOuter:      { marginVertical: 4, flexDirection: 'row', gap: spacing.xs, alignItems: 'flex-end' },
   bubbleOuterMine:  { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
   bubbleOuterTheirs:{ alignSelf: 'flex-start' },

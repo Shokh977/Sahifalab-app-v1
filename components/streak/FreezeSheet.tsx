@@ -65,7 +65,6 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
     }
   }, [visible])
 
-  const PURCHASE_ENABLED = true
   // Mirrors the server-side cap (streaks.py MAX_FREEZE_COUNT) — kept here
   // only for a friendlier pre-purchase UI; the server is the actual guard.
   const MAX_FREEZE_COUNT = 5
@@ -73,7 +72,7 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
   const selectedPkg = packages.find(p => p.count === selected)
   const canAfford   = selectedPkg ? currentXp >= selectedPkg.xp_cost : true
   const fitsCap     = selectedPkg ? freezeCount + selectedPkg.count <= MAX_FREEZE_COUNT : true
-  const btnDisabled = !PURCHASE_ENABLED || !selected || !canAfford || !fitsCap || loading
+  const btnDisabled = !selected || !canAfford || !fitsCap || loading
 
   async function handlePurchase() {
     if (btnDisabled) return
@@ -215,15 +214,6 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
             </Text>
           )}
 
-          {/* Coming-soon notice */}
-          {!PURCHASE_ENABLED && (
-            <View style={[styles.comingSoon, { backgroundColor: '#f59e0b18', borderColor: '#f59e0b44' }]}>
-              <Text style={[styles.comingSoonText, { color: '#f59e0b', fontFamily: typography.fontFamily.medium }]}>
-                🚧 Sotib olish tez orada ishga tushadi
-              </Text>
-            </View>
-          )}
-
           {/* Purchase button */}
           <Pressable
             style={[styles.buyBtn, { backgroundColor: btnDisabled ? c.bgTertiary : '#60a5fa' }]}
@@ -234,11 +224,9 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
               ? <ActivityIndicator color="#fff" />
               : (
                 <Text style={[styles.buyBtnText, { color: btnDisabled ? c.textMuted : '#fff', fontFamily: typography.fontFamily.bold }]}>
-                  {!PURCHASE_ENABLED
-                    ? 'Tez orada...'
-                    : selected
-                      ? `${selected} freeze sotib olish — ${selectedPkg?.xp_cost} XP`
-                      : 'Paket tanlang'}
+                  {selected
+                    ? `${selected} freeze sotib olish — ${selectedPkg?.xp_cost} XP`
+                    : 'Paket tanlang'}
                 </Text>
               )
             }
@@ -332,15 +320,6 @@ const styles = StyleSheet.create({
   pkgCost:  { fontSize: typography.size.xs },
 
   errorText: { fontSize: typography.size.xs, textAlign: 'center' },
-
-  comingSoon: {
-    borderRadius:      radius.lg,
-    borderWidth:       1,
-    paddingVertical:   spacing.xs,
-    paddingHorizontal: spacing.sm,
-    alignItems:        'center' as const,
-  },
-  comingSoonText: { fontSize: typography.size.xs },
 
   buyBtn: {
     paddingVertical: spacing.md,

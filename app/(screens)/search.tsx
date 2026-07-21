@@ -211,7 +211,7 @@ export default function SearchScreen() {
       <Pressable
         key={item.id}
         style={[styles.resultRow, { borderBottomColor: c.border }]}
-        onPress={() => { saveToHistory(query); router.push(`/profile/${item.id}` as any) }}
+        onPress={() => { saveToHistory(query); router.push(`/(screens)/profile/${item.id}` as any) }}
       >
         <Avatar uri={item.avatar_url} name={item.name} />
         <View style={styles.resultInfo}>
@@ -243,7 +243,7 @@ export default function SearchScreen() {
       <Pressable
         key={item.id}
         style={[styles.resultRow, { borderBottomColor: c.border }]}
-        onPress={() => { saveToHistory(query); router.push(`/course/${item.id}` as any) }}
+        onPress={() => { saveToHistory(query); router.push(`/(screens)/course/${item.id}` as any) }}
       >
         {item.thumbnail_url
           ? <Image source={{ uri: item.thumbnail_url }} style={styles.courseCover} />

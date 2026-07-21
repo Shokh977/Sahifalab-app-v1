@@ -92,6 +92,8 @@ export default function InterestsScreen() {
   const [selected,   setSelected]   = useState<Set<number>>(new Set())
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
+  const [loadError,  setLoadError]  = useState(false)
+  const [saveError,  setSaveError]  = useState(false)
 
   // Disable hardware back
   useEffect(() => {
@@ -99,12 +101,19 @@ export default function InterestsScreen() {
     return () => sub.remove()
   }, [])
 
-  useEffect(() => {
+  const loadCategories = () => {
+    setLoading(true)
+    setLoadError(false)
     coursesApi.getCategories()
       .then(cats => setCategories(cats))
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  // If this fetch fails with no retry, the user is stuck forever: hardware
+  // back is disabled above and the CTA below requires 3+ categories that
+  // never arrived. Always give a way forward.
+  useEffect(() => { loadCategories() }, [])
 
   const toggle = (id: number) => {
     setSelected(prev => {
@@ -119,13 +128,19 @@ export default function InterestsScreen() {
   const handleContinue = async () => {
     if (!canContinue || saving) return
     setSaving(true)
+    setSaveError(false)
     const ids = [...selected]
-    await Promise.all([
-      onboarding.saveInterests(ids),
-      AsyncStorage.setItem(INTERESTS_STORAGE_KEY, JSON.stringify(ids)),
-    ])
-    setSaving(false)
-    router.push('/(onboarding)/experience' as any)
+    try {
+      await Promise.all([
+        onboarding.saveInterests(ids),
+        AsyncStorage.setItem(INTERESTS_STORAGE_KEY, JSON.stringify(ids)),
+      ])
+      router.push('/(onboarding)/experience' as any)
+    } catch {
+      setSaveError(true)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const counterText = `${selected.size} ta tanlandi`
@@ -147,6 +162,20 @@ export default function InterestsScreen() {
       {loading ? (
         <View style={styles.loader}>
           <ActivityIndicator color={c.accentPrimary} size="large" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.loader}>
+          <Text style={{ color: c.textSecondary, fontFamily: typography.fontFamily.regular, textAlign: 'center', paddingHorizontal: spacing.xl, marginBottom: spacing.base }}>
+            Kategoriyalarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.
+          </Text>
+          <Pressable
+            onPress={loadCategories}
+            style={({ pressed }) => [styles.cta, { backgroundColor: c.accentPrimary, paddingHorizontal: spacing.xl, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Text style={[styles.ctaLabel, { color: c.textInverse, fontFamily: typography.fontFamily.semibold }]}>
+              Qayta urinish
+            </Text>
+          </Pressable>
         </View>
       ) : (
         <ScrollView
@@ -187,7 +216,7 @@ export default function InterestsScreen() {
             },
           ]}
         >
-          {counterText}
+          {saveError ? "Saqlab bo'lmadi. Qayta urinib ko'ring." : counterText}
         </Text>
         <Pressable
           onPress={handleContinue}

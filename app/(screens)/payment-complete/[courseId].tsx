@@ -18,21 +18,33 @@ export default function PaymentCompleteScreen() {
   const [status, setStatus] = useState<Status>('loading')
   const [course, setCourse]  = useState<Course | null>(null)
 
-  useEffect(() => {
+  // The payment webhook that flips enrollment to "paid" can lag a few seconds
+  // behind the client returning here — checking exactly once would show a
+  // false "payment failed" screen for money that was actually charged. Poll
+  // a handful of times before concluding it really failed.
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+  const check = async () => {
     if (!courseId) { setStatus('error'); return }
-    ;(async () => {
-      try {
-        const [check, courseData] = await Promise.all([
-          enrollments.check(Number(courseId)),
-          courses.get(Number(courseId)),
-        ])
-        setCourse(courseData)
-        setStatus(check.enrolled ? 'success' : 'error')
-      } catch {
-        setStatus('error')
+    setStatus('loading')
+    try {
+      const courseData = await courses.get(Number(courseId))
+      setCourse(courseData)
+
+      const MAX_ATTEMPTS = 6
+      const DELAY_MS = 5000
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const result = await enrollments.check(Number(courseId))
+        if (result.enrolled) { setStatus('success'); return }
+        if (attempt < MAX_ATTEMPTS - 1) await sleep(DELAY_MS)
       }
-    })()
-  }, [courseId])
+      setStatus('error')
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  useEffect(() => { check() }, [courseId])
 
   return (
     <View style={[styles.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
@@ -43,7 +55,7 @@ export default function PaymentCompleteScreen() {
           <>
             <ActivityIndicator size="large" color={c.accentPrimary} />
             <Text style={[styles.label, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-              To'lov tekshirilmoqda…
+              To'lov tasdiqlanmoqda, biroz kuting…
             </Text>
           </>
         )}
@@ -84,8 +96,13 @@ export default function PaymentCompleteScreen() {
             <Text style={[styles.label, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
               To'lov tasdiqlanmadi. Qaytadan urinib ko'ring yoki qo'llab-quvvatlash xizmatiga murojaat qiling.
             </Text>
-            <Pressable onPress={() => router.back()} style={[styles.btn, { backgroundColor: c.bgTertiary }]}>
-              <Text style={[styles.btnText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+            <Pressable onPress={check} style={[styles.btn, { backgroundColor: c.accentPrimary }]}>
+              <Text style={[styles.btnText, { color: c.textInverse, fontFamily: typography.fontFamily.semibold }]}>
+                Qayta tekshirish
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => router.back()} style={styles.link}>
+              <Text style={[styles.linkText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
                 Orqaga
               </Text>
             </Pressable>

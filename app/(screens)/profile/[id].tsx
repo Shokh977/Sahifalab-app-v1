@@ -9,18 +9,19 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   ArrowLeft, Share2, X, BarChart2,
   GraduationCap, Globe, Play, BookOpen,
-  Users, Star, Clock, ChevronRight,
+  Users, Star, Clock, ChevronRight, MoreHorizontal, Flag, Ban,
 } from 'lucide-react-native'
 import { RoleBadge } from '../../../components/ui/RoleBadge'
 import { useTheme } from '../../../hooks/useTheme'
 import { shareProfile } from '../../../lib/share'
 import { useAuthStore } from '../../../stores/authStore'
 import { useProfileStore } from '../../../stores/profileStore'
-import { profile as profileApi, follows, courses as coursesApi, type SocialUser, type MutualUser, type Course } from '../../../lib/api'
+import { profile as profileApi, follows, moderation, courses as coursesApi, type SocialUser, type MutualUser, type Course } from '../../../lib/api'
 import { Avatar } from '../../../components/ui/Avatar'
 import { HeroLevelCard } from '../../../components/profile/HeroLevelCard'
 import { CompareModal, type CompareUser } from '../../../components/profile/CompareModal'
 import { ConfirmModal } from '../../../components/ui/ConfirmModal'
+import { ReportContentSheet } from '../../../components/ui/ReportContentSheet'
 import { TrophyRoom } from '../../../components/profile/TrophyRoom'
 import { BadgeHeaderRow } from '../../../components/profile/BadgeHeaderRow'
 import { pickTopBadges } from '../../../lib/badges'
@@ -592,6 +593,11 @@ export default function PublicProfileScreen() {
     type: 'followers', visible: false,
   })
   const [showUnfollowConfirm, setShowUnfollowConfirm] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [showReport,   setShowReport]   = useState(false)
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false)
+  const [blocked, setBlocked] = useState(false)
+  const [blocking, setBlocking] = useState(false)
 
   // Teacher-specific state
   const [teacherData,       setTeacherData]       = useState<TeacherProfileData | null>(null)
@@ -696,6 +702,17 @@ export default function PublicProfileScreen() {
     setFollowLoading(false)
   }, [profileData, patchCachedStatus])
 
+  const doBlock = useCallback(async () => {
+    if (!profileData) return
+    setBlocking(true)
+    try {
+      await moderation.block(profileData.telegram_id)
+      setBlocked(true)
+      setShowBlockConfirm(false)
+    } catch {}
+    setBlocking(false)
+  }, [profileData])
+
   const handleShare = useCallback(async () => {
     if (!profileData) return
     shareProfile({
@@ -763,6 +780,11 @@ export default function PublicProfileScreen() {
             <Pressable onPress={handleShare} hitSlop={12} style={[styles.iconBtn, { backgroundColor: c.bgTertiary }]}>
               <Share2 size={18} color={c.textSecondary} />
             </Pressable>
+            {!isOwn && (
+              <Pressable onPress={() => setShowMoreMenu(true)} hitSlop={12} style={[styles.iconBtn, { backgroundColor: c.bgTertiary, marginLeft: spacing.xs }]}>
+                <MoreHorizontal size={18} color={c.textSecondary} />
+              </Pressable>
+            )}
           </View>
 
           <View style={styles.identity}>
@@ -1008,9 +1030,65 @@ export default function PublicProfileScreen() {
         onConfirm={doUnfollow}
         onCancel={() => setShowUnfollowConfirm(false)}
       />
+
+      {/* Report / block — this profile previously had only Follow/Compare/Share,
+          no trust-and-safety options at all for a public social profile. */}
+      <Modal visible={showMoreMenu} transparent animationType="fade" onRequestClose={() => setShowMoreMenu(false)}>
+        <Pressable style={styles2.menuBackdrop} onPress={() => setShowMoreMenu(false)}>
+          <View style={[styles2.menuCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+            <Pressable style={styles2.menuItem} onPress={() => { setShowMoreMenu(false); setShowReport(true) }}>
+              <Flag size={14} color={c.textSecondary} />
+              <Text style={[styles2.menuItemText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                Shikoyat qilish
+              </Text>
+            </Pressable>
+            <Pressable style={styles2.menuItem} onPress={() => { setShowMoreMenu(false); setShowBlockConfirm(true) }}>
+              <Ban size={14} color="#f87171" />
+              <Text style={[styles2.menuItemText, { color: '#f87171', fontFamily: typography.fontFamily.regular }]}>
+                Bloklash
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <ReportContentSheet
+        visible={showReport}
+        targetType="user"
+        targetId={profileData?.telegram_id ?? 0}
+        onClose={() => setShowReport(false)}
+      />
+
+      <ConfirmModal
+        visible={showBlockConfirm}
+        emoji="🚫"
+        title="Foydalanuvchini bloklash"
+        message={`${profileData?.first_name ?? ''} bilan bir-biringizga xabar yubora olmaysiz.`}
+        confirmText={blocking ? 'Bloklanmoqda...' : 'Bloklash'}
+        cancelText="Bekor qilish"
+        danger
+        onConfirm={doBlock}
+        onCancel={() => setShowBlockConfirm(false)}
+      />
+
+      {blocked && (
+        <View style={[styles2.blockedBanner, { backgroundColor: c.bgTertiary }]}>
+          <Text style={{ color: c.textSecondary, fontFamily: typography.fontFamily.regular, fontSize: typography.size.sm }}>
+            Siz bu foydalanuvchini bloklagansiz.
+          </Text>
+        </View>
+      )}
     </View>
   )
 }
+
+const styles2 = StyleSheet.create({
+  menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 90, paddingRight: 16 },
+  menuCard:     { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, minWidth: 180, paddingVertical: 6, overflow: 'hidden' },
+  menuItem:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  menuItemText: { fontSize: typography.size.sm },
+  blockedBanner: { padding: spacing.sm, alignItems: 'center' },
+})
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 

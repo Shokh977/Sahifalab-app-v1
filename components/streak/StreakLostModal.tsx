@@ -9,7 +9,8 @@ import {
 } from 'react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { TreeStage, treeStageFromStreak } from '../ui/TreeStage'
+import { MagicTree } from './MagicTree'
+import { stageFromStreak } from '../../lib/treeTheme'
 
 interface Props {
   visible:       boolean
@@ -56,8 +57,11 @@ export function StreakLostModal({ visible, prevStreak, freezeCount, onClose, onU
           styles.card,
           { backgroundColor: c.bgSecondary, borderColor: c.border, transform: [{ scale: scaleAnim }] },
         ]}>
-          {/* Wilted tree */}
-          <TreeStage stage={treeStageFromStreak(Math.max(1, prevStreak))} health="wilting" size={100} />
+          {/* Withered tree — same MagicTree used everywhere else (streak-detail,
+              tree-stages, StagesPath), not the separate lower-fidelity ui/TreeStage
+              illustration this modal used to render, which visibly broke "this is
+              my tree" continuity at exactly this emotionally-loaded moment. */}
+          <MagicTree stage={stageFromStreak(Math.max(1, prevStreak))} state="dead" size="card" animate={false} />
 
           <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
             Seriya uzildi

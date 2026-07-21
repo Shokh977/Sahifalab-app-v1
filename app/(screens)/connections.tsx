@@ -107,10 +107,12 @@ function PersonRow({ person, onPress }: { person: PersonRow; onPress: () => void
 // ── Tab page ──────────────────────────────────────────────────────────────────
 
 function TabPage({
-  rows, loading, query, onQueryChange, onPressPerson,
+  rows, loading, error, onRetry, query, onQueryChange, onPressPerson,
 }: {
   rows:           PersonRow[]
   loading:        boolean
+  error:          boolean
+  onRetry:        () => void
   query:          string
   onQueryChange:  (q: string) => void
   onPressPerson:  (p: PersonRow) => void
@@ -156,8 +158,15 @@ function TabPage({
             <View style={styles.emptyWrap}>
               <UserCircle2 size={40} color={c.textMuted} />
               <Text style={[styles.emptyText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                {query ? 'Topilmadi' : 'Hozircha hech kim yo\'q'}
+                {error ? "Yuklab bo'lmadi. Internetni tekshiring." : query ? 'Topilmadi' : 'Hozircha hech kim yo\'q'}
               </Text>
+              {error && (
+                <Pressable onPress={onRetry} style={{ marginTop: spacing.sm }}>
+                  <Text style={{ color: c.brand, fontFamily: typography.fontFamily.semibold, fontSize: typography.size.sm }}>
+                    Qayta urinish
+                  </Text>
+                </Pressable>
+              )}
             </View>
           }
           contentContainerStyle={{ paddingBottom: 40 }}
@@ -203,11 +212,15 @@ export default function ConnectionsScreen() {
   const [loading, setLoading] = useState<Record<Tab, boolean>>({
     connections: true, followers: true, following: true,
   })
+  const [errors, setErrors] = useState<Record<Tab, boolean>>({
+    connections: false, followers: false, following: false,
+  })
   const [queries, setQueries] = useState<Record<Tab, string>>({
     connections: '', followers: '', following: '',
   })
 
   const fetchTab = useCallback(async (tab: Tab) => {
+    setErrors(prev => ({ ...prev, [tab]: false }))
     try {
       let raw: any
       if (tab === 'connections') {
@@ -221,7 +234,13 @@ export default function ConnectionsScreen() {
         ...prev,
         [tab]: normalise(raw, tab, tab === 'connections' && isOwnProfile),
       }))
-    } catch {}
+    } catch {
+      // Previously swallowed entirely, so a failed fetch rendered the same
+      // "Hozircha hech kim yo'q" empty state as a genuinely empty list —
+      // FollowListModal (same data, different screen) already distinguishes
+      // the two; this brings connections.tsx in line with it.
+      setErrors(prev => ({ ...prev, [tab]: true }))
+    }
     finally {
       setLoading(prev => ({ ...prev, [tab]: false }))
     }
@@ -315,6 +334,8 @@ export default function ConnectionsScreen() {
             key={tab.key}
             rows={rows[tab.key]}
             loading={loading[tab.key]}
+            error={errors[tab.key]}
+            onRetry={() => fetchTab(tab.key)}
             query={queries[tab.key]}
             onQueryChange={q => setQueries(prev => ({ ...prev, [tab.key]: q }))}
             onPressPerson={handlePressPerson}

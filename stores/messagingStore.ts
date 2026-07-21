@@ -35,6 +35,7 @@ interface MessagingStore {
   loadGroups:          () => Promise<void>
   loadGroupMessages:   (groupId: number) => Promise<void>
   sendGroupMessage:    (groupId: number, content: string) => Promise<void>
+  subscribeGroupRealtime: (groupId: number, myId: number) => () => void
 }
 
 const PAGE = 40
@@ -440,13 +441,43 @@ export const useMessagingStore = create<MessagingStore>((set, get) => ({
           g.id === groupId ? { ...g, last_message: content, last_message_at: real.created_at } : g
         ),
       }))
-    } catch {
+    } catch (err) {
       set(s => ({
         groupMessages: {
           ...s.groupMessages,
           [groupId]: (s.groupMessages[groupId] ?? []).filter(m => m.id !== tempId),
         },
       }))
+      // Rethrow like sendMessage (1:1 DMs) does — previously this swallowed
+      // the failure entirely, so a failed group send just silently vanished
+      // with no error shown, unlike the identical failure in a 1:1 chat.
+      throw err
     }
+  },
+
+  // Realtime for group chat — 1:1 DMs already have subscribeRealtime/
+  // subscribeConvPresence; group conversations had no equivalent at all, so
+  // members never saw anyone else's new messages until they left and
+  // reopened the screen. One channel per group, filtered server-side.
+  subscribeGroupRealtime: (groupId, myId) => {
+    const channel = supabase
+      .channel(`group-${groupId}`)
+      .on(
+        'postgres_changes' as any,
+        { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` },
+        (payload: any) => {
+          const msg = payload.new as GroupMessage
+          if (msg.sender_id === myId) return   // already applied optimistically
+          set(s => ({
+            groupMessages: {
+              ...s.groupMessages,
+              [groupId]: [...(s.groupMessages[groupId] ?? []), msg],
+            },
+          }))
+        },
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   },
 }))

@@ -243,7 +243,17 @@ function ActiveCard({ ch, c, onPress, onStartFocus, onShare }: {
         ) : ch.challenge_type === 'sprint' ? (
           <SprintBody ch={ch} c={c} />
         ) : ch.challenge_type === 'team' ? (
-          <TeamBody ch={ch} c={c} />
+          // ch.team is assigned server-side and only arrives after the
+          // optimistic join in handleJoin resolves and re-syncs — rendering
+          // team-relative UI before then falls through to "team B" since
+          // undefined !== 'A', briefly showing the wrong side.
+          ch.team ? (
+            <TeamBody ch={ch} c={c} />
+          ) : (
+            <Text style={[styles.paceText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
+              Guruhga qo'shilmoqda…
+            </Text>
+          )
         ) : (
           <CumulativeBody ch={ch} c={c} />
         )}

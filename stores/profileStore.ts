@@ -105,15 +105,14 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   patchOwnProfile: (patch) =>
     set(s => s.ownProfile ? { ownProfile: { ...s.ownProfile, ...patch } } : {}),
 
-  patchCachedStatus: (targetId, patch) =>
-    set(s => {
-      const entry = s.cache[targetId]
-      if (!entry) return {}
-      return {
-        cache: {
-          ...s.cache,
-          [targetId]: { ...entry, data: { ...entry.data, ...patch } },
-        },
-      }
-    }),
+  patchCachedStatus: (targetId, patch) => {
+    const entry = get().cache[targetId]
+    if (!entry) return
+    const updated: ProfileCache = { ...entry, data: { ...entry.data, ...patch } }
+    set(s => ({ cache: { ...s.cache, [targetId]: updated } }))
+    // Also persist — without this, a follow/unfollow done just now reverts to
+    // the stale pre-patch state if the app restarts within the cache TTL,
+    // since only the original fetch path (not this patch) was ever saved.
+    AsyncStorage.setItem(PUB_PROFILE_KEY_PREFIX + targetId, JSON.stringify(updated)).catch(() => {})
+  },
 }))

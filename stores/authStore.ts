@@ -74,7 +74,10 @@ interface AuthState {
 function mapToUser(r: AuthResponse | MeResponse): AppUser {
   const me = r as MeResponse
   return {
-    telegram_id:        r.telegram_id,
+    // Every other field has a fallback but this didn't, despite AppUser
+    // typing it as a non-optional number — an email/Google-only account
+    // could store undefined against a type that promises a real id.
+    telegram_id:        r.telegram_id ?? 0,
     first_name:         r.first_name ?? '',
     username:           r.username ?? null,
     photo_url:          r.photo_url ?? null,

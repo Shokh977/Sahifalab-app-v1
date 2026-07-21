@@ -37,7 +37,10 @@ interface CourseStore {
   checkEnrollment: (courseId: number) => Promise<EnrollmentCheck>
   enroll:          (courseId: number) => Promise<void>
   loadProgress:    (courseId: number) => Promise<Set<number>>
-  markComplete:    (courseId: number, lessonId: number) => Promise<{ certificate_issued: boolean }>
+  markComplete:    (courseId: number, lessonId: number) => Promise<{
+    certificate_issued: boolean
+    challenges_completed:  Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
+  }>
 }
 
 const PAGE = 20
@@ -116,7 +119,9 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
     } catch (e) {
       const { useOfflineLessonQueueStore } = await import('./offlineLessonQueueStore')
       await useOfflineLessonQueueStore.getState().enqueueComplete(courseId, lessonId)
-      return { ok: true, lesson_id: lessonId, completed: true, certificate_issued: false }
+      // Challenge completion can't be known offline — it's only ever
+      // discovered once the queued completion actually syncs with the server.
+      return { ok: true, lesson_id: lessonId, completed: true, certificate_issued: false, challenges_completed: [] }
     }
   },
 }))

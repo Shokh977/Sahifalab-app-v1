@@ -8,13 +8,15 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronLeft, MessageCircle, Trash2, Reply, Copy } from 'lucide-react-native'
+import { ChevronLeft, MessageCircle, Trash2, Reply, Copy, MoreVertical, Flag, Ban } from 'lucide-react-native'
 import { useShallow } from 'zustand/shallow'
 import { useMessagingStore } from '../../../stores/messagingStore'
 import { useAuthStore } from '../../../stores/authStore'
 import { useTheme } from '../../../hooks/useTheme'
 import { typography, spacing, radius } from '../../../lib/constants'
-import { Message } from '../../../lib/api'
+import { Message, moderation } from '../../../lib/api'
+import { ReportContentSheet } from '../../../components/ui/ReportContentSheet'
+import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { uz } from 'date-fns/locale'
 
@@ -373,6 +375,11 @@ export default function ConversationScreen() {
   const [selectedMsg, setSelectedMsg] = useState<Message | null>(null)
   const [sheetY,      setSheetY]      = useState(0)
   const [newMsgIdx,   setNewMsgIdx]   = useState<number | null>(null)
+  const [showHeaderMenu,   setShowHeaderMenu]   = useState(false)
+  const [showReportUser,   setShowReportUser]   = useState(false)
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false)
+  const [blocked,          setBlocked]          = useState(false)
+  const [blocking,         setBlocking]         = useState(false)
 
   const listRef = useRef<FlatList>(null)
   const isTypingOther = typingInConv[convId] ?? false
@@ -414,6 +421,17 @@ export default function ConversationScreen() {
       ...msgs.slice(newMsgIdx),
     ]
   }, [msgs, newMsgIdx])
+
+  const doBlock = useCallback(async () => {
+    if (!otherId) return
+    setBlocking(true)
+    try {
+      await moderation.block(otherId)
+      setBlocked(true)
+      setShowBlockConfirm(false)
+    } catch {}
+    setBlocking(false)
+  }, [otherId])
 
   const onSend = useCallback(async () => {
     const text = draft.trim()
@@ -491,7 +509,18 @@ export default function ConversationScreen() {
             </Text>
           )}
         </View>
+        <Pressable onPress={() => setShowHeaderMenu(true)} hitSlop={12} style={{ padding: 6 }}>
+          <MoreVertical size={20} color={c.textSecondary} />
+        </Pressable>
       </View>
+
+      {blocked && (
+        <View style={{ padding: spacing.sm, alignItems: 'center', backgroundColor: c.bgTertiary }}>
+          <Text style={{ color: c.textMuted, fontFamily: typography.fontFamily.regular, fontSize: typography.size.xs }}>
+            Siz bu foydalanuvchini bloklagansiz — endi xabar yubora olmaysiz.
+          </Text>
+        </View>
+      )}
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -545,15 +574,16 @@ export default function ConversationScreen() {
           <TextInput
             value={draft}
             onChangeText={handleDraftChange}
-            placeholder="Xabar yozing..."
+            placeholder={blocked ? 'Bloklangan' : 'Xabar yozing...'}
             placeholderTextColor={c.textMuted}
+            editable={!blocked}
             multiline
             maxLength={2000}
             style={[styles.input, { color: c.textPrimary, backgroundColor: c.bgTertiary, fontFamily: typography.fontFamily.regular }]}
           />
           <Pressable
             onPress={onSend}
-            disabled={!draft.trim() || sending}
+            disabled={!draft.trim() || sending || blocked}
             style={({ pressed }) => [
               styles.sendBtn,
               { backgroundColor: draft.trim() && !sending ? c.brand : c.bgTertiary, opacity: pressed ? 0.8 : 1 },
@@ -577,11 +607,58 @@ export default function ConversationScreen() {
         onClose={() => setSelectedMsg(null)}
         onReply={(msg) => setReplyTo(msg)}
       />
+
+      {/* Header overflow menu — block/report was missing entirely from the
+          messenger despite full open DM access between strangers. */}
+      <Modal visible={showHeaderMenu} transparent animationType="fade" onRequestClose={() => setShowHeaderMenu(false)}>
+        <Pressable style={headerMenuStyles.backdrop} onPress={() => setShowHeaderMenu(false)}>
+          <View style={[headerMenuStyles.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+            <Pressable style={headerMenuStyles.item} onPress={() => { setShowHeaderMenu(false); setShowReportUser(true) }}>
+              <Flag size={14} color={c.textSecondary} />
+              <Text style={[headerMenuStyles.itemText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                Shikoyat qilish
+              </Text>
+            </Pressable>
+            <Pressable style={headerMenuStyles.item} onPress={() => { setShowHeaderMenu(false); setShowBlockConfirm(true) }}>
+              <Ban size={14} color="#f87171" />
+              <Text style={[headerMenuStyles.itemText, { color: '#f87171', fontFamily: typography.fontFamily.regular }]}>
+                Bloklash
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <ReportContentSheet
+        visible={showReportUser}
+        targetType="user"
+        targetId={otherId}
+        onClose={() => setShowReportUser(false)}
+      />
+
+      <ConfirmModal
+        visible={showBlockConfirm}
+        emoji="🚫"
+        title="Foydalanuvchini bloklash"
+        message="Bloklangandan so'ng bir-biringizga xabar yubora olmaysiz."
+        confirmText={blocking ? 'Bloklanmoqda...' : 'Bloklash'}
+        cancelText="Bekor qilish"
+        danger
+        onConfirm={doBlock}
+        onCancel={() => setShowBlockConfirm(false)}
+      />
     </SafeAreaView>
   )
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
+
+const headerMenuStyles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 70, paddingRight: 12 },
+  card:     { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, minWidth: 180, paddingVertical: 6, overflow: 'hidden' },
+  item:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  itemText: { fontSize: typography.size.sm },
+})
 
 const styles = StyleSheet.create({
   root:   { flex: 1 },

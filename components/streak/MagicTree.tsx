@@ -653,7 +653,7 @@ function autoSize(stage: number): { w: number; h: number } {
   return { w, h: Math.round(w * 1.25) }
 }
 
-export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp, animate = true, simplified = false }: MagicTreeProps) {
+export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp, animate = true, simplified = false }: MagicTreeProps) {
   const uid     = uidProp ?? `${stage}_${state}`
   const id      = Math.max(1, Math.min(10, stage)) as StageNumber
   const pal     = stagePalettes[id]
@@ -795,4 +795,4 @@ export function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp,
       {dead   && <WitherOverlay uid={uid} />}
     </Svg>
   )
-}
+})

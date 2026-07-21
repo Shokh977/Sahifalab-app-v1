@@ -22,7 +22,7 @@ function formatDate(iso: string): string {
   }
 }
 
-export function StagesPath({ stages }: { stages: StreakStage[] }) {
+export const StagesPath = React.memo(function StagesPath({ stages }: { stages: StreakStage[] }) {
   const { c } = useTheme()
 
   if (stages.length === 0) return null
@@ -103,7 +103,7 @@ export function StagesPath({ stages }: { stages: StreakStage[] }) {
       })}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   root: {

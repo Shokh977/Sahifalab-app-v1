@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import {
-  View, Text, StyleSheet, Pressable, BackHandler, ActivityIndicator,
+  View, Text, StyleSheet, Pressable, ActivityIndicator,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -79,10 +79,9 @@ export default function MotivationScreen() {
   const [selected, setSelected] = useState<Motivation>('career')
   const [saving,   setSaving]   = useState(false)
 
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true)
-    return () => sub.remove()
-  }, [])
+  // Hardware back is intentionally left enabled here (unlike interests.tsx,
+  // the first onboarding screen) so a user can go back and fix an earlier
+  // answer instead of being stuck moving only forward.
 
   const handleContinue = async () => {
     if (saving) return
