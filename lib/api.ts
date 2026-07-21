@@ -52,6 +52,10 @@ export async function request<T>(
     }
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      // Lets the backend attribute a new signup to "mobile app" — the web
+      // frontend sends its own value ("web" / "telegram_miniapp") for the
+      // same header, so the admin dashboard can tell the three apart exactly.
+      'X-Client-Platform': 'mobile',
       ...(init.headers as Record<string, string> | undefined),
     }
     if (auth) {
@@ -759,6 +763,15 @@ export const courses = {
     request<{ ok: boolean }>(
       `/api/courses/${courseId}/rate`,
       { method: 'POST', body: JSON.stringify({ rating, review: review ?? '' }), auth: true },
+    ),
+
+  /** Record that the caller opened this course's detail page — feeds the
+   * teacher's "how many people clicked" / conversion stat. Counted once per
+   * student per course; the course owner's own views don't count. */
+  recordView: (courseId: number) =>
+    request<{ ok: boolean; recorded: boolean }>(
+      `/api/courses/${courseId}/view`,
+      { method: 'POST', auth: true },
     ),
 
 }

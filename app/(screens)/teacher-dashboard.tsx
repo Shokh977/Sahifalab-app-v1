@@ -34,6 +34,9 @@ interface CoursePerf {
   enrolled_students: number
   completed_lessons: number
   completion_rate: number
+  unique_viewers: number
+  total_views: number
+  conversion_pct: number
 }
 
 interface TopStudent {
@@ -128,6 +131,14 @@ function CourseRow({
         <Text style={[row.meta, { color: colors.textMuted, fontFamily: typography.fontFamily.regular }]}>
           {item.enrolled_students} talaba · {item.lesson_count} dars
         </Text>
+        {item.unique_viewers > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <Eye size={11} color={colors.textMuted} />
+            <Text style={[row.meta, { color: colors.textMuted, fontFamily: typography.fontFamily.regular }]}>
+              {item.unique_viewers} kishi ko'rdi · {item.conversion_pct}% xarid qildi
+            </Text>
+          </View>
+        )}
         {/* Progress bar */}
         <View style={[row.barBg, { backgroundColor: colors.bgTertiary, marginTop: 6 }]}>
           <View style={[row.barFill, { width: `${pct}%` as any, backgroundColor: colors.brand }]} />

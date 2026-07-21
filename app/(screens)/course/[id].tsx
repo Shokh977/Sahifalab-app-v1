@@ -1008,6 +1008,9 @@ export default function CourseDetailScreen() {
       setCourse(courseData)
       setLessons(ls)
       setReviews(rv)
+      // Fire-and-forget click tracking for the teacher's dashboard stats —
+      // never blocks the screen and never surfaces an error to the student.
+      coursesApi.recordView(courseId).catch(() => {})
       await Promise.all([checkEnrollment(courseId), loadProgress(courseId)])
 
       // Check for pending payment if the course is paid and user is not enrolled
