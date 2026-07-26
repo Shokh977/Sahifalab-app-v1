@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.sahifalab.app",
-      "versionCode": 8,
+      "versionCode": 9,
       "blockedPermissions": [
         "android.permission.USE_EXACT_ALARM",
         "android.permission.SCHEDULE_EXACT_ALARM",
