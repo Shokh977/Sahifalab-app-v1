@@ -15,6 +15,7 @@ import { streaks as streaksApi, focusStages } from '../../lib/api'
 import type { StreakDetail, StreakCalendarDay, StreakStage } from '../../lib/api'
 import { FreezeSheet } from '../../components/streak/FreezeSheet'
 import { StreakLostModal } from '../../components/streak/StreakLostModal'
+import { StreakAtRiskModal } from '../../components/streak/StreakAtRiskModal'
 import { EvolutionModal } from '../../components/streak/EvolutionModal'
 import { MagicTree } from '../../components/streak/MagicTree'
 import { StreakHeroBackground } from '../../components/streak/StreakHeroBackground'
@@ -238,12 +239,14 @@ export default function StreakDetailScreen() {
   const [loadError, setLoadError]     = useState<string | null>(null)
   const [showFreeze,    setShowFreeze]    = useState(false)
   const [showLostModal, setShowLostModal] = useState(false)
+  const [showAtRiskModal, setShowAtRiskModal] = useState(false)
   const [prevStreakDays, setPrevStreakDays] = useState(0)
   const [showEvolution,  setShowEvolution]  = useState(false)
   const [evolutionStage, setEvolutionStage] = useState<StageNumber>(1)
   const [evolutionXp,    setEvolutionXp]    = useState(0)
   const [stages,         setStages]         = useState<StreakStage[]>([])
   const hasShownLostRef    = useRef(false)
+  const hasShownAtRiskRef  = useRef(false)
   const prevStageRef       = useRef<number>(
     stageFromStreak(dashData?.focusStats.streak_days ?? user?.streak_days ?? 0)
   )
@@ -286,10 +289,11 @@ export default function StreakDetailScreen() {
       if (gen !== loadGenRef.current) return
       setLocalFreeze(res.freeze_count)
       setStages(stageRows)
-      // Show streak-lost modal once per session when streak is broken.
-      // Skip if the home screen already showed it (streakLostSeen in dashboardStore).
-      const alreadyShown = useDashboardStore.getState().streakLostSeen
-      if (!isRefresh && !hasShownLostRef.current && !alreadyShown && !res.is_active && res.streak_days > 0) {
+      // Show streak-lost modal once per session when the streak is genuinely
+      // gone (streak_state === 'lost') — NOT for 'at_risk', which is still
+      // fully recoverable (P2). Skip if the home screen already showed it.
+      const alreadyShownLost = useDashboardStore.getState().streakLostSeen
+      if (!isRefresh && !hasShownLostRef.current && !alreadyShownLost && res.streak_state === 'lost' && res.streak_days > 0) {
         hasShownLostRef.current = true
         useDashboardStore.getState().markStreakLostSeen()
         setPrevStreakDays(res.streak_days)
@@ -308,10 +312,19 @@ export default function StreakDetailScreen() {
         } else {
           prevStageRef.current = newStage
         }
+        // At-risk modal may reappear once more per session while the window
+        // is open — atRiskModalShownCount lives in dashboardStore so it's
+        // shared with the home tab's own at-risk effect.
+        const shownCount = useDashboardStore.getState().atRiskModalShownCount
+        if (!isRefresh && !hasShownAtRiskRef.current && res.streak_state === 'at_risk' && shownCount < 2) {
+          hasShownAtRiskRef.current = true
+          useDashboardStore.getState().bumpAtRiskModalShown()
+          setTimeout(() => setShowAtRiskModal(true), 500)
+        }
       }
       // Sync fresh data to dashboardStore so banner/hero on the home tab stay consistent
       useDashboardStore.getState().patchFocusStats({
-        streak_days:    res.is_active ? res.streak_days : 0,
+        streak_days:    res.streak_state === 'lost' ? 0 : res.streak_days,
         longest_streak: res.longest_streak,
         freeze_count:   res.freeze_count,
       })
@@ -343,16 +356,23 @@ export default function StreakDetailScreen() {
       const res = await streaksApi.useFreeze()
       Haptics?.notificationAsync(Haptics?.NotificationFeedbackType?.Success)
       setLocalFreeze(res.freeze_count)
-      if (data) setData({ ...data, streak_days: res.streak_days, freeze_count: res.freeze_count, is_active: true })
+      if (data) setData({ ...data, streak_days: res.streak_days, freeze_count: res.freeze_count, is_active: true, streak_state: 'frozen_today' })
       useDashboardStore.getState().patchFocusStats({
         streak_days:  res.streak_days,
         freeze_count: res.freeze_count,
       })
       setShowLostModal(false)
+      setShowAtRiskModal(false)
       load(true)
     } catch {
       setShowLostModal(false)
+      setShowAtRiskModal(false)
     }
+  }
+
+  function handleStudyNow() {
+    setShowAtRiskModal(false)
+    router.push('/(tabs)/study' as any)
   }
 
   // Prefer API data; fall back to dashboardStore → authStore for key fields
@@ -361,14 +381,19 @@ export default function StreakDetailScreen() {
   const weekDays      = data?.week_days      ?? 0
   const freezeCount   = data?.freeze_count   ?? localFreeze
 
-  const stage      = stageFromStreak(streakDays)
-  // Match the dashboard: show frozen when past 20:00 and daily goal not yet met
-  const todayM    = dashData?.focusStats?.today_minutes ?? 0
-  const goalM     = dashData?.focusStats?.daily_goal ?? 20
-  const isAtRisk  = !!(data?.is_active) && todayM < goalM && new Date().getHours() >= 20
-  const treeState: TreeState = data
-    ? (!data.is_active ? 'frozen' : isAtRisk ? 'frozen' : 'alive')
-    : 'alive'
+  const stage  = stageFromStreak(streakDays)
+  const goalM  = dashData?.focusStats?.daily_goal ?? 20
+  // Driven directly by the server's streak_state — frost means 'frozen_today'
+  // (protected) exclusively now, never "danger"; 'at_risk' gets its own warm
+  // wilting treatment instead (see MagicTree.tsx / plan doc P4).
+  const treeState: TreeState = (() => {
+    switch (data?.streak_state) {
+      case 'at_risk':      return 'at_risk'
+      case 'frozen_today': return 'frozen'
+      case 'lost':         return 'dead'
+      default:              return 'alive'
+    }
+  })()
 
   // Next-stage progress
   const stageMeta     = TREE_STAGES[stage - 1]
@@ -697,10 +722,19 @@ export default function StreakDetailScreen() {
             </View>
           </View>
 
-          {/* Rule hint */}
-          <Text style={[styles.freezeRule, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-            💡 Har kuni o'qisangiz seriya davom etadi. 1 kun o'tkazib yuborsangiz — hali xavfsiz. 2-kun o'tmasdan freeze ishlatib saqlab qoling.
-          </Text>
+          {/* Rule hint — persistent banner when a freeze just saved the streak:
+              the streak is safe, but today's goal still has to be met or it's
+              at risk again tomorrow (previously this only existed as a code
+              comment, see plan doc G.4). */}
+          {data?.streak_state === 'frozen_today' ? (
+            <Text style={[styles.freezeRule, { color: '#60a5fa', fontFamily: typography.fontFamily.medium }]}>
+              🧊 Seriyangiz freeze bilan saqlandi — bugun o'qib davom eting, aks holda ertaga yana xavf ostida qoladi.
+            </Text>
+          ) : (
+            <Text style={[styles.freezeRule, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+              💡 Har kuni o'qisangiz seriya davom etadi. 1 kun o'tkazib yuborsangiz — hali xavfsiz. 2-kun o'tmasdan freeze ishlatib saqlab qoling.
+            </Text>
+          )}
 
           <View style={styles.freezeBtnRow}>
             {data?.can_freeze && (
@@ -771,6 +805,8 @@ export default function StreakDetailScreen() {
         packages={data?.freeze_packages ?? []}
         onClose={() => setShowFreeze(false)}
         onPurchased={handlePurchased}
+        consecutiveFreezesUsed={data?.consecutive_freezes_used ?? 0}
+        maxConsecutiveFreezes={data?.max_consecutive_freezes ?? 2}
       />
 
       <StreakLostModal
@@ -782,6 +818,19 @@ export default function StreakDetailScreen() {
         onBuyFreeze={data?.can_freeze_if_purchased && !data?.can_freeze
           ? () => { setShowLostModal(false); setShowFreeze(true) }
           : undefined}
+      />
+
+      <StreakAtRiskModal
+        visible={showAtRiskModal}
+        streakDays={streakDays}
+        freezeCount={freezeCount}
+        windowClosesAt={data?.window_closes_at ?? null}
+        onClose={() => setShowAtRiskModal(false)}
+        onUseFreeze={data?.can_freeze ? handleUseFreeze : undefined}
+        onBuyFreeze={data?.can_freeze_if_purchased && !data?.can_freeze
+          ? () => { setShowAtRiskModal(false); setShowFreeze(true) }
+          : undefined}
+        onStudyNow={handleStudyNow}
       />
 
       <EvolutionModal
@@ -859,8 +908,9 @@ function TreeInfoModal({ visible, onClose, c, goalMinutes }: {
             {/* Rules */}
             <View style={[ti.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
               <InfoRow emoji="✅" title="O'stirish" desc="Kundalik maqsadingizni bajaring — daraxt o'sadi." c={c} />
-              <InfoRow emoji="❄️" title="Muzlagan holat" desc="Bir kun o'tkazib yuborsangiz daraxt muzlaydi. 'Freeze' ishlatib ertasi kuni tiklang." c={c} />
-              <InfoRow emoji="🥀" title="So'ligan holat" desc="Seriya uzilib dars qoldirsangiz daraxt so'liydi. Yangidan boshlash kerak." c={c} />
+              <InfoRow emoji="🍂" title="Xavf ostida" desc="1 kun o'tkazib yuborsangiz daraxt so'la boshlaydi — hali xavfsiz. Freeze bor bo'lsa, tunda avtomatik ishlatiladi." c={c} />
+              <InfoRow emoji="❄️" title="Muzlagan holat" desc="Freeze seriyangizni saqlab qoldi. Bugun o'qing — aks holda ertaga yana xavf ostida qoladi." c={c} />
+              <InfoRow emoji="🥀" title="So'ligan holat" desc="2 kun o'tkazib yuborsangiz seriya uziladi. Yangidan boshlash kerak." c={c} />
               <InfoRow emoji="🎯" title="Kunlik maqsad" desc={`Fokus taymer orqali ${goalMinutes} daqiqa o'qing — seriya saqlanadi. Taymer faqat faol o'qish vaqtini hisoblaydi.`} c={c} last />
             </View>
 

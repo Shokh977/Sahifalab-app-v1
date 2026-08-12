@@ -15,7 +15,7 @@ import { typography, spacing, radius, getLevelTier } from '../../lib/constants'
 import { MagicTree } from '../streak/MagicTree'
 import { stageFromStreak } from '../../lib/treeTheme'
 import type { TreeState } from '../../lib/treeTheme'
-import type { FocusStats } from '../../lib/api'
+import type { FocusStats, StreakState } from '../../lib/api'
 
 // ── XP helpers ────────────────────────────────────────────────────────────────
 function nextLevelXP(level: number): number {
@@ -29,23 +29,29 @@ const TIER_EMOJI: Record<string, string> = {
 }
 
 // ── State type ────────────────────────────────────────────────────────────────
-type BannerState = 'done' | 'atRisk' | 'normal' | 'lost'
+// Driven directly by the server's streak_state now, not a client-side
+// clock-hour/streak==0 heuristic (that used to disagree with streak-detail.tsx's
+// own separate heuristic and StreakBanner.tsx's yet another one — see plan
+// doc P7). 'frozen' (protected) is new and distinct from 'atRisk' (warning) —
+// frost visuals are reserved exclusively for 'frozen' now (P4).
+type BannerState = 'done' | 'atRisk' | 'frozen' | 'normal' | 'lost'
 
-function getBannerState(stats: FocusStats, goalDone: boolean): BannerState {
-  if (goalDone) return 'done'
-  const streak = stats.streak_days ?? 0
-  if (streak === 0) return 'lost'
-  const hour = new Date().getHours()
-  if (hour >= 20) return 'atRisk'
-  return 'normal'
+function getBannerState(streakState: StreakState | undefined, goalDone: boolean): BannerState {
+  switch (streakState) {
+    case 'at_risk':      return 'atRisk'
+    case 'frozen_today': return 'frozen'
+    case 'lost':         return 'lost'
+    default:              return goalDone ? 'done' : 'normal'
+  }
 }
 
 // ── Contextual message ────────────────────────────────────────────────────────
-function getMessage(stats: FocusStats, state: BannerState): { text: string; colorKey: 'success' | 'accent' | 'frost' | 'secondary' } {
+function getMessage(streak: number, state: BannerState): { text: string; colorKey: 'success' | 'accent' | 'frost' | 'warm' | 'secondary' } {
   if (state === 'done')   return { text: "Bugun bajarildi ✓ Davom eting!", colorKey: 'success' }
-  if (state === 'atRisk') return { text: "Daraxtingiz sovuqqa bardosh berolmaydi ❄️", colorKey: 'frost' }
+  if (state === 'frozen') return { text: "🧊 Freeze seriyangizni saqladi — bugun o'qing!", colorKey: 'frost' }
+  if (state === 'atRisk') return { text: "🍂 Daraxtingiz xavf ostida — hozir o'qing!", colorKey: 'warm' }
 
-  const s = stats.streak_days ?? 0
+  const s = streak
 
   if (s === 0) return { text: "Birinchi qadamni tashlang 🌱", colorKey: 'secondary' }
   if (s === 1) return { text: "Birinchi kun! Urug' unib chiqdi 🌱", colorKey: 'secondary' }
@@ -85,12 +91,13 @@ function FrostParticle({ x, delay }: { x: number; delay: number }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 interface Props {
-  stats:   FocusStats
-  level:   number
-  totalXP: number
+  stats:       FocusStats
+  level:       number
+  totalXP:     number
+  streakState?: StreakState
 }
 
-export function UnifiedBanner({ stats, level, totalXP }: Props) {
+export function UnifiedBanner({ stats, level, totalXP, streakState }: Props) {
   const { c } = useTheme()
   const router = useRouter()
 
@@ -99,16 +106,17 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
   const goalM   = stats.daily_goal    > 0 ? stats.daily_goal : 20
   const goalDone = todayM >= goalM
 
-  const bannerState = getBannerState(stats, goalDone)
-  const { text: msgText, colorKey: msgColorKey } = getMessage(stats, bannerState)
+  const bannerState = getBannerState(streakState, goalDone)
+  const { text: msgText, colorKey: msgColorKey } = getMessage(streak, bannerState)
 
   const isAtRisk  = bannerState === 'atRisk'
+  const isFrozen  = bannerState === 'frozen'
   const isLost    = bannerState === 'lost'
   const isDone    = bannerState === 'done'
 
   // Tree + stage
   const stage        = stageFromStreak(streak)
-  const treeState: TreeState = isAtRisk ? 'frozen' : isLost ? 'dead' : 'alive'
+  const treeState: TreeState = isAtRisk ? 'at_risk' : isFrozen ? 'frozen' : isLost ? 'dead' : 'alive'
 
   // Daily goal progress
   const goalPct = goalM > 0 ? Math.min(1, todayM / goalM) : 0
@@ -145,25 +153,33 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
   }, [isDone])
 
   // ── Color derivations ─────────────────────────────────────────────────────
+  // FROST is reserved exclusively for 'frozen' (protected) now; WARM is the
+  // new amber tone for 'atRisk' (warning, not yet protected) — matches
+  // MagicTree's WiltOverlay/sfAtRisk filter and StreakAtRiskModal (P4).
   const FROST = '#7FB8D8'
   const FROST_BORDER = 'rgba(77,166,255,0.25)'
+  const WARM = '#f5a623'
+  const WARM_BORDER = 'rgba(245,166,35,0.28)'
   const DONE_BORDER  = `${c.success}40`
 
-  const borderColor = isDone ? DONE_BORDER : isAtRisk ? FROST_BORDER : c.border
+  const borderColor = isDone ? DONE_BORDER : isFrozen ? FROST_BORDER : isAtRisk ? WARM_BORDER : c.border
 
-  const streakNumColor = isDone  ? c.success
-                       : isAtRisk ? FROST
+  const streakNumColor = isDone   ? c.success
+                       : isFrozen ? FROST
+                       : isAtRisk ? WARM
                        : isLost   ? c.textDisabled
                        : c.accentPrimary
 
   const msgColor = msgColorKey === 'success'   ? c.success
                  : msgColorKey === 'accent'    ? c.accentPrimary
                  : msgColorKey === 'frost'     ? FROST
+                 : msgColorKey === 'warm'      ? WARM
                  : c.textSecondary
 
   // Progress bar colors
-  const barGradient: [string, string] = isDone  ? [c.success, c.success]
-                                      : isAtRisk ? [FROST, '#5A9AB5']
+  const barGradient: [string, string] = isDone   ? [c.success, c.success]
+                                      : isFrozen  ? [FROST, '#5A9AB5']
+                                      : isAtRisk  ? [WARM, '#c9791a']
                                       : [c.accentPrimary, '#FFD700']
 
   // Progress unfilled masks
@@ -173,8 +189,10 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
   // Background state gradient
   const stateGradColors: [string, string] = isDone
     ? ['rgba(52,199,89,0.10)',  'transparent']
-    : isAtRisk
+    : isFrozen
     ? ['rgba(90,154,181,0.12)', 'transparent']
+    : isAtRisk
+    ? ['rgba(245,166,35,0.10)', 'transparent']
     : isLost
     ? ['transparent',           'transparent']
     : ['rgba(245,166,35,0.08)', 'transparent']
@@ -196,8 +214,8 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
           />
         </View>
 
-        {/* Frost particles */}
-        {isAtRisk && (
+        {/* Frost particles — 'frozen' (protected) only, never 'atRisk' (P4) */}
+        {isFrozen && (
           <>
             <FrostParticle x={30}  delay={0}    />
             <FrostParticle x={80}  delay={1200} />
@@ -239,7 +257,7 @@ export function UnifiedBanner({ stats, level, totalXP }: Props) {
                     {goalDone ? 'Bugungi maqsad ✓' : `Bugun: ${todayM}/${goalM} daq`}
                   </Text>
                   <Text style={[styles.progressPct, {
-                    color: isDone ? c.success : isAtRisk ? FROST : c.accentPrimary,
+                    color: isDone ? c.success : isFrozen ? FROST : isAtRisk ? WARM : c.accentPrimary,
                     fontFamily: typography.fontFamily.semibold,
                   }]}>
                     {Math.min(100, Math.round(goalPct * 100))}%

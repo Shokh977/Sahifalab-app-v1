@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, Component } from 'react'
-import { Linking, View, Text, Pressable, StyleSheet, Platform } from 'react-native'
+import { Linking, View, Text, Pressable, StyleSheet, Platform, AppState } from 'react-native'
 import { Slot, useRouter, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts } from 'expo-font'
@@ -161,6 +161,35 @@ async function registerPushToken() {
   } catch {}
 }
 
+const TIMEZONE_KEY = 'sahifalab_timezone'
+
+function getDeviceTimezone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Persist the device's IANA timezone so cron-driven streak logic (auto-freeze,
+ * at-risk push, reminder) can resolve "today"/"midnight" per-user server-side
+ * — see app/services/user_time.py. Called on login and on every app
+ * foreground; only actually hits the network when the value changed.
+ */
+async function registerTimezone() {
+  const tz = getDeviceTimezone()
+  if (!tz) return
+  try {
+    const stored = await AsyncStorage.getItem(TIMEZONE_KEY)
+    if (stored === tz) return  // unchanged
+
+    await AsyncStorage.setItem(TIMEZONE_KEY, tz)
+    const { onboarding } = require('../lib/api')
+    await onboarding.saveTimezone(tz).catch(() => {})
+  } catch {}
+}
+
 export default function RootLayout() {
   const { isLoading, isAuthenticated, needsOnboarding, initAuth } = useAuthStore()
   const { loadTheme, theme, c } = useThemeStore()
@@ -300,11 +329,18 @@ export default function RootLayout() {
       useDashboardStore.getState().fetch()
       useStreakStagesStore.getState().fetchStages()
       registerPushToken()
+      registerTimezone()
       fetchUnreadCount()
       syncStreakReminderWithPrefs()
       // Defer announcements fetch so it doesn't compete with critical startup
       const t = setTimeout(() => useAnnouncementStore.getState().fetch(), 3000)
-      return () => clearTimeout(t)
+
+      // Re-check timezone on every foreground — a user who travels can have
+      // the app open across a timezone change without ever re-logging in.
+      const sub = AppState.addEventListener('change', state => {
+        if (state === 'active') registerTimezone()
+      })
+      return () => { clearTimeout(t); sub.remove() }
     }
   }, [isAuthenticated, isLoading])
 

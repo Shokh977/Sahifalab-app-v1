@@ -990,6 +990,8 @@ export const focus = {
       stages_completed:    Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number }>
       challenges_completed:  Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
       challenges_progressed: Array<{ challenge_id: string; slug: string; title: string; progress_value: number; target_value: number }>
+      freeze_count?:             number
+      milestone_freeze_granted?: boolean
     }>(
       '/api/focus/complete',
       { method: 'POST', body: JSON.stringify({ minutes, local_date: localDate() }), auth: true },
@@ -1214,6 +1216,15 @@ export const onboarding = {
     request<{ ok: boolean }>('/api/auth/push-token', {
       method: 'POST',
       body:   JSON.stringify({ token }),
+      auth:   true,
+    }).catch(() => ({ ok: true })),
+
+  /** Persist the device's IANA timezone so cron-driven streak logic (auto-freeze,
+   *  at-risk push, reminder) can resolve "today"/"midnight" per-user server-side. */
+  saveTimezone: (tz: string) =>
+    request<{ ok: boolean }>('/api/auth/me', {
+      method: 'PATCH',
+      body:   JSON.stringify({ timezone: tz }),
       auth:   true,
     }).catch(() => ({ ok: true })),
 }
@@ -1769,11 +1780,17 @@ export interface FreezePackage {
   xp_cost:  number
 }
 
+export type StreakState = 'active' | 'at_risk' | 'frozen_today' | 'lost'
+
 export interface StreakDetail {
   streak_days:             number
   is_active:               boolean
   can_freeze:              boolean
   can_freeze_if_purchased: boolean
+  streak_state:              StreakState
+  window_closes_at:          string | null  // ISO UTC timestamp, only set when streak_state === 'at_risk'
+  max_consecutive_freezes:   number
+  consecutive_freezes_used:  number
   longest_streak:          number
   week_days:               number
   freeze_count:            number

@@ -17,6 +17,8 @@ interface Props {
   packages:     FreezePackage[]
   onClose:      () => void
   onPurchased:  (newXp: number, newFreezeCount: number) => void
+  consecutiveFreezesUsed?: number
+  maxConsecutiveFreezes?:  number
 }
 
 const INFO_LINES = [
@@ -37,7 +39,10 @@ const INFO_LINES = [
   },
 ]
 
-export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose, onPurchased }: Props) {
+export function FreezeSheet({
+  visible, currentXp, freezeCount, packages, onClose, onPurchased,
+  consecutiveFreezesUsed = 0, maxConsecutiveFreezes = 2,
+}: Props) {
   const { c }   = useTheme()
   const insets  = useSafeAreaInsets()
   const slideAnim   = useRef(new Animated.Value(500)).current
@@ -202,6 +207,12 @@ export function FreezeSheet({ visible, currentXp, freezeCount, packages, onClose
             })}
           </View>
 
+          {consecutiveFreezesUsed > 0 && (
+            <Text style={[styles.consecutiveNote, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+              ⓘ Ketma-ket {consecutiveFreezesUsed}/{maxConsecutiveFreezes} freeze ishlatilgan — bugun o'qib seriyani jonlantiring.
+            </Text>
+          )}
+
           {error && (
             <Text style={[styles.errorText, { color: c.error, fontFamily: typography.fontFamily.regular }]}>
               {error}
@@ -320,6 +331,7 @@ const styles = StyleSheet.create({
   pkgCost:  { fontSize: typography.size.xs },
 
   errorText: { fontSize: typography.size.xs, textAlign: 'center' },
+  consecutiveNote: { fontSize: typography.size.xs, textAlign: 'center', lineHeight: 16 },
 
   buyBtn: {
     paddingVertical: spacing.md,

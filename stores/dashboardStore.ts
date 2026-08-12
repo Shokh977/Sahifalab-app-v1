@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   auth, courses, enrollments, lessons as lessonsApi, leaderboard, focusStats, flashcards as flashcardsApi, streaks,
-  type MeResponse, type Course, type LeaderboardEntry, type FocusStats,
+  type MeResponse, type Course, type LeaderboardEntry, type FocusStats, type StreakState,
 } from '../lib/api'
 import { useAuthStore } from './authStore'
 
@@ -25,11 +25,21 @@ export interface DashboardData {
   focusStats:        FocusStats
   flashcardDueCount: number
   fetchedAt:         number
-  // Streak-loss detection — set when a fresh fetch finds is_active=false and streak_days>0
-  streakJustLost?:       boolean
-  streakLostPrevDays?:   number
-  streakLostCanFreeze?:  boolean   // can_freeze: window open + freeze available
-  streakLostCanBuyFreeze?: boolean // window open but no freezes to use
+  // Streak state machine — derived from /api/streaks/detail's streak_state
+  // (active | at_risk | frozen_today | lost). streakJustLost/streakLostPrevDays/
+  // streakLostCanFreeze/streakLostCanBuyFreeze are kept for StreakLostModal,
+  // which only ever fires for the genuinely-terminal 'lost' state now — NOT
+  // for 'at_risk', which used to be misreported as loss (see P2).
+  streakState?:             StreakState
+  streakJustLost?:          boolean
+  streakLostPrevDays?:      number
+  streakLostCanFreeze?:     boolean   // can_freeze: window open + freeze available
+  streakLostCanBuyFreeze?:  boolean   // window open but no freezes to use
+  streakAtRisk?:            boolean   // streak_state === 'at_risk'
+  streakFrozenToday?:       boolean   // streak_state === 'frozen_today'
+  windowClosesAt?:          string | null
+  streakCanFreeze?:         boolean   // unconditional can_freeze, for StreakAtRiskModal
+  streakCanBuyFreeze?:      boolean   // unconditional can_freeze_if_purchased && !can_freeze
 }
 
 interface DashboardState {
@@ -39,12 +49,18 @@ interface DashboardState {
   error:      string | null
   // Per-session flag: once the streak-lost modal has been shown, don't show it again
   streakLostSeen: boolean
+  // The at-risk modal may reappear once more per session while the window is
+  // still open (one dismissal must not silently forfeit the streak) — capped
+  // at 2 shows, reset whenever streak_state moves off 'at_risk' so a later,
+  // separate at-risk episode gets its own fresh allowance.
+  atRiskModalShownCount: number
 
-  fetch:              () => Promise<void>
-  refresh:            () => Promise<void>
-  patchFocusStats:    (patch: Partial<FocusStats>) => void
-  markStreakLostSeen: () => void
-  clear:              () => void
+  fetch:                 () => Promise<void>
+  refresh:               () => Promise<void>
+  patchFocusStats:       (patch: Partial<FocusStats>) => void
+  markStreakLostSeen:    () => void
+  bumpAtRiskModalShown:  () => void
+  clear:                 () => void
 }
 
 function emptyFocus(): FocusStats {
@@ -115,18 +131,29 @@ async function fetchAll(): Promise<DashboardData> {
   const lbRaw      = leaderRes.status   === 'fulfilled' ? leaderRes.value           : { entries: [] as import('../lib/api').LeaderboardEntry[], my_rank: null as number | null }
   const flashStats = flashRes.status    === 'fulfilled' ? flashRes.value            : null
 
-  // Use streak detail's is_active to correct the lazy-reset streak_days in focusStats.
-  // The backend doesn't reset streak_days to 0 immediately when a streak breaks; it
-  // returns the old count with is_active: false. Override it here so every consumer
-  // (UnifiedBanner, StreakBanner, profile stats) sees the real value of 0.
+  // Use streak detail's streak_state to correct the lazy-reset streak_days in
+  // focusStats. The backend doesn't reset streak_days to 0 immediately when a
+  // streak breaks; it returns the old count alongside streak_state. Only zero
+  // it out when the streak is genuinely 'lost' — 'at_risk' and 'frozen_today'
+  // must keep showing the real count (P2: the app used to show 0 the moment
+  // the freeze window opened, while the streak was still fully recoverable).
   let stats = statsRes.status === 'fulfilled' ? statsRes.value : emptyFocus()
   const streakDetail = streakRes.status === 'fulfilled' ? streakRes.value : null
-  const streakJustLost = !!(streakDetail && !streakDetail.is_active && streakDetail.streak_days > 0)
+  const streakState  = streakDetail?.streak_state
+  const streakJustLost = !!(streakDetail && streakState === 'lost' && streakDetail.streak_days > 0)
   const streakLostPrevDays   = streakJustLost ? streakDetail!.streak_days : 0
   const streakLostCanFreeze  = streakJustLost ? streakDetail!.can_freeze : false
   const streakLostCanBuyFreeze = streakJustLost
     ? (streakDetail!.can_freeze_if_purchased && !streakDetail!.can_freeze)
     : false
+  const streakAtRisk      = streakState === 'at_risk'
+  const streakFrozenToday = streakState === 'frozen_today'
+  const windowClosesAt    = streakDetail?.window_closes_at ?? null
+  // Unconditional (not state-gated) freeze-eligibility flags, for
+  // StreakAtRiskModal — streakLostCanFreeze/streakLostCanBuyFreeze above stay
+  // gated to 'lost' specifically for StreakLostModal's existing contract.
+  const streakCanFreeze    = !!streakDetail?.can_freeze
+  const streakCanBuyFreeze = !!(streakDetail?.can_freeze_if_purchased && !streakDetail?.can_freeze)
   if (streakJustLost) {
     stats = { ...stats, streak_days: 0 }
   }
@@ -179,19 +206,37 @@ async function fetchAll(): Promise<DashboardData> {
     focusStats:             stats,
     flashcardDueCount,
     fetchedAt:              Date.now(),
+    streakState,
     streakJustLost,
     streakLostPrevDays,
     streakLostCanFreeze,
     streakLostCanBuyFreeze,
+    streakAtRisk,
+    streakFrozenToday,
+    windowClosesAt,
+    streakCanFreeze,
+    streakCanBuyFreeze,
   }
 }
 
-export const useDashboardStore = create<DashboardState>((set, get) => ({
+export const useDashboardStore = create<DashboardState>((set, get) => {
+  // A fresh at-risk episode gets its own fresh allowance — reset the
+  // reappear-once-more counter the moment streak_state moves off 'at_risk'.
+  function applyFresh(fresh: DashboardData) {
+    const wasAtRisk = get().data?.streakAtRisk
+    set({ data: fresh })
+    if (wasAtRisk && !fresh.streakAtRisk) {
+      set({ atRiskModalShownCount: 0 })
+    }
+  }
+
+  return {
   data:            null,
   loading:         false,
   refreshing:      false,
   error:           null,
   streakLostSeen:  false,
+  atRiskModalShownCount: 0,
 
   fetch: async () => {
     if (get().loading) return
@@ -218,7 +263,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       const fresh = await fetchAll()
       syncToAuth(fresh)
       await saveCache(fresh)
-      set({ data: fresh })
+      applyFresh(fresh)
     } catch (e: any) {
       if (!get().data) set({ error: e?.message ?? 'Xatolik yuz berdi' })
     } finally {
@@ -232,7 +277,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       const fresh = await fetchAll()
       syncToAuth(fresh)
       await saveCache(fresh)
-      set({ data: fresh })
+      applyFresh(fresh)
     } catch (e: any) {
       set({ error: e?.message ?? 'Xatolik yuz berdi' })
     } finally {
@@ -240,7 +285,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }
   },
 
-  markStreakLostSeen: () => set({ streakLostSeen: true }),
+  markStreakLostSeen:   () => set({ streakLostSeen: true }),
+  bumpAtRiskModalShown: () => set(s => ({ atRiskModalShownCount: s.atRiskModalShownCount + 1 })),
 
   patchFocusStats: (patch) => {
     const { data } = get()
@@ -256,4 +302,5 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     set({ data: null, loading: false, refreshing: false, error: null })
     AsyncStorage.removeItem(CACHE_KEY).catch(() => {})
   },
-}))
+  }
+})

@@ -161,6 +161,16 @@ function Gdefs({ uid, pal }: { uid: string; pal: StagePalette }) {
           values="0.354 0.387 0.082 0 0  0.181 0.515 0.075 0 0  0.154 0.303 0.221 0 0  0 0 0 1 0"
         />
       </Filter>
+      {/* at_risk: a gentle warm/amber cast (red boosted, blue pulled back) —
+          deliberately NOT desaturated like frozen/dead, since the tree is
+          still fully alive here, just visually "warning". Keeps frost
+          exclusively meaning "protected" (see plan doc P4). */}
+      <Filter id={`sfAtRisk${uid}`} x="0" y="0" width="320" height="400" filterUnits="userSpaceOnUse">
+        <FeColorMatrix
+          type="matrix"
+          values="1.05 0.05 0 0 0  0.05 0.95 0 0 0  0 0 0.75 0 0  0 0 0 1 0"
+        />
+      </Filter>
     </Defs>
   )
 }
@@ -347,6 +357,20 @@ function FrostOverlay({ id }: { id: number }) {
         )
       })}
       <Particles seed={id + 5} n={10} opts={{ x0:90, y0:160, w:140, h:20, r:1.2, fill:'#eaf6ff', op:0.75 }} />
+    </G>
+  )
+}
+
+// at_risk overlay — a few drooping amber leaf-edges + a warm low glow.
+// Deliberately NOT frost (that's reserved for 'frozen'/protected) and NOT
+// the fallen-leaves-and-hope-seed of WitherOverlay (that's reserved for
+// 'dead') — this is a mid-severity "still alive, act soon" warning.
+function WiltOverlay({ id }: { id: number }) {
+  return (
+    <G opacity={0.85}>
+      <Path d={mkLeaf(150, 210, 4)}   fill="#f5a623" opacity={0.55} transform="rotate(18 150 210)" />
+      <Path d={mkLeaf(184, 226, 3.6)} fill="#e8912a" opacity={0.5}  transform="rotate(-12 184 226)" />
+      <Particles seed={id + 21} n={6} opts={{ x0: 110, y0: 200, w: 110, h: 120, r: 1.3, fill: '#ffcf7a', op: 0.5 }} />
     </G>
   )
 }
@@ -661,6 +685,9 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
   const dims    = size === 'auto' ? autoSize(id) : SIZES[size]
   const dead    = !simplified && state === 'dead'
   const frozen  = !simplified && state === 'frozen'
+  // 'at_risk' stays animated — still alive, just visually warning — unlike
+  // frozen/dead which pause. See plan doc P4/G.
+  const atRisk  = !simplified && state === 'at_risk'
   const reduced = useReducedMotion()
   const lfCount = id <= 3 ? 3 : id <= 6 ? 5 : 7
 
@@ -672,7 +699,7 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
 
   const animEnabled = animate && !simplified && !frozen && !dead && !reduced && appActive
 
-  const stateFilter = frozen ? `url(#sfFrozen${uid})` : dead ? `url(#sfDead${uid})` : undefined
+  const stateFilter = frozen ? `url(#sfFrozen${uid})` : dead ? `url(#sfDead${uid})` : atRisk ? `url(#sfAtRisk${uid})` : undefined
 
   return (
     <Svg width={dims.w} height={dims.h} viewBox="0 0 320 400" preserveAspectRatio="xMidYMax meet">
@@ -793,6 +820,7 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
       {/* Layer 6: state overlays — rendered above filter, unaffected */}
       {frozen && <FrostOverlay id={id} />}
       {dead   && <WitherOverlay uid={uid} />}
+      {atRisk && <WiltOverlay id={id} />}
     </Svg>
   )
 })

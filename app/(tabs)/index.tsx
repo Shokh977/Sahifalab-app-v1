@@ -17,6 +17,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius, getLevelTier } from '../../lib/constants'
 import { hero, streaks as streaksApi, type HeroContent } from '../../lib/api'
 import { StreakLostModal } from '../../components/streak/StreakLostModal'
+import { StreakAtRiskModal } from '../../components/streak/StreakAtRiskModal'
 import { SkeletonBlock } from '../../components/dashboard/SkeletonBlock'
 import { UnifiedBanner } from '../../components/dashboard/UnifiedBanner'
 import { ContextualActionRow } from '../../components/dashboard/ContextualActionRow'
@@ -107,6 +108,7 @@ function BannerSection() {
       stats={mergedStats}
       level={user?.level    ?? 1}
       totalXP={user?.total_xp ?? 0}
+      streakState={data.streakState}
     />
   )
 }
@@ -219,7 +221,11 @@ const heroBannerStyles = StyleSheet.create({
 export default function HomeTab() {
   const { c }      = useTheme()
   const router     = useRouter()
-  const { fetch, refresh, data, loading, refreshing, streakLostSeen, markStreakLostSeen } = useDashboardStore()
+  const {
+    fetch, refresh, data, loading, refreshing,
+    streakLostSeen, markStreakLostSeen,
+    atRiskModalShownCount, bumpAtRiskModalShown,
+  } = useDashboardStore()
 
   useEffect(() => { fetch() }, [])
 
@@ -239,17 +245,36 @@ export default function HomeTab() {
     return () => clearTimeout(t)
   }, [data?.streakJustLost, streakLostSeen, markStreakLostSeen])
 
+  // ── Streak-at-risk modal ─────────────────────────────────────────────────────
+  // Allowed to reappear once more per session while the window stays open —
+  // atRiskModalShownCount resets in dashboardStore the moment streak_state
+  // moves off 'at_risk', so a later separate episode gets a fresh allowance.
+  const [showAtRiskModal, setShowAtRiskModal] = useState(false)
+  useEffect(() => {
+    if (!data?.streakAtRisk || atRiskModalShownCount >= 2) return
+    bumpAtRiskModalShown()
+    const t = setTimeout(() => setShowAtRiskModal(true), 800)
+    return () => clearTimeout(t)
+  }, [data?.streakAtRisk])
+
   async function handleUseFreeze() {
     try {
       await streaksApi.useFreeze()
     } catch {}
     setShowLostModal(false)
+    setShowAtRiskModal(false)
     refresh()
   }
 
   function handleBuyFreeze() {
     setShowLostModal(false)
+    setShowAtRiskModal(false)
     router.push('/(screens)/streak-detail' as any)
+  }
+
+  function handleStudyNow() {
+    setShowAtRiskModal(false)
+    router.push('/(tabs)/study' as any)
   }
 
   return (
@@ -373,6 +398,17 @@ export default function HomeTab() {
         onClose={() => setShowLostModal(false)}
         onUseFreeze={data?.streakLostCanFreeze ? handleUseFreeze : undefined}
         onBuyFreeze={data?.streakLostCanBuyFreeze ? handleBuyFreeze : undefined}
+      />
+
+      <StreakAtRiskModal
+        visible={showAtRiskModal}
+        streakDays={data?.focusStats.streak_days ?? 0}
+        freezeCount={data?.focusStats.freeze_count ?? 0}
+        windowClosesAt={data?.windowClosesAt ?? null}
+        onClose={() => setShowAtRiskModal(false)}
+        onUseFreeze={data?.streakCanFreeze ? handleUseFreeze : undefined}
+        onBuyFreeze={data?.streakCanBuyFreeze ? handleBuyFreeze : undefined}
+        onStudyNow={handleStudyNow}
       />
     </View>
   )

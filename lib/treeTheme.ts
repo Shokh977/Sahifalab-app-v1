@@ -99,7 +99,11 @@ export const stagePalettes = {
 } as const
 
 export type SkyMood    = keyof typeof skyMoods
-export type TreeState  = 'alive' | 'frozen' | 'dead'
+// 'frozen' is reserved exclusively for streak_state === 'frozen_today'
+// (a freeze actually protected the streak) — 'at_risk' is the wilting-but-
+// still-alive warning state for streak_state === 'at_risk', kept visually
+// distinct so frost never again doubles as "danger" (see MagicTree.tsx).
+export type TreeState   = 'alive' | 'at_risk' | 'frozen' | 'dead'
 export type TreeSize   = 'hero' | 'card' | 'thumb' | 'badge' | 'micro'
 export type StageNumber = 1|2|3|4|5|6|7|8|9|10
 export type StagePalette = { base: string; mid: string; hi: string; rim: string; accent: string; glow: string }

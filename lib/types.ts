@@ -298,4 +298,6 @@ export interface CompleteSessionResult {
   stages_completed:  Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number }>
   challenges_completed:  Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
   challenges_progressed: Array<{ challenge_id: string; slug: string; title: string; progress_value: number; target_value: number }>
+  freeze_count?:             number
+  milestone_freeze_granted?: boolean
 }
