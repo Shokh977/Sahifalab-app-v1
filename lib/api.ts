@@ -974,12 +974,6 @@ export const groups = {
 
 // ── Focus Timer ───────────────────────────────────────────────────────────────
 
-export interface WeeklyStudyDay {
-  date:     string   // "YYYY-MM-DD"
-  minutes:  number
-  goal_met: boolean
-}
-
 export const focus = {
   complete: (minutes: number) =>
     request<{
@@ -999,26 +993,6 @@ export const focus = {
       { method: 'POST', body: JSON.stringify({ minutes, local_date: localDate() }), auth: true },
     ),
 
-  weekly: () =>
-    request<WeeklyStudyDay[]>(`/api/focus/weekly?local_date=${localDate()}`, { auth: true })
-      .catch(() => [] as WeeklyStudyDay[]),
-
-  weeklyReport: () =>
-    request<{
-      first_name:    string
-      week_start:    string
-      week_end:      string
-      total_minutes: number
-      prev_minutes:  number
-      pct_change:    number
-      week_xp:       number
-      streak_days:   number
-      days_active:   number
-      daily_goal:    number
-      best_day:      string | null
-      best_minutes:  number
-      days: Array<{ date: string; minutes: number; goal_met: boolean }>
-    }>(`/api/focus/weekly-report?local_date=${localDate()}`, { auth: true }),
 }
 
 // ── Account actions ───────────────────────────────────────────────────────────
@@ -1900,6 +1874,7 @@ export interface WeeklyReviewStats {
   this_week_minutes:                 number
   prev_week_minutes:                 number
   days_active:                       number
+  week_xp:                           number
   days:                              WeeklyReviewDay[]
   streak_days:                       number
   daily_goal_minutes:                number

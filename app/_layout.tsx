@@ -273,8 +273,13 @@ export default function RootLayout() {
           profile:          '/(tabs)/profile',
           home:             '/(tabs)',
           leaderboard:      '/(screens)/leaderboard',
-          weekly_report:    '/(screens)/weekly-report',
-          weekly_review:    '/(screens)/weekly-review',   // AI review (088/089) — distinct from weekly_report above
+          // weekly_report: sent by the Monday-08:00 cron push (cron.py's
+          // send_weekly_reports) — the standalone weekly-report screen it
+          // used to open was retired (merged into weekly_review, which now
+          // shows the same numbers plus the AI narrative), so both notif
+          // types land on the same screen.
+          weekly_report:    '/(screens)/weekly-review',
+          weekly_review:    '/(screens)/weekly-review',
           teacher_dashboard:'/(screens)/teacher-dashboard',
           notifications:    '/(tabs)/notifications',
         }

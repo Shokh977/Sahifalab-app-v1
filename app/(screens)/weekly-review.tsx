@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Animated } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { ChevronLeft, ChevronRight, Sparkles, Timer, Flame, Target, BookOpen, ListChecks } from 'lucide-react-native'
+import { ChevronLeft, ChevronRight, Sparkles, Timer, Flame, Target, BookOpen, ListChecks, Zap } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { ai as aiApi } from '../../lib/api'
 import type { WeeklyReview, WeeklyReviewStats } from '../../lib/api'
@@ -126,6 +126,12 @@ function StatsSection({ stats, accent, c }: { stats: WeeklyReviewStats; accent: 
           Icon={Timer} color={accent} label="Bu hafta"
           value={`${stats.this_week_minutes} daq`}
           sub={`${stats.days_active} kun faol`}
+          textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
+        />
+        <StatTile
+          Icon={Zap} color="#F59E0B" label="XP"
+          value={`+${stats.week_xp}`}
+          sub="shu hafta"
           textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
         />
         <StatTile

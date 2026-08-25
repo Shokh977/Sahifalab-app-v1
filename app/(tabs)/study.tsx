@@ -29,17 +29,16 @@ import { XPFloat, XPFloatHandle } from '../../components/study/XPFloat'
 import { CompletionSheet } from '../../components/study/CompletionSheet'
 import { LevelUpOverlay } from '../../components/study/LevelUpOverlay'
 import { AchievementOverlay, Achievement } from '../../components/study/AchievementOverlay'
-import { WeeklyChart } from '../../components/study/WeeklyChart'
 import { MonthlyHeatmap } from '../../components/study/MonthlyHeatmap'
 import { AmbientPlayer } from '../../components/study/AmbientPlayer'
-import type { WeeklyStudyDay, HeatmapDay } from '../../lib/api'
+import type { HeatmapDay } from '../../lib/api'
 import { GoalCompleteModal } from '../../components/streak/GoalCompleteModal'
 import { EvolutionModal } from '../../components/streak/EvolutionModal'
 import type { StageNumber } from '../../lib/treeTheme'
 import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
 import { ChallengeChip } from '../../components/study/ChallengeChip'
 import { ChallengeCompletionModal, type CompletedChallenge } from '../../components/study/ChallengeCompletionModal'
-import { FileBarChart2, ChevronRight } from 'lucide-react-native'
+import { Sparkles, ChevronRight } from 'lucide-react-native'
 import {
   setupTimerNotifications, saveTimerState, clearTimerState, loadTimerState,
   scheduleTimerEndNotification, cancelTimerEndNotification,
@@ -927,25 +926,12 @@ function InfoSheetModal({ visible, onClose, children }: {
 
 // ── Stats screen ──────────────────────────────────────────────────────────────
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  const { c } = useTheme()
-  return (
-    <View style={[styles.sectionCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-      <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-        {title}
-      </Text>
-      {children}
-    </View>
-  )
-}
-
 
 function StatsScreen() {
   const { c }  = useTheme()
   const router = useRouter()
   const user   = useAuthStore(s => s.user)
 
-  const [weeklyDays,  setWeeklyDays]  = useState<WeeklyStudyDay[]>([])
   const [heatmapData, setHeatmapData] = useState<HeatmapDay[]>([])
   const [heatmapDays, setHeatmapDays] = useState<7 | 30 | 90>(90)
   const [stats,       setStats]       = useState<FocusStats | null>(null)
@@ -956,12 +942,10 @@ function StatsScreen() {
 
   useEffect(() => {
     ;(async () => {
-      const [w, h, s] = await Promise.allSettled([
-        focus.weekly(),
+      const [h, s] = await Promise.allSettled([
         user?.telegram_id ? profile.getHeatmap(user.telegram_id, 90) : Promise.resolve([]),
         focusStats.get(),
       ])
-      if (w.status === 'fulfilled') setWeeklyDays(w.value ?? [])
       if (h.status === 'fulfilled') setHeatmapData(h.value ?? [])
       if (s.status === 'fulfilled') setStats(s.value)
       setLoading(false)
@@ -1047,11 +1031,6 @@ function StatsScreen() {
         </Pressable>
       </View>
 
-      {/* ── Weekly chart ───────────────────────────────────────────────────── */}
-      <SectionCard title="Bu hafta">
-        <WeeklyChart days={weeklyDays} />
-      </SectionCard>
-
       {/* ── Heatmap ────────────────────────────────────────────────────────── */}
       <View style={[styles.sectionCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
         {/* Header row: title + filter pills */}
@@ -1089,9 +1068,10 @@ function StatsScreen() {
         </Animated.View>
       </View>
 
-      {/* ── Weekly report link ─────────────────────────────────────────────── */}
+      {/* ── Weekly AI review link — this week's chart + full stat grid + AI
+          narrative all live on that one screen now, not duplicated here. ── */}
       <Pressable
-        onPress={() => router.push('/(screens)/weekly-report' as any)}
+        onPress={() => router.push('/(screens)/weekly-review' as any)}
         style={({ pressed }) => [
           styles.sectionCard,
           styles.reportRow,
@@ -1099,9 +1079,9 @@ function StatsScreen() {
         ]}
       >
         <View style={styles.reportLeft}>
-          <FileBarChart2 size={18} color={c.textSecondary} strokeWidth={1.8} />
+          <Sparkles size={18} color={c.textSecondary} strokeWidth={1.8} />
           <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            Haftalik hisobot
+            Haftalik sharh
           </Text>
         </View>
         <ChevronRight size={16} color={c.textMuted} strokeWidth={1.8} />
