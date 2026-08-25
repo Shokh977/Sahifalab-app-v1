@@ -1961,5 +1961,7 @@ export const ai = {
     }),
 
   weeklyReview: () =>
-    request<{ review: WeeklyReview | null }>('/api/ai/weekly-review', { auth: true }),
+    request<{ review: WeeklyReview | null; live_stats: WeeklyReviewStats | null }>(
+      '/api/ai/weekly-review', { auth: true },
+    ),
 }

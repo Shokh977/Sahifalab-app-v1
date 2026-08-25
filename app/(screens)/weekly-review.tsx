@@ -85,6 +85,77 @@ const FEATURE_ROUTE: Record<string, string> = {
   courses:    '/(tabs)/courses',
 }
 
+// ── Chart + stat-tile grid — shared between the full narrative view (once
+// this week's AI review is ready) and the in-progress view (live numbers
+// while waiting for the cron-staggered batch to reach this user).
+function StatsSection({ stats, accent, c }: { stats: WeeklyReviewStats; accent: string; c: any }) {
+  const pctChange = stats.prev_week_minutes > 0
+    ? Math.round((stats.this_week_minutes - stats.prev_week_minutes) / stats.prev_week_minutes * 100)
+    : null
+
+  return (
+    <>
+      <View style={[s.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+        <View style={s.chartHeader}>
+          <Text style={[s.cardLabel, { color: c.textMuted, fontFamily: typography.fontFamily.semibold }]}>
+            HAFTALIK FAOLLIK
+          </Text>
+          {pctChange !== null && (
+            <Text style={[
+              s.pctChange,
+              { color: pctChange >= 0 ? '#22C55E' : c.textMuted, fontFamily: typography.fontFamily.semibold },
+            ]}>
+              {pctChange >= 0 ? '+' : ''}{pctChange}%
+            </Text>
+          )}
+        </View>
+        {stats.days.length > 0 ? (
+          <WeeklyBars days={stats.days} accent={accent} barBg={c.bgTertiary} />
+        ) : (
+          <Text style={[s.stateBody, { color: c.textMuted, textAlign: 'left', marginTop: 4 }]}>
+            Bu hafta hali faollik yo'q
+          </Text>
+        )}
+      </View>
+
+      <Text style={[s.sectionLabel, { color: c.textMuted, fontFamily: typography.fontFamily.semibold }]}>
+        TO'LIQ STATISTIKA
+      </Text>
+      <View style={tiles.grid}>
+        <StatTile
+          Icon={Timer} color={accent} label="Bu hafta"
+          value={`${stats.this_week_minutes} daq`}
+          sub={`${stats.days_active} kun faol`}
+          textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
+        />
+        <StatTile
+          Icon={Flame} color="#FF4500" label="Seriya"
+          value={`${stats.streak_days} kun`}
+          textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
+        />
+        <StatTile
+          Icon={Target} color="#4DA6FF" label="Flashcard aniqlik"
+          value={stats.flashcard_accuracy_pct !== null ? `${stats.flashcard_accuracy_pct}%` : '—'}
+          sub={`${stats.flashcard_reviews_this_week} ta takrorlash`}
+          textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
+        />
+        <StatTile
+          Icon={BookOpen} color="#A855F7" label="Kurslar"
+          value={String(stats.courses_enrolled_count)}
+          sub={`${stats.lessons_completed_this_week} ta dars (hafta)`}
+          textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
+        />
+        <StatTile
+          Icon={ListChecks} color="#22C55E" label="Testlar"
+          value={`${stats.quiz_attempts_this_week} ta`}
+          sub="shu hafta"
+          textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
+        />
+      </View>
+    </>
+  )
+}
+
 export default function WeeklyReviewScreen() {
   const { c } = useTheme()
   const router = useRouter()
@@ -92,6 +163,7 @@ export default function WeeklyReviewScreen() {
 
   const [loading, setLoading] = useState(true)
   const [review, setReview] = useState<WeeklyReview | null>(null)
+  const [liveStats, setLiveStats] = useState<WeeklyReviewStats | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -100,6 +172,7 @@ export default function WeeklyReviewScreen() {
     try {
       const res = await aiApi.weeklyReview()
       setReview(res.review)
+      setLiveStats(res.live_stats)
     } catch (e: any) {
       setError(e?.message ?? "Yuklab bo'lmadi")
     } finally {
@@ -108,11 +181,6 @@ export default function WeeklyReviewScreen() {
   }, [])
 
   useEffect(() => { load() }, [load])
-
-  const stats = review?.stats
-  const pctChange = stats && stats.prev_week_minutes > 0
-    ? Math.round((stats.this_week_minutes - stats.prev_week_minutes) / stats.prev_week_minutes * 100)
-    : null
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
@@ -143,7 +211,7 @@ export default function WeeklyReviewScreen() {
             <Text style={[s.retryText, { fontFamily: typography.fontFamily.semibold }]}>Qayta urinish</Text>
           </Pressable>
         </View>
-      ) : !review ? (
+      ) : !review && !liveStats ? (
         <View style={s.center}>
           <Text style={s.stateIcon}>🌱</Text>
           <Text style={[s.stateTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
@@ -154,7 +222,36 @@ export default function WeeklyReviewScreen() {
             Birinchi sharh shu hafta oxirigacha tayyor bo'ladi — o'qishni davom eting.
           </Text>
         </View>
-      ) : (
+      ) : liveStats ? (
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+          <View style={[s.freeBadge, { backgroundColor: accent + '1a', borderColor: accent + '44' }]}>
+            <Sparkles size={13} color={accent} />
+            <Text style={[s.freeBadgeText, { color: accent, fontFamily: typography.fontFamily.semibold }]}>
+              Har doim bepul
+            </Text>
+          </View>
+
+          <Text style={[s.weekLabel, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
+            Joriy hafta
+          </Text>
+
+          <Text style={[s.headline, { color: c.textPrimary, fontFamily: typography.fontFamily.extrabold }]}>
+            Sharh tayyorlanmoqda
+          </Text>
+
+          <View style={[s.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
+            <Text style={[s.cardLabel, { color: c.textMuted, fontFamily: typography.fontFamily.semibold }]}>
+              MA'LUMOT
+            </Text>
+            <Text style={[s.cardBody, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+              Sun'iy intellekt tahlili va shaxsiy tavsiya hafta oxirigacha tayyor bo'ladi.
+              Hozircha shu haftadagi haqiqiy faolligingiz pastda — raqamlar real vaqtda yangilanib boradi.
+            </Text>
+          </View>
+
+          <StatsSection stats={liveStats} accent={accent} c={c} />
+        </ScrollView>
+      ) : review ? (
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <View style={[s.freeBadge, { backgroundColor: accent + '1a', borderColor: accent + '44' }]}>
             <Sparkles size={13} color={accent} />
@@ -180,63 +277,7 @@ export default function WeeklyReviewScreen() {
             </Text>
           </View>
 
-          {stats && (
-            <>
-              {/* Weekly activity chart */}
-              <View style={[s.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-                <View style={s.chartHeader}>
-                  <Text style={[s.cardLabel, { color: c.textMuted, fontFamily: typography.fontFamily.semibold }]}>
-                    HAFTALIK FAOLLIK
-                  </Text>
-                  {pctChange !== null && (
-                    <Text style={[
-                      s.pctChange,
-                      { color: pctChange >= 0 ? '#22C55E' : c.textMuted, fontFamily: typography.fontFamily.semibold },
-                    ]}>
-                      {pctChange >= 0 ? '+' : ''}{pctChange}%
-                    </Text>
-                  )}
-                </View>
-                <WeeklyBars days={stats.days} accent={accent} barBg={c.bgTertiary} />
-              </View>
-
-              {/* Advanced stats grid */}
-              <Text style={[s.sectionLabel, { color: c.textMuted, fontFamily: typography.fontFamily.semibold }]}>
-                TO'LIQ STATISTIKA
-              </Text>
-              <View style={tiles.grid}>
-                <StatTile
-                  Icon={Timer} color={accent} label="Bu hafta"
-                  value={`${stats.this_week_minutes} daq`}
-                  sub={`${stats.days_active} kun faol`}
-                  textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
-                />
-                <StatTile
-                  Icon={Flame} color="#FF4500" label="Seriya"
-                  value={`${stats.streak_days} kun`}
-                  textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
-                />
-                <StatTile
-                  Icon={Target} color="#4DA6FF" label="Flashcard aniqlik"
-                  value={stats.flashcard_accuracy_pct !== null ? `${stats.flashcard_accuracy_pct}%` : '—'}
-                  sub={`${stats.flashcard_reviews_this_week} ta takrorlash`}
-                  textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
-                />
-                <StatTile
-                  Icon={BookOpen} color="#A855F7" label="Kurslar"
-                  value={String(stats.courses_enrolled_count)}
-                  sub={`${stats.lessons_completed_this_week} ta dars (hafta)`}
-                  textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
-                />
-                <StatTile
-                  Icon={ListChecks} color="#22C55E" label="Testlar"
-                  value={`${stats.quiz_attempts_this_week} ta`}
-                  sub="shu hafta"
-                  textPrimary={c.textPrimary} textMuted={c.textMuted} bg={c.bgSecondary} border={c.border}
-                />
-              </View>
-            </>
-          )}
+          {review.stats && <StatsSection stats={review.stats} accent={accent} c={c} />}
 
           {/* Feature spotlight — distinct treatment so it reads as a
               call-to-action, not more narrative text. */}
@@ -273,7 +314,7 @@ export default function WeeklyReviewScreen() {
             </Text>
           </View>
         </ScrollView>
-      )}
+      ) : null}
     </SafeAreaView>
   )
 }
