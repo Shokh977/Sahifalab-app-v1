@@ -88,6 +88,11 @@ function parseDeepLink(url: string): string | null {
   if (seg0 === 'flashcards' && seg1 && seg2 === 'study')   return `/(screens)/flashcard-study/${seg1}`
   // sahifalab://deck/{id} or https://sahifalab.uz/deck/{id} → public deck preview
   if (seg0 === 'deck' && seg1)                             return `/(screens)/public-deck/${seg1}`
+  // 088/089 Tanga+AI deep links
+  // sahifalab://ai/flashcards → AI flashcard-generation screen
+  if (seg0 === 'ai' && seg1 === 'flashcards')              return '/(screens)/ai-flashcard-generate'
+  // sahifalab://weekly-review → this week's AI-generated personal review
+  if (seg0 === 'weekly-review')                            return '/(screens)/weekly-review'
 
   return null
 }
@@ -269,6 +274,7 @@ export default function RootLayout() {
           home:             '/(tabs)',
           leaderboard:      '/(screens)/leaderboard',
           weekly_report:    '/(screens)/weekly-report',
+          weekly_review:    '/(screens)/weekly-review',   // AI review (088/089) — distinct from weekly_report above
           teacher_dashboard:'/(screens)/teacher-dashboard',
           notifications:    '/(tabs)/notifications',
         }

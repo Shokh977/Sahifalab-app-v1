@@ -12,11 +12,11 @@ import type { FreezePackage } from '../../lib/api'
 
 interface Props {
   visible:      boolean
-  currentXp:    number
+  currentTanga: number
   freezeCount:  number
   packages:     FreezePackage[]
   onClose:      () => void
-  onPurchased:  (newXp: number, newFreezeCount: number) => void
+  onPurchased:  (newTanga: number, newFreezeCount: number) => void
   consecutiveFreezesUsed?: number
   maxConsecutiveFreezes?:  number
 }
@@ -35,12 +35,12 @@ const INFO_LINES = [
   {
     emoji: '💡',
     title: 'Paketlar qanchalik tejamkor?',
-    body:  "1 ta — 200 XP  ·  3 ta — 500 XP (17% tejasiz)  ·  5 ta — 750 XP (25% tejasiz). Bir vaqtda ko'pi bilan 5 ta freeze saqlash mumkin.",
+    body:  "1 ta — 200 Tanga  ·  3 ta — 500 Tanga (17% tejasiz)  ·  5 ta — 750 Tanga (25% tejasiz). Bir vaqtda ko'pi bilan 5 ta freeze saqlash mumkin.",
   },
 ]
 
 export function FreezeSheet({
-  visible, currentXp, freezeCount, packages, onClose, onPurchased,
+  visible, currentTanga, freezeCount, packages, onClose, onPurchased,
   consecutiveFreezesUsed = 0, maxConsecutiveFreezes = 2,
 }: Props) {
   const { c }   = useTheme()
@@ -75,17 +75,29 @@ export function FreezeSheet({
   const MAX_FREEZE_COUNT = 5
 
   const selectedPkg = packages.find(p => p.count === selected)
-  const canAfford   = selectedPkg ? currentXp >= selectedPkg.xp_cost : true
+  const canAfford   = selectedPkg ? currentTanga >= selectedPkg.xp_cost : true
   const fitsCap     = selectedPkg ? freezeCount + selectedPkg.count <= MAX_FREEZE_COUNT : true
   const btnDisabled = !selected || !canAfford || !fitsCap || loading
+
+  // Stable per purchase-intent, not per attempt — a retry after a dropped
+  // response reuses the same key so the server can't double-spend Tanga
+  // (spec Part 3: idempotency "required for... the mobile client's
+  // unreliable network"). Cleared whenever the selected package changes or
+  // the sheet closes, so a genuinely new purchase gets a fresh key.
+  const idempotencyKeyRef = useRef<string | null>(null)
+
+  useEffect(() => { idempotencyKeyRef.current = null }, [selected, visible])
 
   async function handlePurchase() {
     if (btnDisabled) return
     setLoading(true)
     setError(null)
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    }
     try {
-      const res = await streaksApi.purchaseFreeze(selected!)
-      onPurchased(res.total_xp, res.freeze_count)
+      const res = await streaksApi.purchaseFreeze(selected!, idempotencyKeyRef.current)
+      onPurchased(res.tanga_balance, res.freeze_count)
       onClose()
     } catch (e: any) {
       setError(e?.message ?? 'Xatolik yuz berdi')
@@ -158,10 +170,10 @@ export function FreezeSheet({
           <View style={[styles.currentRow, { backgroundColor: c.bgTertiary, borderColor: c.border }]}>
             <View style={styles.statItem}>
               <Text style={[styles.statNum, { color: c.accentPrimary, fontFamily: typography.fontFamily.bold }]}>
-                {currentXp.toLocaleString()}
+                {currentTanga.toLocaleString()}
               </Text>
               <Text style={[styles.statLabel, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                Mavjud XP
+                Mavjud Tanga
               </Text>
             </View>
             <View style={[styles.divider, { backgroundColor: c.border }]} />
@@ -179,7 +191,7 @@ export function FreezeSheet({
           <View style={styles.packages}>
             {packages.map(pkg => {
               const isSelected = selected === pkg.count
-              const affordable = currentXp >= pkg.xp_cost
+              const affordable = currentTanga >= pkg.xp_cost
               const withinCap  = freezeCount + pkg.count <= MAX_FREEZE_COUNT
               const selectable = affordable && withinCap
               return (
@@ -200,7 +212,7 @@ export function FreezeSheet({
                     ×{pkg.count}
                   </Text>
                   <Text style={[styles.pkgCost, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                    {pkg.xp_cost} XP
+                    {pkg.xp_cost} Tanga
                   </Text>
                 </Pressable>
               )
@@ -221,7 +233,7 @@ export function FreezeSheet({
 
           {selected && !canAfford && (
             <Text style={[styles.errorText, { color: c.warning, fontFamily: typography.fontFamily.regular }]}>
-              Yetarli XP yo'q. Ko'proq XP yig'ing!
+              Yetarli Tanga yo'q. Ko'proq Tanga yig'ing!
             </Text>
           )}
 
@@ -236,7 +248,7 @@ export function FreezeSheet({
               : (
                 <Text style={[styles.buyBtnText, { color: btnDisabled ? c.textMuted : '#fff', fontFamily: typography.fontFamily.bold }]}>
                   {selected
-                    ? `${selected} freeze sotib olish — ${selectedPkg?.xp_cost} XP`
+                    ? `${selected} freeze sotib olish — ${selectedPkg?.xp_cost} Tanga`
                     : 'Paket tanlang'}
                 </Text>
               )

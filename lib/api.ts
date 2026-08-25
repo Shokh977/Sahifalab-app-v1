@@ -108,6 +108,7 @@ export interface AuthResponse {
 export interface MeResponse extends AuthResponse {
   level:               number
   total_xp:            number
+  tanga_balance:       number  // additive (088_tanga_currency)
   bio:                 string | null
   streak_days:         number
   daily_goal_minutes:  number
@@ -992,6 +993,7 @@ export const focus = {
       challenges_progressed: Array<{ challenge_id: string; slug: string; title: string; progress_value: number; target_value: number }>
       freeze_count?:             number
       milestone_freeze_granted?: boolean
+      tanga_balance?:            number  // additive (088_tanga_currency)
     }>(
       '/api/focus/complete',
       { method: 'POST', body: JSON.stringify({ minutes, local_date: localDate() }), auth: true },
@@ -1797,16 +1799,20 @@ export interface StreakDetail {
   milestones:              StreakMilestone[]
   calendar:                StreakCalendarDay[]
   freeze_packages:         FreezePackage[]
+  tanga_balance:           number  // additive (088_tanga_currency)
 }
 
 export const streaks = {
   detail: (telegramId?: number | null, days: 7 | 30 = 7) =>
     request<StreakDetail>(`/api/streaks/detail?local_date=${localDate()}&days=${days}`, { auth: true }),
 
-  purchaseFreeze: (count: number) =>
-    request<{ ok: boolean; xp_spent: number; freezes_added: number; total_xp: number; freeze_count: number }>(
+  purchaseFreeze: (count: number, idempotencyKey?: string) =>
+    request<{
+      ok: boolean; xp_spent: number; freezes_added: number; total_xp: number; freeze_count: number
+      tanga_spent: number; tanga_balance: number  // additive (088_tanga_currency)
+    }>(
       '/api/streaks/freeze/purchase',
-      { method: 'POST', body: JSON.stringify({ count }), auth: true },
+      { method: 'POST', body: JSON.stringify({ count, idempotency_key: idempotencyKey }), auth: true },
     ),
 
   useFreeze: () => {
@@ -1851,4 +1857,109 @@ export const wallet = {
 
   history: (limit = 50) =>
     request<{ history: PayoutRequest[] }>(`/api/teacher/wallet/history?limit=${limit}`, { auth: true }),
+}
+
+// ── AI features (088/089 Tanga+AI) ──────────────────────────────────────────
+// Named `ai`, not `wallet` — `wallet` above is the TEACHER PAYOUT wallet
+// (UZS), a completely different concept from the Tanga balance. Don't merge.
+
+export interface AiLimits {
+  free_daily_allowance:     number
+  free_remaining_today:     number
+  hard_daily_cap:           number
+  actions_used_today:       number
+  actions_remaining_today:  number
+  prices: {
+    flashcard_gen?:  number
+    explanation?:    number
+    tutor_session?:  number
+  }
+}
+
+export interface GeneratedFlashcard {
+  front: string
+  back:  string
+}
+
+export interface FlashcardGeneratePreview {
+  deck_title:            string
+  cards:                 GeneratedFlashcard[]
+  tanga_spent:           number
+  free_remaining_today:  number
+  action_id:             string
+}
+
+export interface WeeklyReviewDay {
+  date:     string
+  minutes:  number
+  goal_met: boolean
+}
+
+export interface WeeklyReviewStats {
+  first_name:                        string
+  this_week_minutes:                 number
+  prev_week_minutes:                 number
+  days_active:                       number
+  days:                              WeeklyReviewDay[]
+  streak_days:                       number
+  daily_goal_minutes:                number
+  flashcard_reviews_this_week:       number
+  flashcard_accuracy_pct:            number | null
+  flashcard_decks_studied:           number
+  flashcard_decks_owned:             number
+  days_since_last_flashcard_review:  number | null
+  courses_enrolled_count:            number
+  lessons_completed_this_week:       number
+  quiz_attempts_this_week:           number
+}
+
+export interface WeeklyReviewSpotlight {
+  title: string
+  body:  string
+}
+
+export interface WeeklyReview {
+  week_start:             string
+  created_at:             string | null
+  headline:               string
+  summary:                string
+  recommendation:         string
+  feature_spotlight:      WeeklyReviewSpotlight
+  feature_spotlight_key:  'flashcards' | 'courses' | null
+  stats:                  WeeklyReviewStats
+}
+
+export const ai = {
+  limits: () =>
+    request<AiLimits>('/api/ai/limits', { auth: true }),
+
+  generateFlashcardsFromText: (text: string, actionId: string) =>
+    request<FlashcardGeneratePreview>('/api/ai/flashcards/generate', {
+      method: 'POST',
+      body: JSON.stringify({ action_id: actionId, text }),
+      auth: true,
+    }),
+
+  generateFlashcardsFromImage: (imageBase64: string, imageMimeType: string, actionId: string) =>
+    request<FlashcardGeneratePreview>('/api/ai/flashcards/generate', {
+      method: 'POST',
+      body: JSON.stringify({ action_id: actionId, image_base64: imageBase64, image_mime_type: imageMimeType }),
+      auth: true,
+    }),
+
+  confirmFlashcards: (payload: {
+    deck_title: string
+    description?: string | null
+    color?: string | null
+    icon?: string | null
+    cards: GeneratedFlashcard[]
+  }) =>
+    request<{ ok: boolean; deck_id: number; card_count: number }>('/api/ai/flashcards/generate/confirm', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      auth: true,
+    }),
+
+  weeklyReview: () =>
+    request<{ review: WeeklyReview | null }>('/api/ai/weekly-review', { auth: true }),
 }

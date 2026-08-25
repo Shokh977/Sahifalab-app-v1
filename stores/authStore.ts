@@ -32,6 +32,7 @@ function fromIdentityCache(c: UserIdentityCache): AppUser {
     ...c,
     level:               1,
     total_xp:            0,
+    tanga_balance:       0,
     streak_days:         0,
     daily_goal_minutes:  20,
   }
@@ -49,6 +50,7 @@ export interface AppUser {
   status:              string
   level:               number
   total_xp:            number
+  tanga_balance:       number
   streak_days:         number
   daily_goal_minutes:  number
 }
@@ -88,6 +90,7 @@ function mapToUser(r: AuthResponse | MeResponse): AppUser {
     status:             r.status ?? 'active',
     level:              me.level              ?? 1,
     total_xp:           me.total_xp           ?? 0,
+    tanga_balance:      me.tanga_balance      ?? 0,
     streak_days:        me.streak_days        ?? 0,
     daily_goal_minutes: me.daily_goal_minutes ?? 20,
   }

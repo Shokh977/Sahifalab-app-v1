@@ -25,8 +25,22 @@ import { CourseHCard } from '../../components/dashboard/CourseHCard'
 import { CourseVCard } from '../../components/dashboard/CourseVCard'
 import { LeaderboardCard } from '../../components/dashboard/LeaderboardCard'
 import { ChallengeDashboardCard } from '../../components/dashboard/ChallengeDashboardCard'
+import { AiFeaturesCard } from '../../components/dashboard/AiFeaturesCard'
+import { TangaInfoSheet } from '../../components/dashboard/TangaInfoSheet'
 
 // ── Top bar ──────────────────────────────────────────────────────────────────
+
+// 1_000 -> "1K", 1_500 -> "1.5K", 1_000_000 -> "1M" — drops the decimal
+// entirely on round numbers so it doesn't read "1.0K".
+function formatTanga(n: number): string {
+  const fmt = (value: number, suffix: string) => {
+    const rounded = Math.round(value * 10) / 10
+    return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}${suffix}`
+  }
+  if (n >= 1_000_000) return fmt(n / 1_000_000, 'M')
+  if (n >= 1_000)     return fmt(n / 1_000, 'K')
+  return String(n)
+}
 
 function TopBar() {
   const { c }       = useTheme()
@@ -36,6 +50,7 @@ function TopBar() {
   const unreadCount = useNotificationStore(s => s.unreadCount)
   const level       = user?.level ?? 1
   const tier        = getLevelTier(level)
+  const [showTangaInfo, setShowTangaInfo] = useState(false)
 
   return (
     <View style={[styles.topBar, { paddingTop: insets.top + 8, backgroundColor: 'transparent' }]}>
@@ -44,8 +59,21 @@ function TopBar() {
         SAHIFALAB
       </Text>
 
-      {/* Right: bell + avatar */}
+      {/* Right: coin balance + bell + avatar — coin lives here, not in the
+          scrollable hero card, so it never scrolls out of view. */}
       <View style={styles.topRight}>
+        {user?.tanga_balance !== undefined && (
+          <Pressable
+            onPress={() => setShowTangaInfo(true)}
+            style={[styles.coinBadge, { backgroundColor: '#f59e0b1a', borderColor: '#f59e0b44' }]}
+          >
+            <Text style={styles.coinEmoji}>🪙</Text>
+            <Text style={[styles.coinNum, { color: '#f59e0b', fontFamily: typography.fontFamily.bold }]}>
+              {formatTanga(user.tanga_balance)}
+            </Text>
+          </Pressable>
+        )}
+
         <Pressable onPress={() => router.push('/(tabs)/notifications' as any)} style={styles.bellBtn}>
           <View style={{ position: 'relative' }}>
             <Bell size={24} color={c.textPrimary} weight="regular" />
@@ -71,6 +99,12 @@ function TopBar() {
           )}
         </Pressable>
       </View>
+
+      <TangaInfoSheet
+        visible={showTangaInfo}
+        tangaBalance={user?.tanga_balance ?? 0}
+        onClose={() => setShowTangaInfo(false)}
+      />
     </View>
   )
 }
@@ -308,6 +342,11 @@ export default function HomeTab() {
 
         <View style={styles.gap} />
 
+        {/* 088/089 Tanga+AI feature discovery — flashcard generation + weekly review */}
+        <AiFeaturesCard />
+
+        <View style={styles.gap} />
+
         {/* Hero announcement (admin-managed, dismissible) */}
         <View style={{ paddingHorizontal: spacing.screenMargin }}>
           <HeroBanner />
@@ -458,6 +497,18 @@ const styles = StyleSheet.create({
   },
   brandName: { fontSize: 20, letterSpacing: 0.5 },
   topRight:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+
+  coinBadge: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               4,
+    paddingHorizontal: 8,
+    paddingVertical:   5,
+    borderRadius:      radius.full,
+    borderWidth:       1,
+  },
+  coinEmoji: { fontSize: 13 },
+  coinNum:   { fontSize: 13 },
 
   avatar: {
     width:        40,

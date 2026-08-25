@@ -250,7 +250,7 @@ export default function StreakDetailScreen() {
   const prevStageRef       = useRef<number>(
     stageFromStreak(dashData?.focusStats.streak_days ?? user?.streak_days ?? 0)
   )
-  const [localXp, setLocalXp]         = useState(user?.total_xp ?? 0)
+  const [localTanga, setLocalTanga]   = useState(user?.tanga_balance ?? 0)
   const [localFreeze, setLocalFreeze] = useState(
     () => dashData?.focusStats.freeze_count ?? 0
   )
@@ -342,13 +342,14 @@ export default function StreakDetailScreen() {
   }, [])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { setLocalXp(user?.total_xp ?? 0) }, [user?.total_xp])
+  useEffect(() => { setLocalTanga(user?.tanga_balance ?? 0) }, [user?.tanga_balance])
 
-  function handlePurchased(newXp: number, newFreezeCount: number) {
-    setLocalXp(newXp)
+  function handlePurchased(newTanga: number, newFreezeCount: number) {
+    setLocalTanga(newTanga)
     setLocalFreeze(newFreezeCount)
-    if (data) setData({ ...data, freeze_count: newFreezeCount })
+    if (data) setData({ ...data, freeze_count: newFreezeCount, tanga_balance: newTanga })
     useDashboardStore.getState().patchFocusStats({ freeze_count: newFreezeCount })
+    useAuthStore.getState().patchUser({ tanga_balance: newTanga })
   }
 
   async function handleUseFreeze() {
@@ -800,7 +801,7 @@ export default function StreakDetailScreen() {
 
       <FreezeSheet
         visible={showFreeze}
-        currentXp={localXp}
+        currentTanga={localTanga}
         freezeCount={freezeCount}
         packages={data?.freeze_packages ?? []}
         onClose={() => setShowFreeze(false)}

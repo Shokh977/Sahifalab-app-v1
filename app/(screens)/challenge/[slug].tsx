@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native'
@@ -37,6 +37,9 @@ export default function ChallengeDetailScreen() {
     try {
       const res = await challengesApi.get(slug)
       setData(res)
+      if (res.challenge_type === 'team' && res.joined) {
+        challengesApi.teamLeaderboard(res.id).then(setTeamLb).catch(() => {})
+      }
     } catch {
       // stays null -> not-found state
     } finally {
@@ -46,12 +49,6 @@ export default function ChallengeDetailScreen() {
   }, [slug])
 
   useFocusEffect(useCallback(() => { load() }, [load]))
-
-  useEffect(() => {
-    if (data?.challenge_type === 'team' && data.joined) {
-      challengesApi.teamLeaderboard(data.id).then(setTeamLb).catch(() => {})
-    }
-  }, [data?.id, data?.challenge_type, data?.joined])
 
   async function handleJoin() {
     if (!data) return
