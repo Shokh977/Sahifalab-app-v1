@@ -8,9 +8,14 @@ const USER_CACHE_KEY  = 'sahifalab_user_cache_v1'
 
 // Only stable identity fields are persisted — gamification counters (streak,
 // XP, level, goal) are intentionally excluded so stale values never flash.
+// tanga_balance is the one exception: it's a spendable currency, and a
+// forced 0 placeholder reads as "your Tanga is gone" (alarming, looks like
+// data loss) rather than "loading" — a stale-but-real number from the last
+// successful fetch is the safer wrong answer while auth.me() is in flight
+// or (on a flaky connection) failing outright.
 type UserIdentityCache = Pick<AppUser,
   'telegram_id' | 'first_name' | 'username' | 'photo_url' |
-  'email' | 'email_verified' | 'has_password' | 'role' | 'status'
+  'email' | 'email_verified' | 'has_password' | 'role' | 'status' | 'tanga_balance'
 >
 
 function toIdentityCache(u: AppUser): UserIdentityCache {
@@ -24,6 +29,7 @@ function toIdentityCache(u: AppUser): UserIdentityCache {
     has_password:   u.has_password,
     role:           u.role,
     status:         u.status,
+    tanga_balance:  u.tanga_balance,
   }
 }
 
@@ -32,7 +38,7 @@ function fromIdentityCache(c: UserIdentityCache): AppUser {
     ...c,
     level:               1,
     total_xp:            0,
-    tanga_balance:       0,
+    tanga_balance:       c.tanga_balance ?? 0,
     streak_days:         0,
     daily_goal_minutes:  20,
   }
