@@ -3,10 +3,12 @@ import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Anima
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft, ChevronRight, Sparkles, Timer, Flame, Target, BookOpen, ListChecks, Zap } from 'lucide-react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useTheme } from '../../hooks/useTheme'
 import { ai as aiApi } from '../../lib/api'
 import type { WeeklyReview, WeeklyReviewStats } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
+import { WEEKLY_REVIEW_SEEN_KEY } from '../../components/dashboard/BugunGrid/WeeklyReviewGridCard'
 
 function fmtWeekStart(iso: string): string {
   const [, m, d] = iso.split('-').map(Number)
@@ -179,6 +181,12 @@ export default function WeeklyReviewScreen() {
       const res = await aiApi.weeklyReview()
       setReview(res.review)
       setLiveStats(res.live_stats)
+      // Marks this review as seen for the dashboard's WeeklyReviewGridCard
+      // unread dot — recorded here (the actual review screen), not on the
+      // dashboard card itself, so glancing at the card never counts as read.
+      if (res.review) {
+        AsyncStorage.setItem(WEEKLY_REVIEW_SEEN_KEY, res.review.week_start).catch(() => {})
+      }
     } catch (e: any) {
       setError(e?.message ?? "Yuklab bo'lmadi")
     } finally {

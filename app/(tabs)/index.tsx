@@ -24,9 +24,7 @@ import { ContextualActionRow } from '../../components/dashboard/ContextualAction
 import { CourseHCard } from '../../components/dashboard/CourseHCard'
 import { CourseVCard } from '../../components/dashboard/CourseVCard'
 import { LeaderboardCard } from '../../components/dashboard/LeaderboardCard'
-import { ChallengeDashboardCard } from '../../components/dashboard/ChallengeDashboardCard'
-import { AiFeaturesCard } from '../../components/dashboard/AiFeaturesCard'
-import { DailyQuizCard } from '../../components/dashboard/DailyQuizCard'
+import { BugunSection } from '../../components/dashboard/BugunGrid/BugunSection'
 import { TangaInfoSheet } from '../../components/dashboard/TangaInfoSheet'
 
 // ── Top bar ──────────────────────────────────────────────────────────────────
@@ -333,24 +331,14 @@ export default function HomeTab() {
 
         <View style={styles.gap} />
 
-        {/* "5 Savol" daily quiz (090_daily_quiz) — top card per spec: a daily
-            habit belongs where users already land, not buried in a tab. */}
-        <DailyQuizCard />
+        {/* "Bugun" 2x2 action grid (design 1a) — replaces the old stacked
+            5-Savol row, orange reyting strip, and AI-feature rows. */}
+        <BugunSection />
 
         <View style={styles.gap} />
 
-        {/* Contextual action chips */}
+        {/* Contextual action chips — secondary pill row, now below the grid */}
         {data && <ContextualActionRow data={data} />}
-
-        <View style={styles.gap} />
-
-        {/* Musobaqalar discovery card — how challenges get found */}
-        <ChallengeDashboardCard />
-
-        <View style={styles.gap} />
-
-        {/* 088/089 Tanga+AI feature discovery — flashcard generation + weekly review */}
-        <AiFeaturesCard />
 
         <View style={styles.gap} />
 
