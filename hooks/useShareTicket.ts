@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Share, Alert } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
+import * as Sharing from 'expo-sharing'
 import { captureRef } from 'react-native-view-shot'
 import type { ResultTicketProps } from '../components/daily-quiz/ResultTicket'
 
@@ -37,12 +38,23 @@ export function useShareTicket(props: ResultTicketProps) {
       const uri = await captureRef(hostRef, {
         width: EXPORT_WIDTH, height: EXPORT_HEIGHT, format: 'png', result: 'tmpfile',
       })
-      await Share.share({ message, url: uri })
+      // expo-sharing, not react-native-share/core Share — RN's own
+      // Share.share({message, url}) only actually attaches the image on
+      // iOS; on Android the `url` field is silently dropped and it shares
+      // text only, which is exactly the "just copies plain text" bug this
+      // replaces. expo-sharing hands the real file to the native share
+      // sheet on both platforms (same working pattern the app already
+      // used elsewhere for image shares) — it can't attach a caption
+      // alongside the image, so the link/caption stays on the Nusxalash
+      // (copy) button instead of trying to bundle both into one share.
+      const available = await Sharing.isAvailableAsync()
+      if (!available) throw new Error('sharing unavailable')
+      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Ulashish' })
       trackEvent('result_share_completed', { score: props.score, channel: 'native_share' })
     } catch {
-      // Capture failed — fall back to a text-only share rather than
-      // blocking the user entirely (spec: "handle capture failure ...
-      // fall back to text-only share").
+      // Capture (or share-sheet) failed — fall back to a text-only share
+      // rather than blocking the user entirely (spec: "handle capture
+      // failure ... fall back to text-only share").
       Alert.alert('Rasm yaratilmadi, qayta urinib ko\'ring')
       try {
         await Share.share({ message })
