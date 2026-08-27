@@ -34,7 +34,6 @@ export default function DailyQuizScreen() {
     per_question_correct: boolean[]; elapsed_ms?: number; quiz_streak_days: number
   } | null>(null)
   const [rank, setRank] = useState<number | null>(null)
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -42,7 +41,6 @@ export default function DailyQuizScreen() {
     try {
       const res = await dailyQuiz.today()
       setQuiz(res.quiz)
-      if (res.quiz) setSecondsLeft(res.quiz.seconds_remaining)
       if (res.quiz?.state === 'submitted') {
         // GET /today now carries the full cached result once submitted —
         // no second network call needed (an earlier version of this tried
@@ -67,16 +65,6 @@ export default function DailyQuizScreen() {
   }
 
   useEffect(() => { load() }, [])
-
-  // Live countdown tick for the status block's clock + the tertiary link's
-  // lock state — a plain per-second re-render, no animated digit transition
-  // (reduce-motion has nothing to skip here beyond that).
-  useEffect(() => {
-    const id = setInterval(() => {
-      setSecondsLeft(s => (s != null && s > 0 ? s - 1 : s))
-    }, 1000)
-    return () => clearInterval(id)
-  }, [])
 
   async function submitAll(finalAnswers: Record<number, number>) {
     if (!quiz) return
@@ -144,7 +132,7 @@ export default function DailyQuizScreen() {
           <Text style={[s.stateBody, { color: c.textSecondary }]}>Birozdan so'ng qayta tekshiring.</Text>
         </View>
       ) : result ? (
-        <QuizResultView quiz={quiz} result={result} rank={rank} secondsLeft={secondsLeft} />
+        <QuizResultView quiz={quiz} result={result} rank={rank} />
       ) : (
         <View style={s.playArea}>
           <View style={s.topRow}>

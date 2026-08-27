@@ -16,7 +16,7 @@ export default function DailyQuizResultsScreen() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
-  const [tooEarly, setTooEarly] = useState(false)
+  const [mustPlayFirst, setMustPlayFirst] = useState(false)
   const [data, setData]       = useState<DailyQuizResults | null>(null)
   const [reportTarget, setReportTarget] = useState<number | null>(null)
 
@@ -24,16 +24,18 @@ export default function DailyQuizResultsScreen() {
     if (!quizId) return
     setLoading(true)
     setError(null)
-    setTooEarly(false)
+    setMustPlayFirst(false)
     try {
       const res = await dailyQuiz.results(Number(quizId))
       setData(res)
     } catch (e: any) {
       // request() surfaces the backend's `detail` string as the Error
       // message, not the HTTP status — match the literal 425 detail text
-      // from GET /api/quiz/results (see daily_quiz.py's _window_close gate).
-      if (String(e?.message ?? '').includes('hali yopilmagan')) {
-        setTooEarly(true)
+      // from GET /api/quiz/results. Results are gated on the CALLER's own
+      // submission now, not window-close time (see daily_quiz.py's
+      // get_results()) — this branch means "you haven't played yet today."
+      if (String(e?.message ?? '').includes('Avval bugungi savollarga')) {
+        setMustPlayFirst(true)
       } else {
         setError(e?.message ?? "Yuklab bo'lmadi")
       }
@@ -64,15 +66,21 @@ export default function DailyQuizResultsScreen() {
 
       {loading ? (
         <View style={s.center}><ActivityIndicator color={c.accentPrimary} size="large" /></View>
-      ) : tooEarly ? (
+      ) : mustPlayFirst ? (
         <View style={s.center}>
-          <Text style={s.stateIcon}>⏳</Text>
+          <Text style={s.stateIcon}>✍️</Text>
           <Text style={[s.stateTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            Natijalar hali tayyor emas
+            Avval bugungi savollarga javob bering
           </Text>
           <Text style={[s.stateBody, { color: c.textSecondary }]}>
-            Bugungi oyna yopilgach (24:00 UTC) to'liq natijalar, tushuntirishlar va reyting shu yerda ko'rinadi.
+            Natijalar, tushuntirishlar va reyting siz o'ynagach darhol shu yerda ko'rinadi.
           </Text>
+          <Pressable
+            onPress={() => router.push('/(screens)/daily-quiz' as any)}
+            style={[s.retryBtn, { backgroundColor: c.accentPrimary }]}
+          >
+            <Text style={s.retryText}>5 Savolga o'tish</Text>
+          </Pressable>
         </View>
       ) : error ? (
         <View style={s.center}>

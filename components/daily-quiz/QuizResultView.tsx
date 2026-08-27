@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Copy, Share2, Lock } from 'lucide-react-native'
+import { Copy, Share2 } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useAuthStore } from '../../stores/authStore'
 import { typography, spacing, radius } from '../../lib/constants'
@@ -15,11 +15,6 @@ const GREEN_TINT = '#E8F7EC'
 const GREEN_TINT_DARK = 'rgba(55,180,87,0.18)'
 const ORANGE = '#D9832B'
 
-function fmtCloseClock(secondsRemaining: number): string {
-  const closesAt = new Date(Date.now() + secondsRemaining * 1000)
-  return `${String(closesAt.getHours()).padStart(2, '0')}:${String(closesAt.getMinutes()).padStart(2, '0')}`
-}
-
 function statusTitleFor(score: number, total: number): string {
   if (score === total) return 'Mukammal!'
   if (score >= 3) return 'Yaxshi natija'
@@ -28,12 +23,11 @@ function statusTitleFor(score: number, total: number): string {
 }
 
 export function QuizResultView({
-  quiz, result, rank, secondsLeft,
+  quiz, result, rank,
 }: {
   quiz: DailyQuizToday
   result: { correct_count: number; tanga_awarded: number; per_question_correct: boolean[]; elapsed_ms?: number; quiz_streak_days: number }
   rank: number | null
-  secondsLeft: number | null
 }) {
   const { c, theme } = useTheme()
   const router = useRouter()
@@ -62,8 +56,6 @@ export function QuizResultView({
 
   const { hostRef, capturing, copied, share, copyLink } = useShareTicket(ticketProps)
 
-  const windowClosed = secondsLeft === 0
-  const closeClock = secondsLeft != null ? fmtCloseClock(secondsLeft) : null
   const gold = result.correct_count === total
 
   return (
@@ -77,13 +69,9 @@ export function QuizResultView({
         <Text style={[s.statusTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.extrabold }]}>
           {statusTitleFor(result.correct_count, total)}
         </Text>
-        {!windowClosed && closeClock && (
-          <Text style={[s.statusSub, { color: c.textMuted }]}>
-            To'liq javoblar va tushuntirishlar{' '}
-            <Text style={{ color: '#F0A32B', fontFamily: typography.fontFamily.bold }}>{closeClock}</Text>
-            {' '}da ochiladi
-          </Text>
-        )}
+        <Text style={[s.statusSub, { color: c.textMuted }]}>
+          To'liq javoblar va tushuntirishlar tayyor
+        </Text>
       </View>
 
       <View style={s.ticketWrap}>
@@ -117,14 +105,11 @@ export function QuizResultView({
       </View>
 
       <Pressable
-        disabled={!windowClosed}
         onPress={() => router.push({ pathname: '/(screens)/daily-quiz-results', params: { quizId: String(quiz.id) } } as any)}
         accessibilityRole="button"
-        accessibilityHint={windowClosed ? undefined : "Oyna yopilgach ochiladi"}
         style={s.tertiaryLink}
       >
-        {!windowClosed && <Lock size={12} color={c.textMuted} />}
-        <Text style={[s.tertiaryText, { color: windowClosed ? c.textMuted : c.textDisabled, fontFamily: typography.fontFamily.semibold }]}>
+        <Text style={[s.tertiaryText, { color: c.textMuted, fontFamily: typography.fontFamily.semibold }]}>
           Natijalarni ko'rish →
         </Text>
       </Pressable>
