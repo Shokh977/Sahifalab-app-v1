@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router'
 import {
   Flame, Trophy, TrendingUp, Video, Info, Bell,
   Users, Heart, MessageCircle, Repeat2, Bookmark,
-  AtSign, Zap, Award, CheckCircle, GraduationCap,
+  AtSign, Zap, Award, CheckCircle, GraduationCap, Snowflake,
 } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -48,6 +48,9 @@ const TITLES: Record<string, string> = {
   deck_content_flagged:        "To'plam tekshiruvda",
   deck_child_safety_flagged:   '⚠️ Bolalar xavfsizligi',
   deck_auto_hidden_reports:    "To'plam yashirildi",
+  course_granted:       'Kurs ochildi! 🎉',
+  streak_freeze_applied: '🧊 Seriya muzlatildi',
+  streak_at_risk:        '🔥 Seriyangiz xavf ostida!',
 }
 
 function notifTitle(type: string): string {
@@ -98,6 +101,15 @@ function notifBody(type: string, meta: Record<string, any>): string {
     deck_auto_hidden_reports:  meta.report_count
       ? `Ko'p shikoyat (${meta.report_count}) tufayli to'plam avtomatik yashirildi.`
       : "Ko'p shikoyat tufayli to'plam avtomatik yashirildi.",
+    course_granted: meta.course_title
+      ? `${meta.course_title} kursi sizga ochildi. Hozir o'rganishni boshlang!`
+      : "Sizga yangi kurs ochildi. Hozir o'rganishni boshlang!",
+    streak_freeze_applied: meta.streak_days
+      ? `${meta.streak_days} kunlik seriyangiz freeze bilan saqlandi. Bugun o'qib davom eting! ${meta.freeze_count ?? 0} ta freeze qoldi.`
+      : 'Seriyangiz freeze bilan saqlandi. Bugun o\'qib davom eting!',
+    streak_at_risk: meta.streak_days
+      ? `${meta.streak_days} kunlik seriyangiz bugun kechqurun tugaydi. Saqlab qolish uchun hozir o'qing!`
+      : 'Seriyangiz bugun kechqurun tugaydi. Saqlab qolish uchun hozir o\'qing!',
   }
   return map[type] ?? 'Yangi bildirishnoma'
 }
@@ -132,6 +144,11 @@ function resolveRoute(type: string, meta: Record<string, any>): string | null {
       return meta.actor_id ? `/(screens)/profile/${meta.actor_id}` : null
     case 'connection_course_published':
       return meta.course_id ? `/(screens)/course/${meta.course_id}` : '/(tabs)/courses'
+    case 'course_granted':
+      return meta.course_id ? `/(screens)/course/${meta.course_id}` : '/(tabs)/courses'
+    case 'streak_freeze_applied':
+    case 'streak_at_risk':
+      return '/(screens)/streak-detail'
     // deck_content_flagged / deck_child_safety_flagged / deck_auto_hidden_reports are
     // admin-only moderation alerts with no dedicated mobile screen — handled via the
     // web admin panel. No route here is intentional, not a gap.
@@ -193,6 +210,12 @@ function getIconCfg(type: string): { Icon: LucideIcon; color: string; bg: string
     case 'deck_child_safety_flagged':
     case 'deck_auto_hidden_reports':
       return { Icon: Info,           color: '#FF6B6B', bg: 'rgba(255,107,107,0.12)' }
+    case 'course_granted':
+      return { Icon: GraduationCap,  color: '#E8792F', bg: 'rgba(232,121,47,0.12)'  }
+    case 'streak_freeze_applied':
+      return { Icon: Snowflake,      color: '#60A5FA', bg: 'rgba(96,165,250,0.12)'  }
+    case 'streak_at_risk':
+      return { Icon: Flame,          color: '#FFB830', bg: 'rgba(255,184,48,0.15)'  }
     default:
       return { Icon: Info,           color: '#9B9BA4', bg: 'rgba(155,155,164,0.12)' }
   }
@@ -229,6 +252,9 @@ const TYPE_GROUP: Record<string, string> = {
   deck_content_flagged:        'Tizim',
   deck_child_safety_flagged:   'Tizim',
   deck_auto_hidden_reports:    'Tizim',
+  course_granted:        "O'qish",
+  streak_freeze_applied: 'Yutuqlar',
+  streak_at_risk:        'Yutuqlar',
 }
 
 const TABS = [
