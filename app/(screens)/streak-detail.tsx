@@ -12,14 +12,13 @@ import * as Sharing from 'expo-sharing'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { streaks as streaksApi, focusStages } from '../../lib/api'
-import type { StreakDetail, StreakCalendarDay, StreakStage } from '../../lib/api'
+import type { StreakDetail, StreakCalendarDay } from '../../lib/api'
 import { FreezeSheet } from '../../components/streak/FreezeSheet'
 import { StreakLostModal } from '../../components/streak/StreakLostModal'
 import { StreakAtRiskModal } from '../../components/streak/StreakAtRiskModal'
 import { EvolutionModal } from '../../components/streak/EvolutionModal'
 import { MagicTree } from '../../components/streak/MagicTree'
 import { StreakHeroBackground } from '../../components/streak/StreakHeroBackground'
-import { StagesPath } from '../../components/streak/StagesPath'
 import { stageFromStreak, TREE_STAGES } from '../../lib/treeTheme'
 import type { TreeState, StageNumber } from '../../lib/treeTheme'
 import { useAuthStore } from '../../stores/authStore'
@@ -33,17 +32,6 @@ try { Haptics = require('expo-haptics') } catch {}
 
 
 const WEEKDAY_LABELS = ['Du', 'Se', 'Cho', 'Pa', 'Ju', 'Sh', 'Ya']
-
-// General (non-stage) XP sources — the streak-stage bonuses are no longer
-// listed here as static rows; they're rendered live from the server by
-// <StagesPath> below (see "Bosqichlar" section), which shows each user's
-// actual earned/current/future status instead of the same 4 rows for
-// everyone regardless of progress.
-const XP_ROWS = [
-  { label: '⏱ Fokus taymer',      value: '1.66 XP/daq', sub: '≈ 100 XP / soat' },
-  { label: '📝 Test topshirish',   value: '+25 XP',      sub: 'Kunlik limit: 100 XP' },
-  { label: '🎓 Kurs tugatish',     value: '+200 XP',     sub: 'Bir marta, har kurs' },
-]
 
 // ── Calendar colours ─────────────────────────────────────────────────────────
 const CAL = {
@@ -244,7 +232,6 @@ export default function StreakDetailScreen() {
   const [showEvolution,  setShowEvolution]  = useState(false)
   const [evolutionStage, setEvolutionStage] = useState<StageNumber>(1)
   const [evolutionXp,    setEvolutionXp]    = useState(0)
-  const [stages,         setStages]         = useState<StreakStage[]>([])
   const hasShownLostRef    = useRef(false)
   const hasShownAtRiskRef  = useRef(false)
   const prevStageRef       = useRef<number>(
@@ -288,7 +275,6 @@ export default function StreakDetailScreen() {
       // A newer load() has already started — discard this stale response
       if (gen !== loadGenRef.current) return
       setLocalFreeze(res.freeze_count)
-      setStages(stageRows)
       // Show streak-lost modal once per session when the streak is genuinely
       // gone (streak_state === 'lost') — NOT for 'at_risk', which is still
       // fully recoverable (P2). Skip if the home screen already showed it.
@@ -759,44 +745,6 @@ export default function StreakDetailScreen() {
           </View>
         </View>
 
-        {/* ── Bosqichlar (stage path) ──────────────────────────────────── */}
-        <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-          <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            🌳 Bosqichlar
-          </Text>
-          <StagesPath stages={stages} />
-        </View>
-
-        {/* ── XP breakdown ─────────────────────────────────────────────── */}
-        <View style={[styles.section, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-          <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            💡 XP qanday hisoblanadi?
-          </Text>
-          <View style={{ gap: 0 }}>
-            {XP_ROWS.map((r, i) => (
-              <View
-                key={r.label}
-                style={[
-                  styles.xpRow,
-                  { borderBottomColor: c.border },
-                  i === XP_ROWS.length - 1 && { borderBottomWidth: 0 },
-                ]}
-              >
-                <Text style={[styles.xpLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                  {r.label}
-                </Text>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[styles.xpValue, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                    {r.value}
-                  </Text>
-                  <Text style={[styles.xpSub, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                    {r.sub}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
       </ScrollView>
 
       <FreezeSheet
@@ -1335,18 +1283,6 @@ const styles = StyleSheet.create({
     borderWidth:     1,
   },
   freezeBtnText: { color: '#fff', fontSize: typography.size.base },
-
-  // XP breakdown
-  xpRow: {
-    flexDirection:     'row',
-    justifyContent:    'space-between',
-    alignItems:        'center',
-    paddingVertical:   10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  xpLabel: { fontSize: typography.size.sm, flex: 1 },
-  xpValue: { fontSize: typography.size.sm },
-  xpSub:   { fontSize: typography.size.xs },
 
   errorBanner: {
     marginHorizontal: spacing.base,
