@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft, Clock } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useAuthStore } from '../../stores/authStore'
+import { challenges as challengesApi } from '../../lib/api'
 import { dailyQuiz, type DailyQuizToday } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
-import { ShareCard } from '../../components/daily-quiz/ShareCard'
+import { QuizResultView } from '../../components/daily-quiz/QuizResultView'
 
 function fmtCountdown(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -30,8 +31,10 @@ export default function DailyQuizScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{
     correct_count: number; tanga_awarded: number
-    per_question_correct?: boolean[]; elapsed_ms?: number
+    per_question_correct: boolean[]; elapsed_ms?: number; quiz_streak_days: number
   } | null>(null)
+  const [rank, setRank] = useState<number | null>(null)
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -39,9 +42,24 @@ export default function DailyQuizScreen() {
     try {
       const res = await dailyQuiz.today()
       setQuiz(res.quiz)
+      if (res.quiz) setSecondsLeft(res.quiz.seconds_remaining)
       if (res.quiz?.state === 'submitted') {
-        setResult({ correct_count: res.quiz.correct_count ?? 0, tanga_awarded: 0 })
+        // GET /today doesn't carry the full breakdown (per-question marks,
+        // streak) — the submit endpoint's "already_submitted" branch
+        // returns the ORIGINAL cached result without rescoring, so this is
+        // a safe, idempotent way to fetch it (empty answers are ignored
+        // on that branch — see daily_quiz_service.score_and_submit).
+        const full = await dailyQuiz.submit(res.quiz.id, [])
+        setResult({
+          correct_count: full.correct_count, tanga_awarded: full.tanga_awarded,
+          per_question_correct: full.per_question_correct, elapsed_ms: full.elapsed_ms,
+          quiz_streak_days: full.quiz_streak_days,
+        })
       }
+      challengesApi.mine().then(mine => {
+        const active = mine.find(x => x.status === 'active' && !x.completed_at && !x.is_winner && !x.failed_at)
+        setRank(active?.rank ?? null)
+      }).catch(() => {})
     } catch (e: any) {
       setError(e?.message ?? "Yuklab bo'lmadi")
     } finally {
@@ -50,6 +68,16 @@ export default function DailyQuizScreen() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Live countdown tick for the status block's clock + the tertiary link's
+  // lock state — a plain per-second re-render, no animated digit transition
+  // (reduce-motion has nothing to skip here beyond that).
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSecondsLeft(s => (s != null && s > 0 ? s - 1 : s))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
 
   async function submitAll(finalAnswers: Record<number, number>) {
     if (!quiz) return
@@ -60,6 +88,7 @@ export default function DailyQuizScreen() {
       setResult({
         correct_count: res.correct_count, tanga_awarded: res.tanga_awarded,
         per_question_correct: res.per_question_correct, elapsed_ms: res.elapsed_ms,
+        quiz_streak_days: res.quiz_streak_days,
       })
       useAuthStore.getState().refreshUser()
     } catch (e: any) {
@@ -116,34 +145,7 @@ export default function DailyQuizScreen() {
           <Text style={[s.stateBody, { color: c.textSecondary }]}>Birozdan so'ng qayta tekshiring.</Text>
         </View>
       ) : result ? (
-        <ScrollView contentContainerStyle={s.resultScroll} showsVerticalScrollIndicator={false}>
-          <Text style={s.resultEmoji}>{result.correct_count === 5 ? '🏆' : '✅'}</Text>
-          <Text style={[s.resultScore, { color: c.textPrimary, fontFamily: typography.fontFamily.extrabold }]}>
-            {result.correct_count}/5 to'g'ri
-          </Text>
-          {result.tanga_awarded > 0 && (
-            <Text style={[s.resultTanga, { color: '#F59E0B', fontFamily: typography.fontFamily.semibold }]}>
-              🪙 +{result.tanga_awarded} Tanga
-            </Text>
-          )}
-          <Text style={[s.resultHint, { color: c.textMuted }]}>
-            To'liq natijalar va tushuntirishlar oyna yopilgach ({fmtCountdown(quiz.seconds_remaining)}) ko'rinadi.
-          </Text>
-
-          <ShareCard
-            quizNumber={quiz.quiz_number} correctCount={result.correct_count}
-            perQuestionCorrect={result.per_question_correct} elapsedMs={result.elapsed_ms}
-          />
-
-          <Pressable
-            onPress={() => router.push({ pathname: '/(screens)/daily-quiz-results', params: { quizId: String(quiz.id) } } as any)}
-            style={[s.resultsLink, { borderColor: c.border }]}
-          >
-            <Text style={[s.resultsLinkText, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
-              Natijalarni ko'rish
-            </Text>
-          </Pressable>
-        </ScrollView>
+        <QuizResultView quiz={quiz} result={result} rank={rank} secondsLeft={secondsLeft} />
       ) : (
         <View style={s.playArea}>
           <View style={s.topRow}>
@@ -234,12 +236,4 @@ const s = StyleSheet.create({
 
   submittingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: spacing.md },
   submittingText: { fontSize: 13 },
-
-  resultScroll: { padding: spacing.xl, alignItems: 'center', gap: spacing.sm },
-  resultEmoji: { fontSize: 56 },
-  resultScore: { fontSize: 26 },
-  resultTanga: { fontSize: 15 },
-  resultHint: { fontSize: 12, textAlign: 'center', lineHeight: 18, marginTop: spacing.sm },
-  resultsLink: { marginTop: spacing.lg, paddingVertical: 12, paddingHorizontal: 24, borderRadius: radius.full, borderWidth: 1.5 },
-  resultsLinkText: { fontSize: 14 },
 })

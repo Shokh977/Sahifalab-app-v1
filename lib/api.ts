@@ -1972,6 +1972,7 @@ export interface DailyQuizSubmitResult {
   // position order — never exposes the correct answer itself, so safe
   // before window close. Powers the Wordle-style share card.
   per_question_correct: boolean[]
+  quiz_streak_days:     number
 }
 
 export interface DailyQuizResultQuestion {
