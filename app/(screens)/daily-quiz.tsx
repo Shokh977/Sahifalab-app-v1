@@ -44,16 +44,15 @@ export default function DailyQuizScreen() {
       setQuiz(res.quiz)
       if (res.quiz) setSecondsLeft(res.quiz.seconds_remaining)
       if (res.quiz?.state === 'submitted') {
-        // GET /today doesn't carry the full breakdown (per-question marks,
-        // streak) — the submit endpoint's "already_submitted" branch
-        // returns the ORIGINAL cached result without rescoring, so this is
-        // a safe, idempotent way to fetch it (empty answers are ignored
-        // on that branch — see daily_quiz_service.score_and_submit).
-        const full = await dailyQuiz.submit(res.quiz.id, [])
+        // GET /today now carries the full cached result once submitted —
+        // no second network call needed (an earlier version of this tried
+        // POST /submit with an empty answers array to re-fetch it, which
+        // 422'd outright since SubmitRequest.answers requires at least 1).
         setResult({
-          correct_count: full.correct_count, tanga_awarded: full.tanga_awarded,
-          per_question_correct: full.per_question_correct, elapsed_ms: full.elapsed_ms,
-          quiz_streak_days: full.quiz_streak_days,
+          correct_count: res.quiz.correct_count ?? 0,
+          tanga_awarded: res.quiz.tanga_awarded ?? 0,
+          per_question_correct: res.quiz.per_question_correct ?? [],
+          quiz_streak_days: res.quiz.quiz_streak_days ?? 0,
         })
       }
       challengesApi.mine().then(mine => {

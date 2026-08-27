@@ -28,6 +28,24 @@ function localDate(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/**
+ * FastAPI's own 422 shape puts `detail` as an ARRAY of Pydantic error
+ * objects ({type, loc, msg, input, ...}), not a string — a raw
+ * JSON.stringify() of that array is exactly the "[{"type":"too_short",...}]"
+ * text a real bug once let leak onto a real screen. Anything non-string
+ * detail gets turned into an actual sentence (or a generic fallback)
+ * instead, here, once, for every call site in the app.
+ */
+function formatErrorDetail(detail: unknown): string {
+  if (Array.isArray(detail)) {
+    const msgs = detail
+      .map((e: any) => (e && typeof e.msg === 'string' ? e.msg : null))
+      .filter((m): m is string => !!m)
+    if (msgs.length > 0) return msgs.join(', ')
+  }
+  return "So'rov noto'g'ri. Qayta urinib ko'ring."
+}
+
 async function getToken(): Promise<string | null> {
   try { return await SecureStore.getItemAsync(TOKEN_KEY) }
   catch { return null }
@@ -76,7 +94,7 @@ export async function request<T>(
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       const message = data?.detail ?? `HTTP ${res.status}`
-      throw new Error(typeof message === 'string' ? message : JSON.stringify(message))
+      throw new Error(typeof message === 'string' ? message : formatErrorDetail(message))
     }
     return data as T
   }
@@ -1960,6 +1978,11 @@ export interface DailyQuizToday {
   correct_count:     number | null
   seconds_remaining: number
   questions:         DailyQuizQuestionForPlay[]
+  // Only present once state === 'submitted' — the full cached result, so
+  // reopening the app after already playing doesn't need a second call.
+  per_question_correct?: boolean[]
+  tanga_awarded?:         number
+  quiz_streak_days?:      number
 }
 
 export interface DailyQuizSubmitResult {
