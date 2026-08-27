@@ -93,6 +93,8 @@ function parseDeepLink(url: string): string | null {
   if (seg0 === 'ai' && seg1 === 'flashcards')              return '/(screens)/ai-flashcard-generate'
   // sahifalab://weekly-review → this week's AI-generated personal review
   if (seg0 === 'weekly-review')                            return '/(screens)/weekly-review'
+  // 090_daily_quiz — sahifalab://daily-quiz → today's "5 Savol"
+  if (seg0 === 'daily-quiz')                               return '/(screens)/daily-quiz'
 
   return null
 }
@@ -280,6 +282,7 @@ export default function RootLayout() {
           // types land on the same screen.
           weekly_report:    '/(screens)/weekly-review',
           weekly_review:    '/(screens)/weekly-review',
+          daily_quiz:       '/(screens)/daily-quiz',   // 090_daily_quiz — publish + reminder pushes
           teacher_dashboard:'/(screens)/teacher-dashboard',
           notifications:    '/(tabs)/notifications',
         }

@@ -26,6 +26,7 @@ import { CourseVCard } from '../../components/dashboard/CourseVCard'
 import { LeaderboardCard } from '../../components/dashboard/LeaderboardCard'
 import { ChallengeDashboardCard } from '../../components/dashboard/ChallengeDashboardCard'
 import { AiFeaturesCard } from '../../components/dashboard/AiFeaturesCard'
+import { DailyQuizCard } from '../../components/dashboard/DailyQuizCard'
 import { TangaInfoSheet } from '../../components/dashboard/TangaInfoSheet'
 
 // ── Top bar ──────────────────────────────────────────────────────────────────
@@ -329,6 +330,12 @@ export default function HomeTab() {
       >
         {/* Unified streak + level banner */}
         <BannerSection />
+
+        <View style={styles.gap} />
+
+        {/* "5 Savol" daily quiz (090_daily_quiz) — top card per spec: a daily
+            habit belongs where users already land, not buried in a tab. */}
+        <DailyQuizCard />
 
         <View style={styles.gap} />
 

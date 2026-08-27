@@ -1,0 +1,245 @@
+import React, { useEffect, useState } from 'react'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
+import { ChevronLeft, Clock } from 'lucide-react-native'
+import { useTheme } from '../../hooks/useTheme'
+import { useAuthStore } from '../../stores/authStore'
+import { dailyQuiz, type DailyQuizToday } from '../../lib/api'
+import { typography, spacing, radius } from '../../lib/constants'
+import { ShareCard } from '../../components/daily-quiz/ShareCard'
+
+function fmtCountdown(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}`
+  const s = seconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+export default function DailyQuizScreen() {
+  const { c }  = useTheme()
+  const router = useRouter()
+
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState<string | null>(null)
+  const [quiz, setQuiz]         = useState<DailyQuizToday | null>(null)
+  const [index, setIndex]       = useState(0)
+  const [answers, setAnswers]   = useState<Record<number, number>>({})
+  const [picked, setPicked]     = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [result, setResult] = useState<{
+    correct_count: number; tanga_awarded: number
+    per_question_correct?: boolean[]; elapsed_ms?: number
+  } | null>(null)
+
+  const load = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await dailyQuiz.today()
+      setQuiz(res.quiz)
+      if (res.quiz?.state === 'submitted') {
+        setResult({ correct_count: res.quiz.correct_count ?? 0, tanga_awarded: 0 })
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "Yuklab bo'lmadi")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function submitAll(finalAnswers: Record<number, number>) {
+    if (!quiz) return
+    setSubmitting(true)
+    try {
+      const payload = quiz.questions.map(q => ({ question_id: q.question_id, selected_index: finalAnswers[q.question_id] }))
+      const res = await dailyQuiz.submit(quiz.id, payload)
+      setResult({
+        correct_count: res.correct_count, tanga_awarded: res.tanga_awarded,
+        per_question_correct: res.per_question_correct, elapsed_ms: res.elapsed_ms,
+      })
+      useAuthStore.getState().refreshUser()
+    } catch (e: any) {
+      setError(e?.message ?? "Yuborib bo'lmadi")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function selectOption(shownIndex: number) {
+    if (!quiz || picked !== null) return
+    const q = quiz.questions[index]
+    setPicked(shownIndex)
+    const next = { ...answers, [q.question_id]: shownIndex }
+    setAnswers(next)
+
+    setTimeout(() => {
+      setPicked(null)
+      if (index < quiz.questions.length - 1) {
+        setIndex(index + 1)
+      } else {
+        submitAll(next)
+      }
+    }, 250)
+  }
+
+  return (
+    <SafeAreaView style={[s.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
+      <View style={[s.navBar, { borderBottomColor: c.border }]}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)' as any))} hitSlop={12} style={s.navBtn}>
+          <ChevronLeft size={24} color={c.accentPrimary} />
+        </Pressable>
+        <Text style={[s.navTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+          {quiz ? `5 SAVOL #${quiz.quiz_number}` : '5 Savol'}
+        </Text>
+        <View style={s.navBtn} />
+      </View>
+
+      {loading ? (
+        <View style={s.center}><ActivityIndicator color={c.accentPrimary} size="large" /></View>
+      ) : error ? (
+        <View style={s.center}>
+          <Text style={[s.stateBody, { color: c.textSecondary }]}>{error}</Text>
+          <Pressable onPress={load} style={[s.retryBtn, { backgroundColor: c.accentPrimary }]}>
+            <Text style={s.retryText}>Qayta urinish</Text>
+          </Pressable>
+        </View>
+      ) : !quiz ? (
+        <View style={s.center}>
+          <Text style={s.stateIcon}>🗓️</Text>
+          <Text style={[s.stateTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+            Bugungi savollar hali tayyor emas
+          </Text>
+          <Text style={[s.stateBody, { color: c.textSecondary }]}>Birozdan so'ng qayta tekshiring.</Text>
+        </View>
+      ) : result ? (
+        <ScrollView contentContainerStyle={s.resultScroll} showsVerticalScrollIndicator={false}>
+          <Text style={s.resultEmoji}>{result.correct_count === 5 ? '🏆' : '✅'}</Text>
+          <Text style={[s.resultScore, { color: c.textPrimary, fontFamily: typography.fontFamily.extrabold }]}>
+            {result.correct_count}/5 to'g'ri
+          </Text>
+          {result.tanga_awarded > 0 && (
+            <Text style={[s.resultTanga, { color: '#F59E0B', fontFamily: typography.fontFamily.semibold }]}>
+              🪙 +{result.tanga_awarded} Tanga
+            </Text>
+          )}
+          <Text style={[s.resultHint, { color: c.textMuted }]}>
+            To'liq natijalar va tushuntirishlar oyna yopilgach ({fmtCountdown(quiz.seconds_remaining)}) ko'rinadi.
+          </Text>
+
+          <ShareCard
+            quizNumber={quiz.quiz_number} correctCount={result.correct_count}
+            perQuestionCorrect={result.per_question_correct} elapsedMs={result.elapsed_ms}
+          />
+
+          <Pressable
+            onPress={() => router.push({ pathname: '/(screens)/daily-quiz-results', params: { quizId: String(quiz.id) } } as any)}
+            style={[s.resultsLink, { borderColor: c.border }]}
+          >
+            <Text style={[s.resultsLinkText, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
+              Natijalarni ko'rish
+            </Text>
+          </Pressable>
+        </ScrollView>
+      ) : (
+        <View style={s.playArea}>
+          <View style={s.topRow}>
+            <View style={s.dots}>
+              {quiz.questions.map((q, i) => (
+                <View
+                  key={q.question_id}
+                  style={[
+                    s.dot,
+                    { backgroundColor: i < index ? c.accentPrimary : i === index ? c.accentPrimary + '88' : c.bgTertiary },
+                  ]}
+                />
+              ))}
+            </View>
+            <View style={s.timerRow}>
+              <Clock size={13} color={c.textMuted} />
+              <Text style={[s.timerText, { color: c.textMuted }]}>{fmtCountdown(quiz.seconds_remaining)}</Text>
+            </View>
+          </View>
+
+          <Text style={[s.questionText, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
+            {quiz.questions[index].question_text}
+          </Text>
+
+          <View style={{ gap: spacing.sm }}>
+            {quiz.questions[index].options.map((opt, i) => {
+              const isPicked = picked === i
+              return (
+                <Pressable
+                  key={i}
+                  disabled={picked !== null || submitting}
+                  onPress={() => selectOption(i)}
+                  style={[
+                    s.option,
+                    {
+                      backgroundColor: isPicked ? c.accentPrimary + '22' : c.bgSecondary,
+                      borderColor: isPicked ? c.accentPrimary : c.border,
+                    },
+                  ]}
+                >
+                  <Text style={[s.optionText, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
+                    {opt}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </View>
+
+          {submitting && (
+            <View style={s.submittingRow}>
+              <ActivityIndicator color={c.accentPrimary} />
+              <Text style={[s.submittingText, { color: c.textMuted }]}>Yuborilmoqda...</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </SafeAreaView>
+  )
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1 },
+  navBar: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  navBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  navTitle: { flex: 1, textAlign: 'center', fontSize: 15 },
+
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: spacing.xl },
+  stateIcon: { fontSize: 40 },
+  stateTitle: { fontSize: 16 },
+  stateBody: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
+  retryBtn: { marginTop: 8, paddingHorizontal: 28, paddingVertical: 12, borderRadius: radius.full },
+  retryText: { color: '#fff', fontSize: 14 },
+
+  playArea: { flex: 1, padding: spacing.lg, gap: spacing.lg },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dots: { flexDirection: 'row', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  timerRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  timerText: { fontSize: 12 },
+
+  questionText: { fontSize: 20, lineHeight: 28 },
+
+  option: { borderRadius: radius.lg, borderWidth: 1.5, padding: spacing.md },
+  optionText: { fontSize: 15, lineHeight: 21 },
+
+  submittingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: spacing.md },
+  submittingText: { fontSize: 13 },
+
+  resultScroll: { padding: spacing.xl, alignItems: 'center', gap: spacing.sm },
+  resultEmoji: { fontSize: 56 },
+  resultScore: { fontSize: 26 },
+  resultTanga: { fontSize: 15 },
+  resultHint: { fontSize: 12, textAlign: 'center', lineHeight: 18, marginTop: spacing.sm },
+  resultsLink: { marginTop: spacing.lg, paddingVertical: 12, paddingHorizontal: 24, borderRadius: radius.full, borderWidth: 1.5 },
+  resultsLinkText: { fontSize: 14 },
+})

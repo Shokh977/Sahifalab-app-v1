@@ -1940,3 +1940,95 @@ export const ai = {
       '/api/ai/weekly-review', { auth: true },
     ),
 }
+
+// ── "5 Savol" daily quiz (090_daily_quiz) ───────────────────────────────────
+// Named `dailyQuiz`, not `quiz` — `quizzes`/`tests` elsewhere in this file
+// are the pre-existing COURSE lesson-quiz system, a different feature.
+
+export interface DailyQuizQuestionForPlay {
+  question_id:   number
+  position:      number
+  question_text: string
+  options:       string[]
+}
+
+export interface DailyQuizToday {
+  id:                number
+  quiz_number:       number
+  theme:             string
+  state:             'in_progress' | 'submitted'
+  correct_count:     number | null
+  seconds_remaining: number
+  questions:         DailyQuizQuestionForPlay[]
+}
+
+export interface DailyQuizSubmitResult {
+  already_submitted:    boolean
+  correct_count:        number
+  total_questions?:     number
+  elapsed_ms?:          number
+  tanga_awarded:        number
+  // Per-question right/wrong for the caller's OWN answers, in question
+  // position order — never exposes the correct answer itself, so safe
+  // before window close. Powers the Wordle-style share card.
+  per_question_correct: boolean[]
+}
+
+export interface DailyQuizResultQuestion {
+  question_id:   number
+  position:      number
+  question_text: string
+  options:       string[]
+  correct_index: number
+  explanation:   string
+  source:        string
+  voided:        boolean
+}
+
+export interface DailyQuizLeaderboardEntry {
+  rank:          number
+  user_id:       number
+  first_name:    string
+  username:      string | null
+  photo_url:     string | null
+  correct_count: number
+  elapsed_ms:    number
+}
+
+export interface DailyQuizCallerStanding {
+  rank:          number
+  correct_count: number
+  elapsed_ms:    number
+  percentile:    number | null
+}
+
+export interface DailyQuizResults {
+  quiz: { id: number; quiz_number: number; theme: string; publish_date: string }
+  questions:        DailyQuizResultQuestion[]
+  leaderboard:      DailyQuizLeaderboardEntry[]
+  total_players:    number
+  caller:           DailyQuizCallerStanding | null
+  quiz_streak_days: number
+}
+
+export const dailyQuiz = {
+  today: () =>
+    request<{ quiz: DailyQuizToday | null }>('/api/quiz/today', { auth: true }),
+
+  submit: (quizId: number, answers: { question_id: number; selected_index: number }[]) =>
+    request<DailyQuizSubmitResult>('/api/quiz/submit', {
+      method: 'POST',
+      body: JSON.stringify({ quiz_id: quizId, answers }),
+      auth: true,
+    }),
+
+  results: (quizId: number) =>
+    request<DailyQuizResults>(`/api/quiz/results/${quizId}`, { auth: true }),
+
+  report: (questionId: number, reason: string) =>
+    request<{ ok: boolean; auto_voided?: boolean }>('/api/quiz/report', {
+      method: 'POST',
+      body: JSON.stringify({ question_id: questionId, reason }),
+      auth: true,
+    }),
+}
