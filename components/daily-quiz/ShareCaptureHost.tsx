@@ -14,11 +14,25 @@ const CANVAS_H = 450
  * laid-out view to grab, independent of whatever the visible on-screen
  * ticket looks like at the current device width.
  */
+const CANVAS_PADDING = 18
+
 export function ShareCaptureHost({ hostRef, ticketProps }: { hostRef: React.RefObject<any>; ticketProps: ResultTicketProps }) {
   return (
     <View style={styles.offscreen} pointerEvents="none">
       <View ref={hostRef} collapsable={false} style={styles.canvas}>
-        <ResultTicket {...ticketProps} />
+        {/*
+          ResultTicket has no width of its own — on screen it gets one from
+          QuizResultView's `width: '100%'` wrapper. `alignItems: 'center'`
+          on this canvas does NOT stretch a child to fill the cross axis,
+          it centers it at its own intrinsic size — so without this
+          explicit width the ticket collapsed to a shrink-to-fit width,
+          which broke its internal flexDirection: 'row' rows (brand row,
+          score row) and is exactly what "shrunk + text stacked/overlapping"
+          looked like in the exported image.
+        */}
+        <View style={styles.ticketSizer}>
+          <ResultTicket {...ticketProps} />
+        </View>
       </View>
     </View>
   )
@@ -28,6 +42,7 @@ const styles = StyleSheet.create({
   offscreen: { position: 'absolute', top: -10_000, left: 0 },
   canvas: {
     width: CANVAS_W, height: CANVAS_H, backgroundColor: '#0F1115',
-    alignItems: 'center', justifyContent: 'center', padding: 18,
+    alignItems: 'center', justifyContent: 'center', padding: CANVAS_PADDING,
   },
+  ticketSizer: { width: CANVAS_W - CANVAS_PADDING * 2 },
 })
