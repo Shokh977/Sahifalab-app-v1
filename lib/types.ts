@@ -295,9 +295,10 @@ export interface CompleteSessionResult {
   today_minutes:     number
   streak_days:       number
   goal_met:          boolean
-  stages_completed:  Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number }>
+  stages_completed:  Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number; bonus_tanga: number }>
   challenges_completed:  Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
   challenges_progressed: Array<{ challenge_id: string; slug: string; title: string; progress_value: number; target_value: number }>
   freeze_count?:             number
   milestone_freeze_granted?: boolean
+  tanga_events?: Array<{ reason: string; amount: number; balance: number }>  // tanga-economy-rework (092)
 }

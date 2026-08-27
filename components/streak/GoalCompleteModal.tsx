@@ -13,10 +13,11 @@ import { MagicTree } from './MagicTree'
 import { stageFromStreak } from '../../lib/treeTheme'
 
 interface Props {
-  visible:    boolean
-  streakDays: number
-  xpEarned:   number
-  onClose:    () => void
+  visible:     boolean
+  streakDays:  number
+  xpEarned:    number
+  tangaEarned?: number  // tanga-economy-rework (092) — daily_goal_met, celebrated here instead of a generic reward modal
+  onClose:     () => void
 }
 
 const QUOTES = [
@@ -28,7 +29,7 @@ const QUOTES = [
   "Muvaffaqiyat — har kuni bir oz yaxshilanishdan iborat.",
 ]
 
-export function GoalCompleteModal({ visible, streakDays, xpEarned, onClose }: Props) {
+export function GoalCompleteModal({ visible, streakDays, xpEarned, tangaEarned = 0, onClose }: Props) {
   const { c } = useTheme()
   const scaleAnim = useRef(new Animated.Value(0.7)).current
   const opacityAnim = useRef(new Animated.Value(0)).current
@@ -76,14 +77,23 @@ export function GoalCompleteModal({ visible, streakDays, xpEarned, onClose }: Pr
             </Text>
           </View>
 
-          {/* XP badge */}
-          {xpEarned > 0 && (
-            <View style={[styles.xpBadge, { backgroundColor: c.bgTertiary, borderColor: c.border }]}>
-              <Text style={[styles.xpText, { color: c.accentSecondary, fontFamily: typography.fontFamily.semibold }]}>
-                +{xpEarned} XP
-              </Text>
-            </View>
-          )}
+          {/* XP + Tanga badges */}
+          <View style={styles.badgeRow}>
+            {xpEarned > 0 && (
+              <View style={[styles.xpBadge, { backgroundColor: c.bgTertiary, borderColor: c.border }]}>
+                <Text style={[styles.xpText, { color: c.accentSecondary, fontFamily: typography.fontFamily.semibold }]}>
+                  +{xpEarned} XP
+                </Text>
+              </View>
+            )}
+            {tangaEarned > 0 && (
+              <View style={[styles.xpBadge, { backgroundColor: '#F5A62322', borderColor: '#F5A62355' }]}>
+                <Text style={[styles.xpText, { color: '#F5A623', fontFamily: typography.fontFamily.semibold }]}>
+                  🪙 +{tangaEarned} Tanga
+                </Text>
+              </View>
+            )}
+          </View>
 
           {/* Quote */}
           <Text style={[styles.quote, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
@@ -140,6 +150,10 @@ const styles = StyleSheet.create({
   },
   streakText: {
     fontSize: typography.size.base,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap:           spacing.xs,
   },
   xpBadge: {
     paddingHorizontal: spacing.md,

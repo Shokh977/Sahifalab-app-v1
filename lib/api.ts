@@ -15,9 +15,27 @@ import type {
 
 export const TOKEN_KEY = 'sahifalab_jwt'
 
+// tanga-economy-rework (092) — daily-capped earn events a single /complete
+// call actually granted (goal_met/60min/120min). See app/services/
+// tanga_service.py's check_and_award_daily_earn_events().
+export interface TangaEarnEvent {
+  reason:  string
+  amount:  number
+  balance: number
+}
+
 // No request should hang forever — a dead connection or server-side stall
 // otherwise leaves every screen's loading spinner stuck with no recovery path.
 const REQUEST_TIMEOUT_MS = 15000
+
+// tanga-economy-rework (092) Part 6: identifies this build to the backend's
+// version gate (app/services/client_version.py) so freeze pricing/behavior
+// resolves to the NEW Tanga path, not the frozen legacy one. Lazy-required
+// like app/_layout.tsx's own Constants usage — never let a native-module
+// resolution issue break every API call in the app.
+let Constants: typeof import('expo-constants').default | null = null
+try { Constants = require('expo-constants').default } catch {}
+const CLIENT_VERSION = Constants?.expoConfig?.version ?? '0.0.0'
 
 // Deduplicates concurrent identical GET requests — same URL returns same Promise
 const _inflight = new Map<string, Promise<any>>()
@@ -74,6 +92,8 @@ export async function request<T>(
       // frontend sends its own value ("web" / "telegram_miniapp") for the
       // same header, so the admin dashboard can tell the three apart exactly.
       'X-Client-Platform': 'mobile',
+      // tanga-economy-rework (092) version gate — see CLIENT_VERSION above.
+      'X-Client-Version': CLIENT_VERSION,
       ...(init.headers as Record<string, string> | undefined),
     }
     if (auth) {
@@ -1000,12 +1020,13 @@ export const focus = {
       level:               number
       level_up:            boolean
       achievements_earned: Array<{ id: string; name: string; description: string; xp: number }>
-      stages_completed:    Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number }>
+      stages_completed:    Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number; bonus_tanga: number }>
       challenges_completed:  Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
       challenges_progressed: Array<{ challenge_id: string; slug: string; title: string; progress_value: number; target_value: number }>
       freeze_count?:             number
       milestone_freeze_granted?: boolean
       tanga_balance?:            number  // additive (088_tanga_currency)
+      tanga_events?:             TangaEarnEvent[]  // tanga-economy-rework (092)
     }>(
       '/api/focus/complete',
       { method: 'POST', body: JSON.stringify({ minutes, local_date: localDate() }), auth: true },
@@ -1566,6 +1587,7 @@ export interface StreakStage {
   description:   string
   required_days: number
   bonus_xp:      number
+  bonus_tanga:   number  // tanga-economy-rework (092) — most stages now pay this, not bonus_xp
   icon:          string
   earned:        boolean
   completed_at:  string | null
@@ -2055,4 +2077,38 @@ export const dailyQuiz = {
       body: JSON.stringify({ question_id: questionId, reason }),
       auth: true,
     }),
+}
+
+// ── Reward modal queue (tanga-economy-rework Part 5) ─────────────────────────
+// "Every Tanga reward must surface in a modal. Nothing is awarded silently."
+// The server decides what to show — this is a thin, faithful mirror of
+// tanga_transactions' celebrate/notified_at columns, never computed locally.
+
+export type RewardReason =
+  | 'daily_goal_met' | 'threshold_60min' | 'threshold_120min' | 'daily_quiz'
+  | 'challenge_complete' | 'opening_balance' | 'welcome_bonus' | 'streak_stage'
+  | 'study_activity_reconciled'
+  | string  // server-defined; new reasons must render without a client update
+
+export interface RewardItem {
+  id:              number
+  amount:          number
+  balance_after:   number
+  reason:          RewardReason
+  reference_type:  string | null
+  reference_id:    string | null
+  created_at:       string
+}
+
+export const rewards = {
+  pending: () =>
+    request<{ rewards: RewardItem[] }>('/api/rewards/pending', { auth: true })
+      .catch(() => ({ rewards: [] as RewardItem[] })),
+
+  acknowledge: (ids: number[]) =>
+    request<{ ok: boolean }>('/api/rewards/acknowledge', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+      auth: true,
+    }).catch(() => ({ ok: false })),
 }

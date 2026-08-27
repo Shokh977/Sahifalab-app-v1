@@ -22,8 +22,9 @@ export interface CompletionResult {
   newLevel:         number
   levelUp:          boolean
   achievements:     Array<{ id: string; name: string; description: string; xp: number }>
-  stagesCompleted:  Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number }>
+  stagesCompleted:  Array<{ key: string; stage_number: number; title: string; required_days: number; bonus_xp: number; bonus_tanga: number }>
   challengesCompleted: Array<{ challenge_id: string; slug: string; title: string; reward_xp: number; badge_key: string | null }>
+  tangaEvents:      Array<{ reason: string; amount: number; balance: number }>  // tanga-economy-rework (092)
   fromServer:       boolean
 }
 
@@ -219,6 +220,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
         achievements:    res.achievements_earned ?? [],
         stagesCompleted: res.stages_completed    ?? [],
         challengesCompleted: res.challenges_completed ?? [],
+        tangaEvents:     res.tanga_events ?? [],
         fromServer:      true,
       }
     } catch {
@@ -228,7 +230,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       set({ lastXP: xp })
       return {
         xpAwarded: xp, totalXp: 0, newLevel: 1, levelUp: false,
-        achievements: [], stagesCompleted: [], challengesCompleted: [], fromServer: false,
+        achievements: [], stagesCompleted: [], challengesCompleted: [], tangaEvents: [], fromServer: false,
       }
     }
   },

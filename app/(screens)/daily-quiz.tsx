@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router'
 import { ChevronLeft, Clock } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useAuthStore } from '../../stores/authStore'
+import { useRewardStore } from '../../stores/rewardStore'
 import { dailyQuiz, type DailyQuizToday } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
 import { QuizResultView } from '../../components/daily-quiz/QuizResultView'
@@ -89,6 +90,10 @@ export default function DailyQuizScreen() {
       })
       useAuthStore.getState().refreshUser()
       fetchRank(quiz.id)
+      // tanga-economy-rework (092) Part 5 trigger point: after quiz
+      // submission. Deferred slightly so it doesn't fight the result-ticket
+      // transition for the screen the instant the score reveals.
+      setTimeout(() => useRewardStore.getState().check(), 600)
     } catch (e: any) {
       setError(e?.message ?? "Yuborib bo'lmadi")
     } finally {

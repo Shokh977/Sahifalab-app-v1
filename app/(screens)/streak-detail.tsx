@@ -232,6 +232,7 @@ export default function StreakDetailScreen() {
   const [showEvolution,  setShowEvolution]  = useState(false)
   const [evolutionStage, setEvolutionStage] = useState<StageNumber>(1)
   const [evolutionXp,    setEvolutionXp]    = useState(0)
+  const [evolutionTanga, setEvolutionTanga] = useState(0)
   const hasShownLostRef    = useRef(false)
   const hasShownAtRiskRef  = useRef(false)
   const prevStageRef       = useRef<number>(
@@ -293,7 +294,9 @@ export default function StreakDetailScreen() {
         if (newStage > prevStageRef.current) {
           prevStageRef.current = newStage
           setEvolutionStage(newStage as StageNumber)
-          setEvolutionXp(stageRows.find(s => s.stage_number === newStage)?.bonus_xp ?? 0)
+          const reachedStage = stageRows.find(s => s.stage_number === newStage)
+          setEvolutionXp(reachedStage?.bonus_xp ?? 0)
+          setEvolutionTanga(reachedStage?.bonus_tanga ?? 0)
           setTimeout(() => setShowEvolution(true), 400)
         } else {
           prevStageRef.current = newStage
@@ -786,6 +789,7 @@ export default function StreakDetailScreen() {
         visible={showEvolution}
         toStage={evolutionStage}
         bonusXp={evolutionXp}
+        bonusTanga={evolutionTanga}
         onClose={() => setShowEvolution(false)}
       />
 

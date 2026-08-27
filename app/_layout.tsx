@@ -31,6 +31,8 @@ import { NotifToast } from '../components/ui/NotifToast'
 import { AppIntroModal } from '../components/onboarding/AppIntroModal'
 import { AnnouncementModal } from '../components/ui/AnnouncementModal'
 import { useAnnouncementStore } from '../stores/announcementStore'
+import { useRewardStore } from '../stores/rewardStore'
+import { RewardModal } from '../components/rewards/RewardModal'
 
 const APP_INTRO_KEY = 'sahifalab_app_intro_v1'
 
@@ -202,6 +204,7 @@ export default function RootLayout() {
   const { loadTheme, theme, c } = useThemeStore()
   const { fetchUnreadCount } = useNotificationStore()
   const { showToast } = useNotifToastStore()
+  const { pending: pendingRewards, visible: rewardModalVisible, dismiss: dismissRewards } = useRewardStore()
   const router   = useRouter()
   const segments = useSegments()
   const isOnline = useOnline()
@@ -346,13 +349,21 @@ export default function RootLayout() {
       registerTimezone()
       fetchUnreadCount()
       syncStreakReminderWithPrefs()
+      // tanga-economy-rework (092) Part 5: check for pending reward modals
+      // on launch too — a reward can be waiting from a push-triggered grant
+      // (e.g. streak_freeze_applied) that happened while the app was closed.
+      useRewardStore.getState().check()
       // Defer announcements fetch so it doesn't compete with critical startup
       const t = setTimeout(() => useAnnouncementStore.getState().fetch(), 3000)
 
       // Re-check timezone on every foreground — a user who travels can have
       // the app open across a timezone change without ever re-logging in.
+      // Reward check on foreground too (spec Part 5's 3 trigger points).
       const sub = AppState.addEventListener('change', state => {
-        if (state === 'active') registerTimezone()
+        if (state === 'active') {
+          registerTimezone()
+          useRewardStore.getState().check()
+        }
       })
       return () => { clearTimeout(t); sub.remove() }
     }
@@ -437,6 +448,7 @@ export default function RootLayout() {
         <NotifToast />
         <AppIntroModal visible={showAppIntro} onFinish={dismissAppIntro} />
         {hasAnnouncement && <AnnouncementModal />}
+        <RewardModal visible={rewardModalVisible} rewards={pendingRewards} onClose={dismissRewards} />
       </GestureHandlerRootView>
     </AppErrorBoundary>
   )

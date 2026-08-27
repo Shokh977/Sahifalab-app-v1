@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics'
 import { useTimerStore } from '../../stores/timerStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
+import { useRewardStore } from '../../stores/rewardStore'
 import { useOfflineQueueStore } from '../../stores/offlineQueueStore'
 import { focus, profile, focusStats, focusStages } from '../../lib/api'
 import type { FocusStats } from '../../lib/api'
@@ -247,18 +248,20 @@ function TimerScreen() {
   const [showGoalModal,    setShowGoalModal]    = useState(false)
   const [goalModalStreak,  setGoalModalStreak]  = useState(0)
   const [goalModalXp,      setGoalModalXp]      = useState(0)
+  const [goalModalTanga,   setGoalModalTanga]   = useState(0)
   // Reaching a tree stage is the same event streak-detail.tsx celebrates with
   // the full EvolutionModal — using the smaller MilestoneModal here for the
   // identical milestone made the perceived reward swing depending on which
   // screen happened to report it.
   const [showMilestone,    setShowMilestone]    = useState(false)
-  const [milestoneStage,   setMilestoneStage]   = useState<StageNumber>(1)
-  const [milestoneBonusXp, setMilestoneBonusXp] = useState(0)
+  const [milestoneStage,      setMilestoneStage]      = useState<StageNumber>(1)
+  const [milestoneBonusXp,    setMilestoneBonusXp]    = useState(0)
+  const [milestoneBonusTanga, setMilestoneBonusTanga] = useState(0)
   const [showChallengeComplete, setShowChallengeComplete] = useState(false)
   const [completedChallenge,    setCompletedChallenge]    = useState<CompletedChallenge | null>(null)
 
   const pendingGoalModal    = useRef(false)
-  const pendingMilestoneRef = useRef<{ stage: StageNumber; bonusXp: number } | null>(null)
+  const pendingMilestoneRef = useRef<{ stage: StageNumber; bonusXp: number; bonusTanga: number } | null>(null)
   const pendingChallengeRef = useRef<CompletedChallenge | null>(null)
   const dailyGoalRef        = useRef(20)
   const prevTodayMinRef     = useRef(0)
@@ -484,6 +487,7 @@ function TimerScreen() {
       pendingMilestoneRef.current = null
       setMilestoneStage(m.stage)
       setMilestoneBonusXp(m.bonusXp)
+      setMilestoneBonusTanga(m.bonusTanga)
       setShowMilestone(true)
       return
     }
@@ -492,7 +496,15 @@ function TimerScreen() {
       pendingChallengeRef.current = null
       setCompletedChallenge(ch)
       setShowChallengeComplete(true)
+      return
     }
+    // tanga-economy-rework (092) Part 5: only once every other celebration
+    // overlay from THIS session has been shown — never stacked on top of
+    // one of them. Covers threshold_60min/threshold_120min (no dedicated
+    // overlay of their own); daily_goal_met/streak_stage are celebrate=False
+    // server-side precisely because GoalCompleteModal/EvolutionModal above
+    // already covered them.
+    useRewardStore.getState().check()
   }, [])
 
   // ── Sheet dismiss ─────────────────────────────────────────────────────────
@@ -526,6 +538,8 @@ function TimerScreen() {
         pendingGoalModal.current = true
         setGoalModalStreak(newStreak)
         setGoalModalXp(result?.xpAwarded ?? 0)
+        const tangaEvent = result?.tangaEvents?.find(e => e.reason === 'daily_goal_met')
+        setGoalModalTanga(tangaEvent?.amount ?? 0)
       }
       prevTodayMinRef.current = newMin
       dailyGoalRef.current    = goal
@@ -535,7 +549,7 @@ function TimerScreen() {
     // Queue any milestone from this session
     if (result?.stagesCompleted && result.stagesCompleted.length > 0) {
       const stage = result.stagesCompleted[0]
-      pendingMilestoneRef.current = { stage: stage.stage_number as StageNumber, bonusXp: stage.bonus_xp }
+      pendingMilestoneRef.current = { stage: stage.stage_number as StageNumber, bonusXp: stage.bonus_xp, bonusTanga: stage.bonus_tanga }
     }
 
     // Queue any challenge completion from this session
@@ -855,12 +869,14 @@ function TimerScreen() {
         visible={showGoalModal}
         streakDays={goalModalStreak}
         xpEarned={goalModalXp}
+        tangaEarned={goalModalTanga}
         onClose={() => { setShowGoalModal(false); setTimeout(showNextOverlay, 300) }}
       />
       <EvolutionModal
         visible={showMilestone}
         toStage={milestoneStage}
         bonusXp={milestoneBonusXp}
+        bonusTanga={milestoneBonusTanga}
         onClose={() => { setShowMilestone(false); setTimeout(showNextOverlay, 300) }}
       />
       <ChallengeCompletionModal

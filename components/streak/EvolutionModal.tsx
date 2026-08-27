@@ -77,14 +77,15 @@ function FadeUp({ opacity, translateY, style, children }: {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export interface EvolutionModalProps {
-  visible:  boolean
-  toStage:  StageNumber
-  bonusXp?: number
-  onClose:  () => void
-  onShare?: () => void
+  visible:     boolean
+  toStage:     StageNumber
+  bonusXp?:    number
+  bonusTanga?: number  // tanga-economy-rework (092) — most stages now pay this instead of bonusXp
+  onClose:     () => void
+  onShare?:    () => void
 }
 
-export function EvolutionModal({ visible, toStage, bonusXp = 0, onClose, onShare }: EvolutionModalProps) {
+export function EvolutionModal({ visible, toStage, bonusXp = 0, bonusTanga = 0, onClose, onShare }: EvolutionModalProps) {
   const insets  = useSafeAreaInsets()
   const stageMeta   = TREE_STAGES[toStage - 1]
   const nextMeta    = TREE_STAGES[toStage] ?? null   // may be null at stage 10
@@ -241,8 +242,17 @@ export function EvolutionModal({ visible, toStage, bonusXp = 0, onClose, onShare
             </Text>
           </FadeUp>
 
-          {/* XP earned — the tree evolving IS the reward moment, show both together */}
-          {bonusXp > 0 && (
+          {/* Reward earned — the tree evolving IS the reward moment, show both
+              together. Most stages pay Tanga now (tanga-economy-rework 092);
+              bonusXp only remains nonzero for stage_1. */}
+          {bonusTanga > 0 ? (
+            <FadeUp opacity={blurbOp} translateY={blurbY} style={styles.xpWrap}>
+              <Text style={styles.xpEmoji}>🪙</Text>
+              <Text style={[styles.xpText, { fontFamily: typography.fontFamily.bold }]}>
+                +{bonusTanga} Tanga
+              </Text>
+            </FadeUp>
+          ) : bonusXp > 0 && (
             <FadeUp opacity={blurbOp} translateY={blurbY} style={styles.xpWrap}>
               <Text style={styles.xpEmoji}>⚡</Text>
               <Text style={[styles.xpText, { fontFamily: typography.fontFamily.bold }]}>

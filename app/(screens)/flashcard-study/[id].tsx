@@ -21,6 +21,7 @@ import { useTheme } from '../../../hooks/useTheme'
 import { flashcards as flashcardsApi } from '../../../lib/api'
 import { useFlashcardStore } from '../../../stores/flashcardStore'
 import { useAuthStore } from '../../../stores/authStore'
+import { useRewardStore } from '../../../stores/rewardStore'
 import type { Flashcard, FlashcardDeck } from '../../../lib/types'
 import { typography, spacing, radius } from '../../../lib/constants'
 import { EvolutionModal } from '../../../components/streak/EvolutionModal'
@@ -216,8 +217,9 @@ export default function FlashcardStudyScreen() {
   // identical milestone made the perceived reward swing depending on which
   // screen happened to report it.
   const [milestoneVisible,  setMilestoneVisible]  = useState(false)
-  const [milestoneStage,    setMilestoneStage]    = useState<StageNumber>(1)
-  const [milestoneBonusXp,  setMilestoneBonusXp]  = useState(0)
+  const [milestoneStage,      setMilestoneStage]      = useState<StageNumber>(1)
+  const [milestoneBonusXp,    setMilestoneBonusXp]    = useState(0)
+  const [milestoneBonusTanga, setMilestoneBonusTanga] = useState(0)
   const [completedChallenge,    setCompletedChallenge]    = useState<CompletedChallenge | null>(null)
   const [showChallengeComplete, setShowChallengeComplete] = useState(false)
   const pendingChallengeRef = useRef<CompletedChallenge | null>(null)
@@ -386,12 +388,17 @@ export default function FlashcardStudyScreen() {
           const stage = result.stages_completed[0]
           setMilestoneStage(stage.stage_number as StageNumber)
           setMilestoneBonusXp(stage.bonus_xp)
+          setMilestoneBonusTanga(stage.bonus_tanga)
           setMilestoneVisible(true)
         } else if (pendingChallengeRef.current) {
           const ch = pendingChallengeRef.current
           pendingChallengeRef.current = null
           setCompletedChallenge(ch)
           setShowChallengeComplete(true)
+        } else {
+          // tanga-economy-rework (092) Part 5: only once neither a stage nor
+          // a challenge overlay is about to show for this session.
+          useRewardStore.getState().check()
         }
       }).catch(() => {})
 
@@ -444,6 +451,7 @@ export default function FlashcardStudyScreen() {
           visible={milestoneVisible}
           toStage={milestoneStage}
           bonusXp={milestoneBonusXp}
+          bonusTanga={milestoneBonusTanga}
           onClose={() => {
             setMilestoneVisible(false)
             if (pendingChallengeRef.current) {
