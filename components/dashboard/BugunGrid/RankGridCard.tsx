@@ -8,6 +8,7 @@ import { useTheme } from '../../../hooks/useTheme'
 import { useReduceMotion } from '../../../hooks/useReduceMotion'
 import { typography, radius } from '../../../lib/constants'
 import { challenges as challengesApi, type Challenge } from '../../../lib/api'
+import { GRID_CARD_HEIGHT } from './GridCard'
 
 const ORANGE = '#F0A32B'
 const LIVE_RED = '#FF6A5E'
@@ -248,16 +249,16 @@ export function RankGridCard({ staggerIndex }: { staggerIndex: number }) {
       )
     }
 
-    // State 3 — no competition running
+    // State 3 — no competition running. Only one content block, so it's
+    // centered vertically rather than sitting at the top of the fixed
+    // height (space-between needs 2+ children to have anything to space).
     return (
-      <>
-        <View>
-          <Text style={[styles.rankRow, { color: '#8A9098', fontFamily: typography.fontFamily.bold, fontSize: 16 }]}>
-            {lastEnded?.final_rank != null ? `Oxirgi natija #${lastEnded.final_rank}` : 'Hozircha bellashuv yo‘q'}
-          </Text>
-          <Text style={styles.caption}>Bellashuv reytingi</Text>
-        </View>
-      </>
+      <View style={{ flex: 1, justifyContent: 'center' }}>
+        <Text style={[styles.rankRow, { color: '#8A9098', fontFamily: typography.fontFamily.bold, fontSize: 16 }]}>
+          {lastEnded?.final_rank != null ? `Oxirgi natija #${lastEnded.final_rank}` : 'Hozircha bellashuv yo‘q'}
+        </Text>
+        <Text style={styles.caption}>Bellashuv reytingi</Text>
+      </View>
     )
   }
 
@@ -286,8 +287,8 @@ export function RankGridCard({ staggerIndex }: { staggerIndex: number }) {
 const styles = StyleSheet.create({
   shell: { borderRadius: radius.cardXl, overflow: 'hidden' },
   cardInner: {
-    flex: 1, borderRadius: radius.cardXl, padding: 13, gap: 10,
-    minHeight: 88, overflow: 'hidden', position: 'relative',
+    borderRadius: radius.cardXl, padding: 13, height: GRID_CARD_HEIGHT,
+    justifyContent: 'space-between', overflow: 'hidden', position: 'relative',
   },
   giantNumeral: {
     position: 'absolute', right: -6, bottom: -18, fontSize: 86, fontWeight: '800',
@@ -303,12 +304,12 @@ const styles = StyleSheet.create({
   delta: { fontSize: 12, fontWeight: '700' },
   rankRow: { flexDirection: 'row', alignItems: 'baseline' },
   caption: { fontSize: 11, color: '#8A9098', marginTop: 2 },
-  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 'auto' },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   avatarStack: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#191C22' },
   participants: { fontSize: 10, color: '#8A9098' },
   joinBtn: {
-    backgroundColor: ORANGE, borderRadius: radius.full, paddingVertical: 8, alignItems: 'center', marginTop: 'auto',
+    backgroundColor: ORANGE, borderRadius: radius.full, paddingVertical: 8, alignItems: 'center',
   },
   joinBtnText: { color: '#191C22', fontSize: 12, fontWeight: '700' },
   skeletonPill: { width: 44, height: 16, borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.08)' },

@@ -34,7 +34,7 @@ export function AiFlashcardGridCard({ staggerIndex }: { staggerIndex: number }) 
         </Text>
       </View>
 
-      <View style={[styles.chip, { backgroundColor: purple + '1a', marginTop: 'auto' }]}>
+      <View style={[styles.chip, { backgroundColor: purple + '1a' }]}>
         <Text style={[styles.chipText, { color: purple, fontFamily: typography.fontFamily.bold }]}>Yaratish →</Text>
       </View>
     </GridCard>

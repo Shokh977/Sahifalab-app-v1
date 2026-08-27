@@ -5,6 +5,13 @@ import { useReduceMotion } from '../../../hooks/useReduceMotion'
 
 const STAGGER_MS = 40
 
+// All four cards share this exact height — row-level flex `stretch` alone
+// only equalizes each row's own pair (5 savol/reyting vs ai/haftalik), not
+// all four against each other, and each card's content block naturally
+// wants a different height. RankGridCard uses this same constant for its
+// own (differently-styled) shell so all four stay pixel-identical.
+export const GRID_CARD_HEIGHT = 150
+
 /**
  * Shared shell for every "Bugun" grid cell — one reusable card component,
  * four thin content wrappers on top (FiveSavolGridCard, RankGridCard,
@@ -83,8 +90,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.cardXl,
     borderWidth: 1,
     padding: 13,
-    minHeight: 88,
-    gap: 10,
+    height: GRID_CARD_HEIGHT,
+    justifyContent: 'space-between',
     overflow: 'hidden',
   },
   shadow: {

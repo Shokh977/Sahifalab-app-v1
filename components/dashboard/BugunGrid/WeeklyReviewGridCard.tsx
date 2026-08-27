@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 9 },
   title: { fontSize: 14 },
   sub: { fontSize: 11, marginTop: 1 },
-  chartRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 18, marginTop: 'auto' },
+  chartRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 18 },
   chartTrack: { flex: 1, height: 18, justifyContent: 'flex-end' },
   chartBar: { width: '100%', borderRadius: 2 },
   unreadDot: {
