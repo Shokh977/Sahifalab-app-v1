@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router'
 import { ChevronLeft, Clock } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useAuthStore } from '../../stores/authStore'
-import { challenges as challengesApi } from '../../lib/api'
 import { dailyQuiz, type DailyQuizToday } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
 import { QuizResultView } from '../../components/daily-quiz/QuizResultView'
@@ -35,6 +34,20 @@ export default function DailyQuizScreen() {
   } | null>(null)
   const [rank, setRank] = useState<number | null>(null)
 
+  // The result ticket's "REYTING" cell is the caller's rank among TODAY'S
+  // quiz solvers (correct_count desc, elapsed_ms asc) — an earlier version
+  // of this wrongly sourced it from the unrelated Musobaqalar challenges
+  // rank. Results (and so rank) are only fetchable once this user has
+  // submitted their own attempt — see daily_quiz.py's get_results() gate.
+  async function fetchRank(quizId: number) {
+    try {
+      const res = await dailyQuiz.results(quizId)
+      setRank(res.caller?.rank ?? null)
+    } catch {
+      setRank(null)
+    }
+  }
+
   const load = async () => {
     setLoading(true)
     setError(null)
@@ -52,11 +65,8 @@ export default function DailyQuizScreen() {
           per_question_correct: res.quiz.per_question_correct ?? [],
           quiz_streak_days: res.quiz.quiz_streak_days ?? 0,
         })
+        fetchRank(res.quiz.id)
       }
-      challengesApi.mine().then(mine => {
-        const active = mine.find(x => x.status === 'active' && !x.completed_at && !x.is_winner && !x.failed_at)
-        setRank(active?.rank ?? null)
-      }).catch(() => {})
     } catch (e: any) {
       setError(e?.message ?? "Yuklab bo'lmadi")
     } finally {
@@ -78,6 +88,7 @@ export default function DailyQuizScreen() {
         quiz_streak_days: res.quiz_streak_days,
       })
       useAuthStore.getState().refreshUser()
+      fetchRank(quiz.id)
     } catch (e: any) {
       setError(e?.message ?? "Yuborib bo'lmadi")
     } finally {
