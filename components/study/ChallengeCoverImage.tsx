@@ -4,7 +4,7 @@ import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Trophy, Timer, Flame } from 'phosphor-react-native'
 import { typography } from '../../lib/constants'
-import { darkenHex } from '../flashcards/DeckCard'
+import { darkenHex } from '../../lib/colorUtils'
 
 const ICON_MAP: Record<string, React.ComponentType<{ size: number; color: string; weight?: any }>> = {
   trophy: Trophy, timer: Timer, flame: Flame,

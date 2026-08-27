@@ -11,7 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 import { ArrowLeft, SealCheck, Star, ShareNetwork, Flag, CaretRight } from 'phosphor-react-native'
 
-import { CategoryIcon, darkenHex } from '../../../components/flashcards/DeckCard'
+import { CategoryIcon } from '../../../components/flashcards/subjectTheme'
+import { darkenHex } from '../../../lib/colorUtils'
 
 import { useTheme } from '../../../hooks/useTheme'
 import { useOnline } from '../../../hooks/useOnline'
