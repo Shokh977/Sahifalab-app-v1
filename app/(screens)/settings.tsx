@@ -12,7 +12,7 @@ import { useThemeStore } from '../../stores/themeStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useDownloadStore, type DownloadQuality } from '../../stores/downloadStore'
-import { account, onboarding, auth as authApi } from '../../lib/api'
+import { account, onboarding, auth as authApi, config } from '../../lib/api'
 import { TermsModal } from '../../components/ui/TermsModal'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { typography, spacing, radius } from '../../lib/constants'
@@ -557,6 +557,13 @@ export default function SettingsScreen() {
       .catch(() => {})
   }, [])
 
+  // Qo'llab-quvvatlash (donation, 095) — Play-policy remote-config gate.
+  // No flag, no menu entry, no route reachable through the UI.
+  const [donationEnabled, setDonationEnabled] = useState(false)
+  useEffect(() => {
+    config.flags().then(f => setDonationEnabled(f.donationScreenEnabled)).catch(() => {})
+  }, [])
+
   // HISOB
   const [showDelete,        setShowDelete]        = useState(false)
   const [showTgLink,        setShowTgLink]        = useState(false)
@@ -712,6 +719,20 @@ export default function SettingsScreen() {
           />
           {toggleRow("Faqat Wi-Fi orqali yuklab olish", wifiOnly, setWifiOnly, undefined, true)}
         </SettingGroup>
+
+        {/* QO'LLAB-QUVVATLASH — donation_screen_enabled remote flag (095) */}
+        {donationEnabled && (
+          <>
+            <SectionHeader title="ILOVA" />
+            <SettingGroup>
+              <SettingRow
+                label="Qo'llab-quvvatlash"
+                onPress={() => router.push('/(screens)/qollab-quvvatlash' as any)}
+                isLast
+              />
+            </SettingGroup>
+          </>
+        )}
 
         {/* BILDIRISHNOMALAR */}
         <SectionHeader title="BILDIRISHNOMALAR" />

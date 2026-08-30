@@ -2112,3 +2112,32 @@ export const rewards = {
       auth: true,
     }).catch(() => ({ ok: false })),
 }
+
+// ── Qo'llab-quvvatlash (donation, 095) ──────────────────────────────────────
+// Manual bank transfer only — no payment processor. This screen is gated
+// behind config.flags().donationScreenEnabled (Play policy risk, see the
+// accompanying report) and unlocks nothing: no Tanga, no XP, no entitlement.
+
+export interface PaymentMethod {
+  id:            string
+  bankName:      string
+  accountNumber: string
+  numberType:    'card' | 'account' | 'iban'
+  holderName:    string
+  currency:      'UZS' | 'KRW' | 'EUR' | 'USD' | string
+  region:        'uz' | 'kr' | 'intl' | string
+  swift?:        string | null
+  note?:         string | null
+  order:         number
+}
+
+export const donation = {
+  methods: () =>
+    request<{ methods: PaymentMethod[] }>('/api/payment-methods'),
+}
+
+export const config = {
+  flags: () =>
+    request<{ donationScreenEnabled: boolean }>('/api/config/flags')
+      .catch(() => ({ donationScreenEnabled: false })),
+}
