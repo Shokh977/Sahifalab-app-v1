@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sahifalab",
     "slug": "sahifalab",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "scheme": "sahifalab",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.sahifalab.app",
-      "versionCode": 11,
+      "versionCode": 12,
       "blockedPermissions": [
         "android.permission.USE_EXACT_ALARM",
         "android.permission.SCHEDULE_EXACT_ALARM",
