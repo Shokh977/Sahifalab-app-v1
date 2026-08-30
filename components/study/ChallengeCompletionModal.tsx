@@ -89,9 +89,9 @@ export function ChallengeCompletionModal({ visible, challenge, onClose }: Props)
               <View style={styles.statsRow}>
                 {challenge.reward_xp > 0 && (
                   <View style={styles.statChip}>
-                    <Text style={styles.statEmoji}>⚡</Text>
+                    <Text style={styles.statEmoji}>🪙</Text>
                     <Text style={[styles.statText, { fontFamily: typography.fontFamily.bold }]}>
-                      +{challenge.reward_xp} XP
+                      +{challenge.reward_xp} Tanga
                     </Text>
                   </View>
                 )}

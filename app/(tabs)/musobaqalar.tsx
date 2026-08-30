@@ -410,7 +410,7 @@ function OpenCard({ ch, c, joining, onPress, onJoin }: {
           <View style={styles.openRow}>
             <Text style={styles.openRowEmoji}>🏆</Text>
             <Text style={[styles.openRowText, { color: c.accentPrimary, fontFamily: typography.fontFamily.medium }]} numberOfLines={1}>
-              +{ch.reward_xp} XP{ch.badge_key ? ` · "${ch.badge_key}" nishoni` : ''}
+              +{ch.reward_xp} Tanga{ch.badge_key ? ` · "${ch.badge_key}" nishoni` : ''}
             </Text>
           </View>
         )}

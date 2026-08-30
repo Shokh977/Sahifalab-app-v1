@@ -95,9 +95,9 @@ export function BadgeDetailSheet({ badge, onClose }: Props) {
 
           {isChallenge && badge.reward_xp ? (
             <View style={[styles.xpRow, { backgroundColor: c.bgTertiary }]}>
-              <Text style={styles.xpEmoji}>⚡</Text>
+              <Text style={styles.xpEmoji}>🪙</Text>
               <Text style={[styles.xpText, { color: c.accentPrimary, fontFamily: typography.fontFamily.bold }]}>
-                +{badge.reward_xp} XP mukofot
+                +{badge.reward_xp} Tanga mukofot
               </Text>
             </View>
           ) : null}

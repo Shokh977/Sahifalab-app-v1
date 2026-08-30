@@ -320,7 +320,7 @@ export default function ChallengeDetailScreen() {
           <View style={[styles.section, styles.rewardSection, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
             <Award size={20} color={data.color} />
             <Text style={[styles.rewardText, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
-              Yakunlaganda: +{data.reward_xp} XP{data.badge_key ? ` va "${data.badge_key}" nishoni` : ''}
+              Yakunlaganda: +{data.reward_xp} Tanga{data.badge_key ? ` va "${data.badge_key}" nishoni` : ''}
             </Text>
           </View>
         </View>

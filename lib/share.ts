@@ -103,7 +103,7 @@ export async function shareChallengeCompletion(opts: {
 }) {
   const lines = [`🏆 Men "${opts.title}" bellashuvini yakunladim!`]
   const stats: string[] = []
-  if (opts.rewardXp > 0) stats.push(`+${opts.rewardXp} XP`)
+  if (opts.rewardXp > 0) stats.push(`+${opts.rewardXp} Tanga`)
   if (opts.rank)         stats.push(`#${opts.rank}-o'rin`)
   if (stats.length) lines.push(stats.join(' · '))
   lines.push(appFooter('musobaqalar'))
