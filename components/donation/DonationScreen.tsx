@@ -108,7 +108,7 @@ export default function DonationScreen() {
         {/* Header */}
         <Text style={s.title} maxFontSizeMultiplier={1.3}>Qo'llab-quvvatlash</Text>
         <Text style={s.body}>
-          Sahifalab har kuni minglab o'quvchi uchun bepul. Xohlagan miqdorda qo'shilishingiz — ilovani tirik saqlaydi.
+          Sahifalab minglab o'quvchilar uchun har kuni bepul. Ozgina hissangiz ham ilovamizni ishlab turishga yordam beradi.
         </Text>
 
         {state === 'loading' && <LoadingBlock />}
