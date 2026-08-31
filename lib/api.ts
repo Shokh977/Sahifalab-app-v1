@@ -1910,6 +1910,7 @@ export interface WeeklyReviewDay {
 }
 
 export interface WeeklyReviewStats {
+  week_start:                        string
   first_name:                        string
   this_week_minutes:                 number
   prev_week_minutes:                 number

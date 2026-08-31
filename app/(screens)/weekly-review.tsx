@@ -246,11 +246,13 @@ export default function WeeklyReviewScreen() {
           </View>
 
           <Text style={[s.weekLabel, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-            Joriy hafta
+            {fmtWeekStart(liveStats.week_start)} haftasi
           </Text>
 
           <Text style={[s.headline, { color: c.textPrimary, fontFamily: typography.fontFamily.extrabold }]}>
-            Sharh tayyorlanmoqda
+            {liveStats.this_week_minutes === 0 && liveStats.flashcard_reviews_this_week === 0
+              ? "O'tgan hafta faollik yo'q edi"
+              : 'Sharh tayyorlanmoqda'}
           </Text>
 
           <View style={[s.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
@@ -258,8 +260,9 @@ export default function WeeklyReviewScreen() {
               MA'LUMOT
             </Text>
             <Text style={[s.cardBody, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-              Sun'iy intellekt tahlili va shaxsiy tavsiya hafta oxirigacha tayyor bo'ladi.
-              Hozircha shu haftadagi haqiqiy faolligingiz pastda — raqamlar real vaqtda yangilanib boradi.
+              {liveStats.this_week_minutes === 0 && liveStats.flashcard_reviews_this_week === 0
+                ? "O'tgan hafta uchun faollik qayd etilmagan, shuning uchun sharh yaratilmadi. Shu hafta o'qishni boshlang — keyingi dushanba tayyor sharh kutmoqda."
+                : "Sun'iy intellekt tahlili tez orada tayyor bo'ladi. Quyida o'tgan haftaning yakuniy ko'rsatkichlari — bular endi o'zgarmaydi."}
             </Text>
           </View>
 
