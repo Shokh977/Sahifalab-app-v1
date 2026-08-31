@@ -276,11 +276,23 @@ export default function StreakDetailScreen() {
       // A newer load() has already started — discard this stale response
       if (gen !== loadGenRef.current) return
       setLocalFreeze(res.freeze_count)
+      // The backend never resets streak_days to 0 on loss — it stays at its
+      // last pre-loss value until the user studies again (see
+      // dashboardStore.ts). This zero-out must be unconditional on
+      // streak_state === 'lost', not tied to whether the one-time "just
+      // lost" modal has already fired — a prior version only zeroed it
+      // inside that modal's own branch, so every load AFTER the modal had
+      // already shown once (a refresh, reopening the screen, a new day) fell
+      // through to the raw un-zeroed res.streak_days, including the value
+      // synced to the home-screen widget below. Found live: a user's streak
+      // stayed stuck at its old count for weeks after going inactive.
+      const isLost = res.streak_state === 'lost'
+      const displayStreakDays = isLost ? 0 : res.streak_days
       // Show streak-lost modal once per session when the streak is genuinely
       // gone (streak_state === 'lost') — NOT for 'at_risk', which is still
       // fully recoverable (P2). Skip if the home screen already showed it.
       const alreadyShownLost = useDashboardStore.getState().streakLostSeen
-      if (!isRefresh && !hasShownLostRef.current && !alreadyShownLost && res.streak_state === 'lost' && res.streak_days > 0) {
+      if (!isRefresh && !hasShownLostRef.current && !alreadyShownLost && isLost && res.streak_days > 0) {
         hasShownLostRef.current = true
         useDashboardStore.getState().markStreakLostSeen()
         setPrevStreakDays(res.streak_days)
@@ -288,9 +300,9 @@ export default function StreakDetailScreen() {
         setData({ ...res, streak_days: 0 })
         setTimeout(() => setShowLostModal(true), 500)
       } else {
-        setData(res)
-        syncWidget(res.streak_days)
-        const newStage = stageFromStreak(res.streak_days)
+        setData({ ...res, streak_days: displayStreakDays })
+        syncWidget(displayStreakDays)
+        const newStage = stageFromStreak(displayStreakDays)
         if (newStage > prevStageRef.current) {
           prevStageRef.current = newStage
           setEvolutionStage(newStage as StageNumber)
@@ -313,7 +325,7 @@ export default function StreakDetailScreen() {
       }
       // Sync fresh data to dashboardStore so banner/hero on the home tab stay consistent
       useDashboardStore.getState().patchFocusStats({
-        streak_days:    res.streak_state === 'lost' ? 0 : res.streak_days,
+        streak_days:    displayStreakDays,
         longest_streak: res.longest_streak,
         freeze_count:   res.freeze_count,
       })

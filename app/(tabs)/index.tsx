@@ -126,11 +126,19 @@ function BannerSection() {
 
   // focusStats.streak_days may be 0 from stale cache while authStore has the real value.
   // Prefer focusStats when > 0 (it's the live source), fall back to user.streak_days.
+  // Exception: streakState 'lost' means dashboardStore deliberately zeroed
+  // focusStats.streak_days (the backend itself never resets streak_days on
+  // loss — see dashboardStore.ts). That zero must win outright, or a lost
+  // streak silently falls back to user.streak_days, which stays stuck at
+  // its last pre-loss value forever (found live: a user's streak count
+  // stayed frozen at 19 for weeks after they stopped studying).
   const mergedStats = {
     ...data.focusStats,
-    streak_days: data.focusStats.streak_days > 0
-      ? data.focusStats.streak_days
-      : (user?.streak_days ?? 0),
+    streak_days: data.streakState === 'lost'
+      ? 0
+      : data.focusStats.streak_days > 0
+        ? data.focusStats.streak_days
+        : (user?.streak_days ?? 0),
     daily_goal: data.focusStats.daily_goal > 0
       ? data.focusStats.daily_goal
       : (user?.daily_goal_minutes ?? 20),
