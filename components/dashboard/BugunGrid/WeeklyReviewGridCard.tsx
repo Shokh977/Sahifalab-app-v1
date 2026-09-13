@@ -26,7 +26,7 @@ export function WeeklyReviewGridCard({ staggerIndex }: { staggerIndex: number })
     let cancelled = false
     aiApi.weeklyReview().then(async res => {
       if (cancelled) return
-      const source = res.review?.stats.days ?? res.live_stats?.days ?? []
+      const source = res.current_week_progress.stats.days
       setDays(source.slice(-5))
       if (res.review) {
         const seen = await AsyncStorage.getItem(WEEKLY_REVIEW_SEEN_KEY).catch(() => null)

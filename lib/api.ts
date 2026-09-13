@@ -1914,6 +1914,8 @@ export interface WeeklyReviewStats {
   first_name:                        string
   this_week_minutes:                 number
   prev_week_minutes:                 number
+  prev_week_minutes_same_point:      number
+  projected_week_minutes:            number
   days_active:                       number
   week_xp:                           number
   days:                              WeeklyReviewDay[]
@@ -1941,8 +1943,24 @@ export interface WeeklyReview {
   summary:                string
   recommendation:         string
   feature_spotlight:      WeeklyReviewSpotlight
-  feature_spotlight_key:  'flashcards' | 'courses' | null
+  feature_spotlight_key:  'flashcards' | 'courses' | 'daily_quiz' | 'challenges' | null
   stats:                  WeeklyReviewStats
+}
+
+// The TRUE ongoing week (Monday-of-this-week through today) — always
+// present, unlike `review`/`live_stats` above which stay scoped to the last
+// COMPLETED week. Narrative fields (summary/recommendation/feature_spotlight)
+// are omitted entirely when the user has zero activity this week AND last
+// week — the backend skips the AI call rather than narrate silence, so
+// treat these as optional, not just possibly-empty-string.
+export interface CurrentWeekProgress {
+  week_start:             string
+  stats:                  WeeklyReviewStats
+  headline?:              string
+  summary?:               string
+  recommendation?:        string
+  feature_spotlight?:     WeeklyReviewSpotlight
+  feature_spotlight_key?: 'flashcards' | 'courses' | 'daily_quiz' | 'challenges' | null
 }
 
 export const ai = {
@@ -1977,9 +1995,11 @@ export const ai = {
     }),
 
   weeklyReview: () =>
-    request<{ review: WeeklyReview | null; live_stats: WeeklyReviewStats | null }>(
-      '/api/ai/weekly-review', { auth: true },
-    ),
+    request<{
+      review: WeeklyReview | null
+      live_stats: WeeklyReviewStats | null
+      current_week_progress: CurrentWeekProgress
+    }>('/api/ai/weekly-review', { auth: true }),
 }
 
 // ── "5 Savol" daily quiz (090_daily_quiz) ───────────────────────────────────
