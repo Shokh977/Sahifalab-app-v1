@@ -311,11 +311,19 @@ export default function RootLayout() {
     if (fontsLoaded && !isLoading) SplashScreen.hideAsync()
   }, [fontsLoaded, isLoading])
 
-  // ── Android nav bar — keep transparent + correct button colour ────────────
+  // ── Android nav bar — correct content colour for the current theme ────────
+  // expo-navigation-bar@57 removed setBackgroundColorAsync/setButtonStyleAsync
+  // entirely (Android now enforces edge-to-edge display — apps can no longer
+  // set a nav bar background color at all, it's always transparent). setStyle
+  // is synchronous and its value names the CONTENT color directly ('dark' =
+  // dark bar with LIGHT content, 'light' = light bar with DARK content) —
+  // opposite convention from the old deprecated API, so this maps straight
+  // from `theme`, not inverted like the old setButtonStyleAsync call did.
   useEffect(() => {
     if (Platform.OS !== 'android') return
-    NavigationBar.setBackgroundColorAsync('transparent').catch(() => {})
-    NavigationBar.setButtonStyleAsync(theme === 'dark' ? 'light' : 'dark').catch(() => {})
+    try {
+      NavigationBar.setStyle(theme === 'dark' ? 'dark' : 'light')
+    } catch {}
   }, [theme])
 
   // ── Auth guard ────────────────────────────────────────────────────────────
