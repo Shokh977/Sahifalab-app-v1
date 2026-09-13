@@ -35,6 +35,9 @@ export const colors = {
     accentPrimaryHover: '#E6951A',
     accentPrimaryMuted: 'rgba(245,166,35,0.12)',
     accentPrimaryGlow:  'rgba(245,166,35,0.25)',
+    // Lighter gradient endpoint — used for the Haftalik sharh focus-card
+    // progress bar and best-day chart bar (accent -> accentPrimaryLight).
+    accentPrimaryLight: '#FFC65C',
     brand:              '#F5A623',
     brandDark:          '#E6951A',
     brandSubtle:        'rgba(245,166,35,0.12)',
@@ -82,6 +85,7 @@ export const colors = {
     accentPrimaryHover: '#D4870A',
     accentPrimaryMuted: 'rgba(232,149,15,0.12)',
     accentPrimaryGlow:  'rgba(232,149,15,0.20)',
+    accentPrimaryLight: '#F5B94D',
     brand:              '#E8950F',
     brandDark:          '#D4870A',
     brandSubtle:        'rgba(232,149,15,0.10)',

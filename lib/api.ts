@@ -1929,6 +1929,10 @@ export interface WeeklyReviewStats {
   courses_enrolled_count:            number
   lessons_completed_this_week:       number
   quiz_attempts_this_week:           number
+  challenges_joined_count:           number
+  challenges_completed_this_week:    number
+  daily_quiz_played_this_week:       number
+  week_xp_rank:                      number | null
 }
 
 export interface WeeklyReviewSpotlight {
