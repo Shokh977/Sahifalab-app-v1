@@ -1965,6 +1965,14 @@ export interface CurrentWeekProgress {
   recommendation?:        string
   feature_spotlight?:     WeeklyReviewSpotlight
   feature_spotlight_key?: 'flashcards' | 'courses' | 'daily_quiz' | 'challenges' | null
+  // Personalized from onboarding data (interests/learning_motivation/
+  // experience_level, profiles.user_settings) - see
+  // weekly_review_service._pick_study_method/_pick_category_context/
+  // _check_tutor_opportunity. study_tip is always present when there's any
+  // narrative at all; category_insight/tutor_suggestion are conditional.
+  study_tip?:             WeeklyReviewSpotlight
+  category_insight?:      WeeklyReviewSpotlight | null
+  tutor_suggestion?:      WeeklyReviewSpotlight | null
 }
 
 export const ai = {

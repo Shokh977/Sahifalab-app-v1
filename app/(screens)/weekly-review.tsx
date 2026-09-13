@@ -16,6 +16,9 @@ import { CoursesCta } from '../../components/weekly-review/CoursesCta'
 import { TavsiyaCard } from '../../components/weekly-review/TavsiyaCard'
 import { LastWeekSummary } from '../../components/weekly-review/LastWeekSummary'
 import { WeeklyReviewSkeleton } from '../../components/weekly-review/Skeleton'
+import { StudyMethodCard } from '../../components/weekly-review/StudyMethodCard'
+import { CategoryInsightCard } from '../../components/weekly-review/CategoryInsightCard'
+import { TutorOpportunityCard } from '../../components/weekly-review/TutorOpportunityCard'
 
 export default function WeeklyReviewScreen() {
   const { c, theme, toggle } = useTheme()
@@ -84,8 +87,11 @@ export default function WeeklyReviewScreen() {
           <FocusCard vm={data} c={c} />
           <DailyActivityCard vm={data} c={c} />
           <StatsGrid stats={data.stats} c={c} />
+          {data.studyTip && <StudyMethodCard tip={data.studyTip} c={c} />}
+          {data.categoryInsight && <CategoryInsightCard insight={data.categoryInsight} c={c} />}
           <CoursesCta stats={data.stats} c={c} />
           <TavsiyaCard vm={data} c={c} />
+          {data.tutorSuggestion && <TutorOpportunityCard suggestion={data.tutorSuggestion} c={c} />}
           <LastWeekSummary lastWeek={data.lastWeek} c={c} />
         </ScrollView>
       ) : null}

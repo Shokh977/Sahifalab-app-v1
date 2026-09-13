@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ai as aiApi } from '../lib/api'
-import type { WeeklyReviewStats } from '../lib/api'
+import type { WeeklyReviewStats, WeeklyReviewSpotlight } from '../lib/api'
 import { isoWeekNumber, formatWeekRange } from '../lib/weeklyReviewFormat'
 
 export interface WeeklyReviewDayVM {
@@ -45,6 +45,17 @@ export interface WeeklyReviewVM {
    * current_week_progress_v1.py's no-activity skip). Screen falls back to a
    * deterministic sentence when this is undefined. */
   recommendation?:  string
+  /** Always present alongside `recommendation` (same no-activity gate) —
+   * a real, curated study technique, rotated weekly and phrased around
+   * the user's own goal. */
+  studyTip?:        WeeklyReviewSpotlight
+  /** Evergreen "why this field matters" context for the user's first
+   * declared interest — null if they set no interests at onboarding. */
+  categoryInsight?: WeeklyReviewSpotlight | null
+  /** Only present when the user shows strong real engagement in a
+   * declared interest and isn't already a teacher — points at the app's
+   * own become-teacher flow. */
+  tutorSuggestion?: WeeklyReviewSpotlight | null
 }
 
 export type WeeklyReviewStatus = 'loading' | 'error' | 'ready'
@@ -107,6 +118,9 @@ function buildViewModel(res: Awaited<ReturnType<typeof aiApi.weeklyReview>>): We
     stats:            buildStatsGrid(stats),
     lastWeek,
     recommendation:   cw.recommendation,
+    studyTip:         cw.study_tip,
+    categoryInsight:  cw.category_insight,
+    tutorSuggestion:  cw.tutor_suggestion,
   }
 }
 
