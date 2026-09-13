@@ -87,7 +87,7 @@ export default function AiFlashcardGenerateScreen() {
   const hasInput = mode === 'text' ? text.trim().length >= 30 : !!imageUri
   const capReached = limits ? limits.actions_remaining_today <= 0 : false
   const willCostTanga = limits ? limits.free_remaining_today <= 0 : false
-  const price = limits?.prices?.flashcard_gen ?? 25
+  const price = limits?.prices?.flashcard_gen ?? 100
 
   function onGeneratePressed() {
     if (!hasInput || capReached || generating) return
