@@ -17,7 +17,13 @@ let Notifications: typeof import('expo-notifications') | null = null
 try { Notifications = require('expo-notifications') } catch {}
 
 const TIMER_KEY        = 'focus_timer_bg_v2'
-const CHANNEL_ID       = 'focus-timer'
+// Android notification channels are immutable after first creation — once a
+// channel ID exists on-device, changing its config here (e.g. adding sound)
+// has NO effect for users who already have it, because setNotificationChannelAsync
+// only creates-or-no-ops, it never updates. This is why backgrounded timer
+// notifications were showing (banner) but silent for existing installs. Bump
+// this ID (never re-use an old one) any time the channel config below changes.
+const CHANNEL_ID       = 'focus-timer-v2'
 
 // ── Saved state (persisted across app restarts) ───────────────────────────────
 
@@ -181,16 +187,18 @@ export async function scheduleAllNotifications(cfg: ScheduleConfig) {
       .map(n =>
         Notifications.scheduleNotificationAsync({
           content: {
-            title:     n.title,
-            body:      n.body,
-            sound:     'default',
-            priority:  'high',
-            channelId: CHANNEL_ID,
+            title:    n.title,
+            body:     n.body,
+            sound:    'default',
+            priority: 'high',
           },
           trigger: {
-            type:    Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-            seconds: Math.floor((n.ms - now) / 1000),
-            repeats: false,
+            type:      Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds:   Math.floor((n.ms - now) / 1000),
+            repeats:   false,
+            // channelId belongs here, not in content (not a valid
+            // NotificationContentInput field — see scheduleTimerEndNotification).
+            channelId: CHANNEL_ID,
           } as any,
         })
       )
@@ -224,9 +232,16 @@ export async function scheduleTimerEndNotification(
     const id = await Notifications.scheduleNotificationAsync({
       content: { title, body, sound: 'default' },
       trigger: {
-        type:    Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: secondsUntilEnd,
-        repeats: false,
+        type:      Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds:   secondsUntilEnd,
+        repeats:   false,
+        // channelId belongs on the TRIGGER (TimeIntervalTriggerInput), not
+        // content — content.sound is ignored on Android 8+ entirely; sound
+        // is controlled purely by whichever channel the notification is
+        // routed to. Without this, Android falls back to some default
+        // channel instead of CHANNEL_ID's configured sound/importance,
+        // which is why backgrounded-timer notifications showed with no sound.
+        channelId: CHANNEL_ID,
       } as any,
     })
     await AsyncStorage.setItem(TIMER_END_NOTIF_ID_KEY, id).catch(() => {})
