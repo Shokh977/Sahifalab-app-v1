@@ -318,14 +318,18 @@ export default function RootLayout() {
   // expo-navigation-bar@57 removed setBackgroundColorAsync/setButtonStyleAsync
   // entirely (Android now enforces edge-to-edge display — apps can no longer
   // set a nav bar background color at all, it's always transparent). setStyle
-  // is synchronous and its value names the CONTENT color directly ('dark' =
-  // dark bar with LIGHT content, 'light' = light bar with DARK content) —
-  // opposite convention from the old deprecated API, so this maps straight
-  // from `theme`, not inverted like the old setButtonStyleAsync call did.
+  // takes the ICON style, not a bar-background name: per the library's own
+  // 'auto' resolution (NavigationBar.android.ts), a light color scheme
+  // resolves to 'dark' (dark icons for contrast on a light background) and a
+  // dark scheme resolves to 'light' — so this must be INVERTED relative to
+  // `theme`, same direction as the old deprecated setButtonStyleAsync call.
+  // (Previously passed straight through — that was backwards, and on
+  // devices with system contrast-enforcement it made the auto contrast
+  // scrim behind the buttons show the wrong tone for the app's real theme.)
   useEffect(() => {
     if (Platform.OS !== 'android') return
     try {
-      NavigationBar.setStyle(theme === 'dark' ? 'dark' : 'light')
+      NavigationBar.setStyle(theme === 'dark' ? 'light' : 'dark')
     } catch {}
   }, [theme])
 
