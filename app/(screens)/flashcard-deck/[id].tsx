@@ -326,7 +326,7 @@ function DeckEditSheet({ visible, deck, onClose, onSaved }: DeckEditSheetProps) 
 }
 
 const deckEditStyles = StyleSheet.create({
-  backdrop:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  backdrop:  { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)' },
   kav:       { flex: 1, justifyContent: 'flex-end' },
   sheet: {
     borderTopLeftRadius:  20,

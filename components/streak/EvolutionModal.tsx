@@ -190,7 +190,7 @@ export function EvolutionModal({ visible, toStage, bonusXp = 0, bonusTanga = 0, 
         style={styles.root}
       >
         {/* Atmosphere dim pulse */}
-        <Animated.View style={[StyleSheet.absoluteFillObject, styles.dimOverlay, bgDimStyle]} />
+        <Animated.View style={[StyleSheet.absoluteFill, styles.dimOverlay, bgDimStyle]} />
 
         {/* ── Tree area (top ~55%) ───────────────────────────────────────── */}
         <View style={styles.treeArea}>

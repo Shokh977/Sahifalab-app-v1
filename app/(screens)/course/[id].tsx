@@ -2060,7 +2060,7 @@ const styles = StyleSheet.create({
 
   // Marketing view
   cover:       { width: '100%', height: 220 },
-  playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
+  playOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
   playBtn:     { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   previewLabel: {
     color: '#fff', fontSize: typography.size.sm, fontFamily: 'PlusJakartaSans-SemiBold',
@@ -2161,7 +2161,7 @@ const styles = StyleSheet.create({
   pendingBadgeText: { fontSize: typography.size.xs, lineHeight: 18 },
 
   // Payment bottom sheet
-  paySheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  paySheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.52)' },
   paySheetOverlay:  { flex: 1, justifyContent: 'flex-end' },
   paySheet: {
     borderTopLeftRadius: radius['3xl'],

@@ -210,7 +210,7 @@ function ChecklistItem({ ok, okText, c }: { ok: boolean; okText: string; c: any 
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.52)' },
   overlay:  { flex: 1, justifyContent: 'flex-end' },
   sheet: {
     borderTopLeftRadius:  radius.xl,

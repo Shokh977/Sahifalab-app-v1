@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, Alert } from 'react-native'
-import ViewShot from 'react-native-view-shot'
+import ViewShot, { type ViewShotRef } from 'react-native-view-shot'
 import * as Sharing from 'expo-sharing'
 import * as Clipboard from 'expo-clipboard'
 import { Copy, Share2 } from 'lucide-react-native'
@@ -33,7 +33,7 @@ export function ShareCard({
   elapsedMs?: number
 }) {
   const { c } = useTheme()
-  const viewShotRef = useRef<ViewShot>(null)
+  const viewShotRef = useRef<ViewShotRef>(null)
   const [copied, setCopied] = useState(false)
   const [sharing, setSharing] = useState(false)
 

@@ -122,7 +122,7 @@ export function StreakLostModal({ visible, prevStreak, freezeCount, onClose, onU
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.52)' },
   overlay: {
     flex:              1,
     alignItems:        'center',

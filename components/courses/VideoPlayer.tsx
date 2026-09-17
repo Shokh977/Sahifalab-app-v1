@@ -455,9 +455,9 @@ export function VideoPlayer({
 const styles = StyleSheet.create({
   container: { width: '100%', backgroundColor: '#000', position: 'relative' },
   webview:   { flex: 1, backgroundColor: '#000' },
-  overlay:   { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  overlay:   { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   controls: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent:  'flex-end',
     backgroundColor: 'rgba(0,0,0,0.35)',
     padding:         spacing.sm,

@@ -48,7 +48,7 @@ function AvatarWithXPRing({
 
   return (
     <View style={{ width: outer, height: outer, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={outer} height={outer} style={StyleSheet.absoluteFillObject}>
+      <Svg width={outer} height={outer} style={StyleSheet.absoluteFill}>
         <Circle cx={cx} cy={cx} r={r} stroke={c.border} strokeWidth={strokeW} fill="none" />
         <Circle
           cx={cx} cy={cx} r={r}

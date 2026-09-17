@@ -135,6 +135,8 @@ export const typography = {
     bold:      'PlusJakartaSans-Bold',
     extrabold: 'PlusJakartaSans-ExtraBold',
     mono:      'PlusJakartaSans-Regular', // fallback until JetBrains Mono is added
+    serifDisplay: 'InstrumentSerif-Regular',
+    monoMedium:   'JetBrainsMono-Medium',
   },
   size: {
     xs:   11,

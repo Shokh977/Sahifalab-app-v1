@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
-import * as FileSystem from 'expo-file-system'
+import * as FileSystem from 'expo-file-system/legacy'
 import { useTheme } from '../../../hooks/useTheme'
 import { certificates, type CertificateDetail } from '../../../lib/api'
 import { typography, spacing, radius } from '../../../lib/constants'

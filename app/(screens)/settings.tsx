@@ -929,7 +929,7 @@ const s = StyleSheet.create({
   radioDot:    { width: 8, height: 8, borderRadius: 4 },
 
   // Goal picker modal
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.52)' },
   sheetWrap:     { flex: 1, justifyContent: 'flex-end' },
   modalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
   modalSheet: {

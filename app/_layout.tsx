@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen'
 import { useFonts } from 'expo-font'
 import { StatusBar } from 'expo-status-bar'
 import * as NavigationBar from 'expo-navigation-bar'
+import * as SystemUI from 'expo-system-ui'
 import { registerWidgetTaskHandler } from 'react-native-android-widget'
 import { widgetTaskHandler } from '../widgets/widgetTaskHandler'
 
@@ -223,6 +224,8 @@ export default function RootLayout() {
     'SpaceGrotesk-Medium':           require('../assets/fonts/SpaceGrotesk-Medium.ttf'),
     'SpaceGrotesk-SemiBold':         require('../assets/fonts/SpaceGrotesk-SemiBold.ttf'),
     'SpaceGrotesk-Bold':             require('../assets/fonts/SpaceGrotesk-Bold.ttf'),
+    'InstrumentSerif-Regular':       require('../assets/fonts/InstrumentSerif-Regular.ttf'),
+    'JetBrainsMono-Medium':          require('../assets/fonts/JetBrainsMono-Medium.ttf'),
   })
 
   // ── Notification handler (suppress system banner in foreground) ────────────
@@ -325,6 +328,21 @@ export default function RootLayout() {
       NavigationBar.setStyle(theme === 'dark' ? 'dark' : 'light')
     } catch {}
   }, [theme])
+
+  // ── Root window background — the actual fix for "the area behind the
+  // nav bar doesn't match the app theme". On edge-to-edge Android the nav
+  // bar itself is transparent (see above), so whatever color shows through
+  // it is the NATIVE window's own background — which, with nothing here
+  // setting it, follows the OS's day/night resource system, NOT this app's
+  // own in-app theme toggle. Those two are independent (a user can run the
+  // OS in light mode while the app itself is toggled to dark, or vice
+  // versa), so the area behind the nav bar was showing whatever the OS
+  // setting implied regardless of the app's actual current theme. Setting
+  // it explicitly here, keyed on `c.bgPrimary`, keeps it in sync with the
+  // real in-app theme on every toggle.
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(c.bgPrimary).catch(() => {})
+  }, [c.bgPrimary])
 
   // ── Auth guard ────────────────────────────────────────────────────────────
   useEffect(() => {

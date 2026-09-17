@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
 
   // Sheet (create/edit deck) — unchanged
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.52)',
   },
   sheetKav: {

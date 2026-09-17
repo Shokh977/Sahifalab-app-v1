@@ -198,7 +198,7 @@ function WithdrawModal({
 }
 
 const modal = StyleSheet.create({
-  backdrop:    { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  backdrop:    { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.52)' },
   overlay:     { flex: 1, justifyContent: 'flex-end' },
   sheet:       { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.base },
   handle:      { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.base },

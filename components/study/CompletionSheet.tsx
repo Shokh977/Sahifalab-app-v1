@@ -119,7 +119,7 @@ export function CompletionSheet({ visible, minutes, xpEarned, onSave, onSkip, sa
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.52)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.52)' },
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
 
   sheet: {

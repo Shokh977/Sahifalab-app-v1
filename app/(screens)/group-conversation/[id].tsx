@@ -128,7 +128,7 @@ export default function GroupConversationScreen() {
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: c.bgSecondary, borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/messages')} hitSlop={12} style={styles.backBtn}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} hitSlop={12} style={styles.backBtn}>
           <ChevronLeft size={24} color={c.brand} />
         </Pressable>
         {coverUrl

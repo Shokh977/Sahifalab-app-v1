@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
   },
 
   // Filter sheet
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: {
     position:          'absolute',
     bottom:            0, left: 0, right: 0,

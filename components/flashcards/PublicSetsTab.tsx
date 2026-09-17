@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   featuredBtnText: { fontSize: 12.5 },
   featuredMeta: { fontSize: 10.5, color: '#9AA0A6', fontWeight: '600', flexShrink: 1 },
 
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,

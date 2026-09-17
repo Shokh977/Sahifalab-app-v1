@@ -205,7 +205,7 @@ export function UnifiedBanner({ stats, level, totalXP, streakState }: Props) {
       <View style={[styles.card, { backgroundColor: c.bgSecondary, borderColor }]}>
 
         {/* State gradient overlay */}
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <LinearGradient
             colors={stateGradColors}
             start={{ x: 0, y: 0 }}
@@ -268,7 +268,7 @@ export function UnifiedBanner({ stats, level, totalXP, streakState }: Props) {
                     colors={barGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={StyleSheet.absoluteFillObject}
+                    style={StyleSheet.absoluteFill}
                   />
                   <Animated.View style={[styles.barUnfilled, { width: goalUnfilled, backgroundColor: c.bgTertiary }]} />
                   {isDone && (
@@ -305,7 +305,7 @@ export function UnifiedBanner({ stats, level, totalXP, streakState }: Props) {
 
           {/* XP bar */}
           <View style={[styles.xpTrack, { backgroundColor: c.bgTertiary }]}>
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: tier.border + 'CC' }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: tier.border + 'CC' }]} />
             <Animated.View style={[styles.xpUnfilled, { width: xpUnfilled, backgroundColor: c.bgTertiary }]} />
           </View>
         </View>

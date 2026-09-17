@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   lockedTree:      { opacity: 0.35 },
   treePlaceholder: { width: 80, height: 100 },
   lockOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems:     'center',
     justifyContent: 'center',
   },

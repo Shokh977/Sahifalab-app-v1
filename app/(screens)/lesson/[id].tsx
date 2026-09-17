@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import * as FileSystem from 'expo-file-system'
+import * as FileSystem from 'expo-file-system/legacy'
 import {
   ChevronLeft, Download, FileText, Paperclip, BookOpen,
   Calendar, ExternalLink, Video,

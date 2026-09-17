@@ -1,464 +1,145 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
-import {
-  View, Text, StyleSheet, FlatList, Pressable,
-  Image, ActivityIndicator, ScrollView, RefreshControl,
-  TextInput, Dimensions,
-} from 'react-native'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { View, Text, StyleSheet, Pressable, FlatList, RefreshControl } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import {
-  MagnifyingGlass, Star, Clock, Users, BookOpen, X, Heart,
-} from 'phosphor-react-native'
+import { Heart, SlidersHorizontal } from 'lucide-react-native'
+import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useTheme } from '../../hooks/useTheme'
+import { useReduceMotion } from '../../hooks/useReduceMotion'
+import { useAuthStore } from '../../stores/authStore'
 import { useCourseStore, getCachedCourseList, setCachedCourseList } from '../../stores/courseStore'
-import { courses as coursesApi, type Course, type Category } from '../../lib/api'
-import { typography, spacing, radius } from '../../lib/constants'
-import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
+import { courses as coursesApi, type Course } from '../../lib/api'
+import { typography, spacing } from '../../lib/constants'
+import { getPremiumTheme } from '../../lib/premiumTheme'
+import { coursesStrings as s } from '../../lib/coursesStrings'
+import { useWishlist } from '../../hooks/useWishlist'
+import { SearchField } from '../../components/kurslar/SearchField'
+import { FeaturedCarousel } from '../../components/kurslar/FeaturedCarousel'
+import { CategoryChips } from '../../components/kurslar/CategoryChips'
+import { SortTabs, type SortKey } from '../../components/kurslar/SortTabs'
+import { CourseCard } from '../../components/kurslar/CourseCard'
+import { CoursesSkeleton, CoursesEmptyState, CoursesErrorState } from '../../components/kurslar/States'
+import {
+  FilterSheet, EMPTY_FILTERS, activeFilterCount, courseDurationBucket,
+  type CourseFilters,
+} from '../../components/kurslar/FilterSheet'
 
-const { width: SCREEN_W } = Dimensions.get('window')
-const HERO_H    = 210
 const PAGE_SIZE = 10
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-type SortKey = 'popular' | 'newest' | 'free' | 'top'
-
-const SORTS: { key: SortKey; label: string }[] = [
-  { key: 'popular', label: 'Ommabop' },
-  { key: 'newest',  label: 'Yangi'   },
-  { key: 'free',    label: 'Bepul'   },
-  { key: 'top',     label: 'Top'     },
-]
 
 function sortToParams(key: SortKey): { ordering?: string; is_paid?: boolean } {
   switch (key) {
     case 'popular': return { ordering: '-enrolled_count' }
-    case 'newest':  return { ordering: '-created_at'     }
-    case 'free':    return { is_paid: false               }
-    case 'top':     return { ordering: '-rating'          }
+    case 'newest':  return { ordering: '-created_at' }
+    case 'free':    return { is_paid: false }
+    case 'top':     return { ordering: '-rating' }
   }
 }
 
-function makeQueryKey(sort: SortKey, cat: string | null, search: string) {
-  return `${sort}|${cat ?? ''}|${search}`
+function makeQueryKey(sort: SortKey, cat: string | null, filters: CourseFilters) {
+  return `v2|${sort}|${cat ?? ''}|${filters.price}|${filters.level}`
 }
 
-// Featured slides cache — persists for the app session, populated once
+function applyClientFilters(list: Course[], sortKey: SortKey, filters: CourseFilters): Course[] {
+  let out = list
+  if (sortKey === 'free') out = out.filter(c => !c.is_paid)
+  if (filters.duration) out = out.filter(c => courseDurationBucket(c.total_duration_minutes ?? 0) === filters.duration)
+  if (filters.language) out = out.filter(c => c.language === filters.language)
+  return out
+}
+
+// Featured slides — derived client-side from the first 5 thumbnailed items
+// of the default "popular, no filters" list (no separate API call).
 let _featuredCache: Course[] = []
 
-// Skeleton placeholder items — defined once outside component (stable reference)
-const SKELETON_DATA = [1, 2, 3, 4, 5].map(id => ({ __skeleton: true as const, id }))
-type ListItem = Course | typeof SKELETON_DATA[0]
-
-// ── Featured Hero (dumb — state lifted to parent) ─────────────────────────────
-
-function FeaturedHero({
-  slides, active, onSlideChange, onCoursePress, c,
-}: {
-  slides:        Course[]
-  active:        number
-  onSlideChange: (i: number) => void
-  onCoursePress: (id: number) => void
-  c:             any
-}) {
-  if (slides.length === 0) return null
-
-  return (
-    <View style={heroS.root}>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        onMomentumScrollEnd={e =>
-          onSlideChange(Math.round(e.nativeEvent.contentOffset.x / SCREEN_W))
-        }
-      >
-        {slides.map(co => (
-          <Pressable
-            key={co.id}
-            onPress={() => onCoursePress(co.id)}
-            style={heroS.slide}
-          >
-            <Image
-              source={{ uri: co.thumbnail_url! }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.82)']}
-              style={StyleSheet.absoluteFillObject}
-            />
-            <View style={heroS.info}>
-              {co.categories?.name && (
-                <View style={[heroS.badge, { backgroundColor: c.accentPrimary }]}>
-                  <Text style={[heroS.badgeText, { fontFamily: typography.fontFamily.semibold }]}>
-                    {co.categories.name}
-                  </Text>
-                </View>
-              )}
-              <Text
-                numberOfLines={2}
-                style={[heroS.title, { fontFamily: typography.fontFamily.extrabold }]}
-              >
-                {co.title}
-              </Text>
-              <View style={heroS.metaRow}>
-                {(co.rating ?? 0) > 0 && (
-                  <Text style={[heroS.rating, { fontFamily: typography.fontFamily.bold }]}>
-                    ★ {co.rating!.toFixed(1)}
-                  </Text>
-                )}
-                {co.enrolled_count > 0 && (
-                  <Text style={heroS.students}>
-                    {co.enrolled_count.toLocaleString()} o'quvchi
-                  </Text>
-                )}
-                <Text style={[heroS.price, {
-                  color:      co.is_paid ? '#FFB840' : '#4ade80',
-                  fontFamily: typography.fontFamily.bold,
-                }]}>
-                  {co.is_paid ? `${co.price.toLocaleString()} so'm` : 'Bepul'}
-                </Text>
-              </View>
-            </View>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      {slides.length > 1 && (
-        <View style={heroS.dotsRow}>
-          {slides.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                heroS.dot,
-                {
-                  width:           i === active ? 20 : 6,
-                  backgroundColor: i === active ? c.accentPrimary : c.border,
-                },
-              ]}
-            />
-          ))}
-        </View>
-      )}
-    </View>
-  )
-}
-
-const heroS = StyleSheet.create({
-  root:     { backgroundColor: '#111' },
-  slide:    { width: SCREEN_W, height: HERO_H },
-  info:     {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    paddingHorizontal: spacing.base,
-    paddingVertical:   14,
-    gap:               6,
-  },
-  badge:    {
-    alignSelf:         'flex-start',
-    borderRadius:      4,
-    paddingHorizontal: 6,
-    paddingVertical:   2,
-    marginBottom:      2,
-  },
-  badgeText: { color: '#fff', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase' },
-  title:     { color: '#fff', fontSize: 17, lineHeight: 22 },
-  metaRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  rating:    { color: '#fbbf24', fontSize: 12 },
-  students:  { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
-  price:     { marginLeft: 'auto' as any, fontSize: 13 },
-  dotsRow:   {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 5, paddingTop: 8, paddingBottom: 4,
-  },
-  dot: { height: 6, borderRadius: 3 },
-})
-
-// ── Filter Header (top-level component so FlatList reconciles correctly) ───────
-
-interface FilterHeaderProps {
-  selectedCat:      string | null
-  setSelectedCat:   (v: string | null) => void
-  sortKey:          SortKey
-  setSortKey:       (k: SortKey) => void
-  categories:       Category[]
-  total:            number
-  loading:          boolean
-  featuredSlides:   Course[]
-  featuredActive:   number
-  onSlideChange:    (i: number) => void
-  onCoursePress:    (id: number) => void
-  c:                any
-}
-
-function FilterHeader({
-  selectedCat, setSelectedCat,
-  sortKey, setSortKey,
-  categories, total, loading,
-  featuredSlides, featuredActive, onSlideChange,
-  onCoursePress, c,
-}: FilterHeaderProps) {
-  return (
-    <View>
-      {/* Featured hero carousel */}
-      <FeaturedHero
-        slides={featuredSlides}
-        active={featuredActive}
-        onSlideChange={onSlideChange}
-        onCoursePress={onCoursePress}
-        c={c}
-      />
-
-      {/* Category chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsRow}
-      >
-        <Pressable
-          onPress={() => setSelectedCat(null)}
-          style={[styles.chip, { backgroundColor: selectedCat === null ? c.accentPrimary : c.bgTertiary }]}
-        >
-          <Text style={[styles.chipText, {
-            color:      selectedCat === null ? '#fff' : c.textSecondary,
-            fontFamily: selectedCat === null ? typography.fontFamily.semibold : typography.fontFamily.regular,
-          }]}>
-            Hammasi
-          </Text>
-        </Pressable>
-        {categories.map(cat => {
-          const active = selectedCat === cat.slug
-          return (
-            <Pressable
-              key={cat.id}
-              onPress={() => setSelectedCat(active ? null : cat.slug)}
-              style={[styles.chip, { backgroundColor: active ? c.accentPrimary : c.bgTertiary }]}
-            >
-              <Text style={[styles.chipText, {
-                color:      active ? '#fff' : c.textSecondary,
-                fontFamily: active ? typography.fontFamily.semibold : typography.fontFamily.regular,
-              }]}>
-                {cat.name}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </ScrollView>
-
-      {/* Sort tabs */}
-      <View style={[styles.sortRow, { borderBottomColor: c.border }]}>
-        {SORTS.map(s => {
-          const active = sortKey === s.key
-          return (
-            <Pressable
-              key={s.key}
-              onPress={() => setSortKey(s.key)}
-              style={[
-                styles.sortTab,
-                active && { borderBottomColor: c.accentPrimary, borderBottomWidth: 2 },
-              ]}
-            >
-              <Text style={[styles.sortLabel, {
-                color:      active ? c.accentPrimary : c.textSecondary,
-                fontFamily: active ? typography.fontFamily.semibold : typography.fontFamily.regular,
-              }]}>
-                {s.label}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </View>
-
-      {!loading && total > 0 && (
-        <Text style={[styles.countText, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-          {total.toLocaleString()} ta kurs
-        </Text>
-      )}
-    </View>
-  )
-}
-
-// ── Course Card ────────────────────────────────────────────────────────────────
-
-function CourseCard({ course, onPress, c }: { course: Course; onPress: () => void; c: any }) {
-  const isFree    = !course.is_paid
-  const hasRating = (course.rating ?? 0) > 0
-  const durationH = (course.total_duration_minutes ?? 0) > 0
-    ? Math.floor(course.total_duration_minutes / 60)
-    : 0
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}
-    >
-      {course.thumbnail_url
-        ? <Image source={{ uri: course.thumbnail_url }} style={styles.cardThumb} resizeMode="cover" />
-        : <View style={[styles.cardThumb, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
-            <BookOpen size={28} color={c.textDisabled} />
-          </View>
-      }
-      <View style={styles.cardBody}>
-        {course.categories?.name && (
-          <Text numberOfLines={1} style={[styles.cardCat, { color: c.accentPrimary, fontFamily: typography.fontFamily.medium }]}>
-            {course.categories.name}
-          </Text>
-        )}
-        <Text numberOfLines={2} style={[styles.cardTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-          {course.title}
-        </Text>
-        {course.teacher?.first_name && (
-          <Text numberOfLines={1} style={[styles.cardTeacher, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-            {course.teacher.first_name}
-          </Text>
-        )}
-        <View style={styles.cardMeta}>
-          {hasRating && (
-            <View style={styles.metaItem}>
-              <Star size={11} color="#f59e0b" weight="fill" />
-              <Text style={[styles.metaText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
-                {course.rating!.toFixed(1)}
-              </Text>
-            </View>
-          )}
-          {course.enrolled_count > 0 && (
-            <View style={styles.metaItem}>
-              <Users size={11} color={c.textDisabled} />
-              <Text style={[styles.metaText, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-                {course.enrolled_count.toLocaleString()}
-              </Text>
-            </View>
-          )}
-          {durationH > 0 && (
-            <View style={styles.metaItem}>
-              <Clock size={11} color={c.textDisabled} />
-              <Text style={[styles.metaText, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-                {durationH} soat
-              </Text>
-            </View>
-          )}
-        </View>
-        <Text style={[styles.cardPrice, { color: isFree ? c.success : c.accentPrimary, fontFamily: typography.fontFamily.bold }]}>
-          {isFree ? 'Bepul' : `${course.price.toLocaleString()} so'm`}
-        </Text>
-      </View>
-    </Pressable>
-  )
-}
-
-// ── Skeleton Card ──────────────────────────────────────────────────────────────
-
-function SkeletonCard({ c }: { c: any }) {
-  return (
-    <View style={[styles.card, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-      <View style={[styles.cardThumb, { backgroundColor: c.bgTertiary }]} />
-      <View style={[styles.cardBody, { gap: 8 }]}>
-        <View style={{ height: 10, width: 64,    backgroundColor: c.bgTertiary, borderRadius: 4 }} />
-        <View style={{ height: 14, width: '90%', backgroundColor: c.bgTertiary, borderRadius: 4 }} />
-        <View style={{ height: 14, width: '65%', backgroundColor: c.bgTertiary, borderRadius: 4 }} />
-        <View style={{ height: 11, width: 80,    backgroundColor: c.bgTertiary, borderRadius: 4 }} />
-        <View style={{ height: 16, width: 96,    backgroundColor: c.bgTertiary, borderRadius: 4 }} />
-      </View>
-    </View>
-  )
-}
-
-// ── Main Screen ────────────────────────────────────────────────────────────────
+const SKELETON_MARKER = '__loading__'
 
 export default function CoursesTab() {
-  const { c }  = useTheme()
+  const { theme } = useTheme()
+  const t = getPremiumTheme(theme)
   const router = useRouter()
   const insets = useSafeAreaInsets()
-
+  const authUser = useAuthStore(st => st.user)
+  const reduceMotion = useReduceMotion()
   const { categories, loadCategories } = useCourseStore()
+  const { ids: savedIds, toggle: toggleSaved } = useWishlist()
 
-  const [selectedCat,     setSelectedCat]     = useState<string | null>(null)
-  const [sortKey,         setSortKey]         = useState<SortKey>('popular')
-  const [searchQuery,     setSearchQuery]     = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  // Initialize from cache so returning to the tab shows data instantly
-  const [courseList,      setCourseList]      = useState<Course[]>(() => getCachedCourseList(makeQueryKey('popular', null, ''))?.courses ?? [])
-  const [total,           setTotal]           = useState<number>(() => getCachedCourseList(makeQueryKey('popular', null, ''))?.total ?? 0)
-  const [loading,         setLoading]         = useState(() => getCachedCourseList(makeQueryKey('popular', null, '')) === null)
-  const [loadingMore,     setLoadingMore]     = useState(false)
-  const [refreshing,      setRefreshing]      = useState(false)
+  const [selectedCat, setSelectedCat] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey>('popular')
+  const [filters, setFilters] = useState<CourseFilters>(EMPTY_FILTERS)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  const [favoritesMode, setFavoritesMode] = useState(false)
 
-  // Featured hero — populated from main list result (no separate API call)
-  const [featuredSlides,  setFeaturedSlides]  = useState<Course[]>(_featuredCache)
-  const [featuredActive,  setFeaturedActive]  = useState(0)
+  const [courseList, setCourseList] = useState<Course[]>(() => getCachedCourseList(makeQueryKey('popular', null, EMPTY_FILTERS))?.courses ?? [])
+  const [total, setTotal] = useState<number>(() => getCachedCourseList(makeQueryKey('popular', null, EMPTY_FILTERS))?.total ?? 0)
+  const [loading, setLoading] = useState(() => getCachedCourseList(makeQueryKey('popular', null, EMPTY_FILTERS)) === null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState(false)
 
-  const pageRef     = useRef(0)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [favoritesList, setFavoritesList] = useState<Course[]>([])
+  const [favoritesLoading, setFavoritesLoading] = useState(false)
+
+  const [featuredSlides, setFeaturedSlides] = useState<Course[]>(_featuredCache)
+
+  const pageRef = useRef(0)
 
   useEffect(() => { loadCategories() }, [])
 
-  // Derive featured slides from the popular list (eliminates a separate API call)
+  // Derive featured slides from the default (unfiltered, popular) list.
   useEffect(() => {
-    if (_featuredCache.length > 0 || sortKey !== 'popular' || selectedCat || debouncedSearch) return
+    if (_featuredCache.length > 0 || sortKey !== 'popular' || selectedCat || activeFilterCount(filters) > 0) return
     if (courseList.length === 0) return
     const slides = courseList.filter(co => !!co.thumbnail_url).slice(0, 5)
     if (slides.length > 0) { _featuredCache = slides; setFeaturedSlides(slides) }
-  }, [courseList, sortKey, selectedCat, debouncedSearch])
+  }, [courseList, sortKey, selectedCat, filters])
 
-  // Debounced search input handler
-  function handleSearchChange(text: string) {
-    setSearchQuery(text)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setDebouncedSearch(text), 350)
-  }
-
-  function clearSearch() {
-    setSearchQuery('')
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    setDebouncedSearch('')
-  }
-
-  // Main fetch — cache-aware: instant on cache hit, skeleton only on cache miss
+  // Main fetch — cache-aware (server-side facets only: sort/category/price/level).
   useEffect(() => {
-    const key = makeQueryKey(sortKey, selectedCat, debouncedSearch)
+    if (favoritesMode) return
+    const key = makeQueryKey(sortKey, selectedCat, filters)
     const cached = getCachedCourseList(key)
     if (cached) {
       setCourseList(cached.courses)
       setTotal(cached.total)
       setLoading(false)
+      setLoadError(false)
       pageRef.current = 1
       return
     }
 
     let cancelled = false
     setLoading(true)
+    setLoadError(false)
     pageRef.current = 0
     coursesApi.list({
       ...sortToParams(sortKey),
-      ...(selectedCat     ? { category: selectedCat }     : {}),
-      ...(debouncedSearch ? { search:   debouncedSearch }  : {}),
-      limit:  PAGE_SIZE,
+      ...(selectedCat ? { category: selectedCat } : {}),
+      ...(filters.price ? { is_paid: filters.price === 'paid' } : {}),
+      ...(filters.level ? { level: filters.level } : {}),
+      limit: PAGE_SIZE,
       offset: 0,
     }).then(res => {
       if (cancelled) return
-      let list = res.courses
-      if (sortKey === 'free') list = list.filter(c => !c.is_paid)
-      setCourseList(list)
+      setCourseList(res.courses)
       setTotal(res.total)
-      setCachedCourseList(key, list, res.total)
+      setCachedCourseList(key, res.courses, res.total)
       pageRef.current = 1
-    }).catch(() => {}).finally(() => {
-      if (!cancelled) setLoading(false)
-    })
+    }).catch(() => { if (!cancelled) setLoadError(true) })
+      .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [selectedCat, sortKey, debouncedSearch])
+  }, [selectedCat, sortKey, filters, favoritesMode])
 
   const fetchMore = useCallback(async () => {
-    if (loadingMore || courseList.length >= total) return
+    if (favoritesMode || loadingMore || courseList.length >= total) return
     setLoadingMore(true)
     try {
       const res = await coursesApi.list({
         ...sortToParams(sortKey),
-        ...(selectedCat     ? { category: selectedCat }     : {}),
-        ...(debouncedSearch ? { search:   debouncedSearch }  : {}),
-        limit:  PAGE_SIZE,
+        ...(selectedCat ? { category: selectedCat } : {}),
+        ...(filters.price ? { is_paid: filters.price === 'paid' } : {}),
+        ...(filters.level ? { level: filters.level } : {}),
+        limit: PAGE_SIZE,
         offset: pageRef.current * PAGE_SIZE,
       })
       setCourseList(prev => [...prev, ...res.courses])
@@ -466,225 +147,270 @@ export default function CoursesTab() {
       pageRef.current += 1
     } catch {}
     finally { setLoadingMore(false) }
-  }, [loadingMore, courseList.length, total, selectedCat, sortKey, debouncedSearch])
+  }, [favoritesMode, loadingMore, courseList.length, total, selectedCat, sortKey, filters])
+
+  const loadFavorites = useCallback(async () => {
+    setFavoritesLoading(true)
+    try {
+      const ids = Array.from(savedIds)
+      const results = await Promise.allSettled(ids.map(id => coursesApi.get(id)))
+      setFavoritesList(results.filter(r => r.status === 'fulfilled').map(r => (r as PromiseFulfilledResult<Course>).value))
+    } catch {}
+    setFavoritesLoading(false)
+  }, [savedIds])
+
+  useEffect(() => { if (favoritesMode) loadFavorites() }, [favoritesMode, loadFavorites])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
+    if (favoritesMode) {
+      await loadFavorites()
+      setRefreshing(false)
+      return
+    }
     pageRef.current = 0
     try {
       const res = await coursesApi.list({
         ...sortToParams(sortKey),
-        ...(selectedCat     ? { category: selectedCat }     : {}),
-        ...(debouncedSearch ? { search:   debouncedSearch }  : {}),
-        limit:  PAGE_SIZE,
+        ...(selectedCat ? { category: selectedCat } : {}),
+        ...(filters.price ? { is_paid: filters.price === 'paid' } : {}),
+        ...(filters.level ? { level: filters.level } : {}),
+        limit: PAGE_SIZE,
         offset: 0,
       })
-      let list = res.courses
-      if (sortKey === 'free') list = list.filter(c => !c.is_paid)
-      setCourseList(list)
+      setCourseList(res.courses)
       setTotal(res.total)
-      setCachedCourseList(makeQueryKey(sortKey, selectedCat, debouncedSearch), list, res.total)
+      setCachedCourseList(makeQueryKey(sortKey, selectedCat, filters), res.courses, res.total)
       pageRef.current = 1
-    } catch {}
+      setLoadError(false)
+    } catch { setLoadError(true) }
     finally { setRefreshing(false) }
-  }, [selectedCat, sortKey, debouncedSearch])
+  }, [favoritesMode, loadFavorites, selectedCat, sortKey, filters])
 
   const handleCoursePress = useCallback((id: number) => {
     router.push(`/(screens)/course/${id}` as any)
   }, [router])
 
-  // Build the header element once per render — FilterHeader is a stable top-level
-  // component type so FlatList reconciles (updates props) rather than remounting it.
-  const listHeader = (
-    <FilterHeader
-      selectedCat={selectedCat}
-      setSelectedCat={setSelectedCat}
-      sortKey={sortKey}
-      setSortKey={setSortKey}
-      categories={categories}
-      total={total}
-      loading={loading}
-      featuredSlides={featuredSlides}
-      featuredActive={featuredActive}
-      onSlideChange={setFeaturedActive}
-      onCoursePress={handleCoursePress}
-      c={c}
-    />
+  const availableLanguages = useMemo(
+    () => Array.from(new Set(courseList.map(c => c.language).filter(Boolean))) as string[],
+    [courseList],
   )
 
-  return (
-    <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
+  const visibleList = useMemo(
+    () => favoritesMode ? favoritesList : applyClientFilters(courseList, sortKey, filters),
+    [favoritesMode, favoritesList, courseList, sortKey, filters],
+  )
 
-      {/* ── Fixed top bar ─────────────────────────────────────────────── */}
-      <View style={[styles.topBar, { paddingTop: insets.top + spacing.xs, borderBottomColor: c.border }]}>
-        <View style={styles.topTitleRow}>
-          <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-            Kurslar
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Pressable
-              onPress={() => router.push('/(screens)/saved' as any)}
-              hitSlop={8}
-              style={[styles.heartBtn, { backgroundColor: c.bgTertiary }]}
-            >
-              <Heart size={18} color={c.textSecondary} />
-            </Pressable>
-            <ProfileAvatarButton size={30} />
-          </View>
-        </View>
-        <View style={[styles.searchWrap, { backgroundColor: c.bgTertiary }]}>
-          <MagnifyingGlass size={16} color={c.textDisabled} />
-          <TextInput
-            value={searchQuery}
-            onChangeText={handleSearchChange}
-            placeholder="Kurslarni qidiring..."
-            placeholderTextColor={c.textDisabled}
-            returnKeyType="search"
-            style={[styles.searchInput, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={clearSearch} hitSlop={8}>
-              <X size={14} color={c.textDisabled} />
-            </Pressable>
-          )}
-        </View>
-      </View>
+  const isLoadingCurrent = favoritesMode ? favoritesLoading : loading
+  const filterCount = activeFilterCount(filters)
+  const listKey = `${favoritesMode ? 'fav' : `${sortKey}-${selectedCat}-${filters.price}-${filters.duration}-${filters.level}-${filters.language}`}`
 
-      {/* ── List — single FlatList avoids unmount/remount on loading toggle ── */}
-      <FlatList<ListItem>
-        data={loading ? SKELETON_DATA : courseList}
-        keyExtractor={item => '__skeleton' in item ? `sk-${item.id}` : String(item.id)}
-        ListHeaderComponent={listHeader}
-        renderItem={({ item }) =>
-          '__skeleton' in item
-            ? <SkeletonCard c={c} />
-            : <CourseCard course={item} onPress={() => handleCoursePress(item.id)} c={c} />
+  // Scroll back to top when the filter/sort/category selection changes —
+  // WITHOUT remounting the FlatList (that used to be done via a `key` on
+  // the wrapping view, which also remounted ListHeaderComponent — the
+  // carousel restarting/refading on every filter tap was that remount,
+  // not an intentional "reload the whole page" behavior).
+  const flatListRef = useRef<FlatList<Course>>(null)
+  useEffect(() => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false })
+  }, [listKey])
+
+  const renderItem = useCallback(({ item }: { item: Course }) => (
+    <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(250)} style={{ paddingHorizontal: 16 }}>
+      <CourseCard
+        course={item}
+        t={t}
+        isSaved={savedIds.has(item.id)}
+        onPress={() => handleCoursePress(item.id)}
+        onToggleSave={() => toggleSaved(item.id)}
+      />
+    </Animated.View>
+  ), [t, savedIds, handleCoursePress, toggleSaved, reduceMotion])
+
+  let body: React.ReactNode
+  if (isLoadingCurrent) {
+    body = <CoursesSkeleton t={t} reduceMotion={reduceMotion} />
+  } else if (loadError && !favoritesMode) {
+    body = <CoursesErrorState t={t} onRetry={onRefresh} />
+  } else if (visibleList.length === 0) {
+    body = favoritesMode
+      ? <CoursesEmptyState t={t} title={s.emptyFavoritesTitle} hint={s.emptyFavoritesHint} />
+      : <CoursesEmptyState
+          t={t}
+          title={s.emptyTitle}
+          ctaLabel={filterCount > 0 || selectedCat ? s.emptyClearFilters : undefined}
+          onCta={() => { setFilters(EMPTY_FILTERS); setSelectedCat(null) }}
+        />
+  } else {
+    body = (
+      <FlatList
+        ref={flatListRef}
+        style={{ flex: 1 }}
+        data={visibleList}
+        keyExtractor={item => String(item.id)}
+        renderItem={renderItem}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        ListHeaderComponent={
+          !favoritesMode ? (
+            <>
+              {/* Carousel/chips/sort-tabs live HERE (inside the FlatList's
+                  own scrollable content), not as fixed siblings above it —
+                  otherwise they never scroll away and permanently eat
+                  vertical space, leaving only 1-2 course cards visible. */}
+              <View style={{ marginTop: 14 }}>
+                <FeaturedCarousel slides={featuredSlides} t={t} themeKey={theme} onPress={handleCoursePress} reduceMotion={reduceMotion} />
+              </View>
+              <View style={{ marginTop: 14 }}>
+                <CategoryChips categories={categories} active={selectedCat} onChange={setSelectedCat} t={t} />
+              </View>
+              <View style={{ marginTop: 10 }}>
+                <SortTabs active={sortKey} onChange={setSortKey} t={t} reduceMotion={reduceMotion} />
+              </View>
+              <View style={[styles.resultRow, { marginTop: 8 }]}>
+                <Text style={[styles.resultEyebrow, { color: t.eyebrow }]}>{s.coursesCount(total)}</Text>
+                <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.sortBtn} hitSlop={8}>
+                  <SlidersHorizontal size={13} color={t.accentText} strokeWidth={2.2} />
+                  <Text style={[styles.sortCta, { color: t.accentText }]}>
+                    {s.sortCta}{filterCount > 0 ? ` (${filterCount})` : ''}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          ) : null
         }
-        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
-        onEndReached={loading ? undefined : fetchMore}
+        contentContainerStyle={{ paddingTop: favoritesMode ? 14 : 0, paddingBottom: insets.bottom + 20 }}
+        showsVerticalScrollIndicator={false}
+        onEndReached={favoritesMode ? undefined : fetchMore}
         onEndReachedThreshold={0.3}
         removeClippedSubviews
         windowSize={10}
         maxToRenderPerBatch={10}
-        ListFooterComponent={loadingMore
-          ? <ActivityIndicator color={c.accentPrimary} style={{ marginTop: spacing.base }} />
-          : null
-        }
-        ListEmptyComponent={!loading ? (
-          <View style={styles.empty}>
-            <BookOpen size={48} color={c.textDisabled} />
-            <Text style={[styles.emptyText, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-              {debouncedSearch
-                ? `"${debouncedSearch}" bo'yicha kurs topilmadi`
-                : 'Kurslar topilmadi'
-              }
-            </Text>
-          </View>
-        ) : null}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={c.accentPrimary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} />
         }
+      />
+    )
+  }
+
+  return (
+    <View style={[styles.root, { backgroundColor: t.bg }]}>
+      {/* Header — scrolls away with content, not fixed/collapsing */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={[styles.brandEyebrow, { color: t.eyebrow }]}>{s.brandEyebrow}</Text>
+            <Text style={[styles.screenTitle, { color: t.textPrimary }]}>{s.screenTitle}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => setFavoritesMode(v => !v)}
+              style={[
+                styles.favBtn,
+                { borderColor: favoritesMode ? t.accent : t.hairline, backgroundColor: favoritesMode ? t.accentSoft : 'transparent' },
+              ]}
+              hitSlop={4}
+            >
+              <Heart size={17} color={favoritesMode ? t.accentText : t.textSecondary} fill={favoritesMode ? t.accentText : 'transparent'} strokeWidth={1.8} />
+            </Pressable>
+            <HeaderAvatar t={t} themeKey={theme} onPress={() => router.push('/(tabs)/profile' as any)} name={authUser?.first_name} photoUrl={authUser?.photo_url} />
+          </View>
+        </View>
+
+        <View style={{ marginTop: 12 }}>
+          <SearchField t={t} onPress={() => router.push('/(screens)/search' as any)} />
+        </View>
+      </View>
+
+      {favoritesMode && (
+        <View style={styles.favModeBar}>
+          <Text style={[styles.favModeTitle, { color: t.textPrimary }]}>{s.favoritesTitle}</Text>
+          <Pressable onPress={() => setFavoritesMode(false)} hitSlop={8}>
+            <Text style={[styles.favModeExit, { color: t.accentText }]}>{s.exitFavorites}</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <View style={{ flex: 1, marginTop: favoritesMode ? 0 : 8 }}>
+        {body}
+      </View>
+
+      <FilterSheet
+        visible={filterSheetOpen}
+        filters={filters}
+        availableLanguages={availableLanguages}
+        t={t}
+        onApply={(f) => { setFilters(f); setFilterSheetOpen(false) }}
+        onClose={() => setFilterSheetOpen(false)}
       />
     </View>
   )
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
+// ── Header avatar (spec-specific — light: solid disc; dark: gold ring) ──────
+
+function HeaderAvatar({ t, themeKey, onPress, name, photoUrl }: {
+  t: any; themeKey: 'light' | 'dark'; onPress: () => void; name?: string; photoUrl?: string | null
+}) {
+  const initial = (name ?? '?').slice(0, 1).toUpperCase()
+  if (themeKey === 'dark') {
+    return (
+      <Pressable onPress={onPress} hitSlop={4}>
+        <LinearGradient colors={t.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatarRing}>
+          <View style={styles.avatarDiscDark}>
+            <Text style={styles.avatarInitialDark}>{initial}</Text>
+          </View>
+        </LinearGradient>
+      </Pressable>
+    )
+  }
+  return (
+    <Pressable onPress={onPress} hitSlop={4} style={styles.avatarDiscLight}>
+      <Text style={styles.avatarInitialLight}>{initial}</Text>
+    </Pressable>
+  )
+}
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
 
-  topBar: {
-    paddingHorizontal: spacing.base,
-    paddingBottom:     spacing.sm,
-    borderBottomWidth: 1,
-    gap:               spacing.sm,
-  },
-  topTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  topTitle: { fontSize: typography.size.xl },
-  heartBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  header: { paddingHorizontal: 16, paddingBottom: 2 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brandEyebrow: { fontSize: 10, fontFamily: typography.fontFamily.extrabold, letterSpacing: 1.3, textTransform: 'uppercase' },
+  screenTitle: { fontSize: 27, fontFamily: typography.fontFamily.extrabold, letterSpacing: -0.6, marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
-  searchWrap: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               spacing.xs,
-    borderRadius:      radius.input,
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   spacing.xs + 2,
-  },
-  searchInput: {
-    flex:     1,
-    fontSize: typography.size.sm,
-    padding:  0,
+  favBtn: {
+    width: 38, height: 38, borderRadius: 19, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
   },
 
-  chipsRow: {
-    paddingHorizontal: spacing.base,
-    paddingTop:        spacing.sm,
-    paddingBottom:     spacing.sm,
-    gap:               spacing.xs,
-    flexDirection:     'row',
+  avatarRing: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center', padding: 1.5,
   },
-  chip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical:   5,
-    borderRadius:      radius.full,
+  avatarDiscDark: {
+    width: '100%', height: '100%', borderRadius: 17,
+    backgroundColor: '#0F0D0B', alignItems: 'center', justifyContent: 'center',
   },
-  chipText: { fontSize: typography.size.sm },
+  avatarInitialDark: { color: '#F9C97A', fontSize: 15, fontFamily: typography.fontFamily.bold },
+  avatarDiscLight: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#1C1917', alignItems: 'center', justifyContent: 'center',
+  },
+  avatarInitialLight: { color: '#FBBF5C', fontSize: 15, fontFamily: typography.fontFamily.bold },
 
-  sortRow: {
-    flexDirection:     'row',
-    borderBottomWidth: 1,
+  resultRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8,
   },
-  sortTab: {
-    flex:            1,
-    alignItems:      'center',
-    paddingVertical: spacing.sm,
-  },
-  sortLabel: { fontSize: typography.size.sm },
+  resultEyebrow: { fontSize: 10, fontFamily: typography.fontFamily.extrabold, letterSpacing: 1.3, textTransform: 'uppercase' },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 44, paddingLeft: 8 },
+  sortCta: { fontSize: 13, fontFamily: typography.fontFamily.bold },
 
-  countText: {
-    fontSize:          typography.size.xs,
-    paddingHorizontal: spacing.base,
-    paddingTop:        spacing.sm,
-    paddingBottom:     spacing.xs,
+  favModeBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4,
   },
-
-  listContent: {
-    paddingHorizontal: spacing.base,
-    paddingTop:        spacing.sm,
-  },
-
-  card: {
-    flexDirection: 'row',
-    borderRadius:  radius.card,
-    borderWidth:   1,
-    overflow:      'hidden',
-  },
-  cardThumb: { width: 100, height: 90 },
-  cardBody: {
-    flex:    1,
-    padding: spacing.sm,
-    gap:     3,
-  },
-  cardCat:     { fontSize: typography.size.xs },
-  cardTitle:   { fontSize: typography.size.sm, lineHeight: 18 },
-  cardTeacher: { fontSize: typography.size.xs },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    flexWrap:      'wrap',
-  },
-  metaItem:  { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metaText:  { fontSize: typography.size.xs },
-  cardPrice: { fontSize: typography.size.sm, marginTop: 2 },
-
-  empty:     { marginTop: 80, alignItems: 'center', gap: spacing.sm },
-  emptyText: { fontSize: typography.size.base, textAlign: 'center' },
+  favModeTitle: { fontSize: 15, fontFamily: typography.fontFamily.extrabold },
+  favModeExit: { fontSize: 13, fontFamily: typography.fontFamily.bold },
 })

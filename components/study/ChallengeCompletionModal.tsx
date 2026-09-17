@@ -3,7 +3,7 @@ import {
   Modal, View, Text, Pressable, StyleSheet,
   Animated, Easing,
 } from 'react-native'
-import ViewShot from 'react-native-view-shot'
+import ViewShot, { type ViewShotRef } from 'react-native-view-shot'
 import * as Sharing from 'expo-sharing'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Trophy, Medal, Share2 } from 'lucide-react-native'
@@ -35,7 +35,7 @@ export function ChallengeCompletionModal({ visible, challenge, onClose }: Props)
   const { c } = useTheme()
   const scaleAnim   = useRef(new Animated.Value(0.6)).current
   const opacityAnim = useRef(new Animated.Value(0)).current
-  const viewShotRef = useRef<ViewShot>(null)
+  const viewShotRef = useRef<ViewShotRef>(null)
   const [rank, setRank]       = useState<number | null>(null)
   const [sharing, setSharing] = useState(false)
 
@@ -143,7 +143,7 @@ export function ChallengeCompletionModal({ visible, challenge, onClose }: Props)
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)' },
   overlay: {
     flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.base,
   },

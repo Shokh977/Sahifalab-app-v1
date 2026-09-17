@@ -490,7 +490,7 @@ export default function ConversationScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: c.bgSecondary, borderBottomColor: c.border }]}>
         <Pressable
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/messages')}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
           hitSlop={12}
           style={styles.backBtn}
         >

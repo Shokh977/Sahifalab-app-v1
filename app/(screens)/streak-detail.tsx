@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft, Snowflake, Map, Info, X, Share2 } from 'lucide-react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import ViewShot from 'react-native-view-shot'
+import ViewShot, { type ViewShotRef } from 'react-native-view-shot'
 import * as Sharing from 'expo-sharing'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
@@ -244,7 +244,7 @@ export default function StreakDetailScreen() {
   )
   const [showTreeInfo, setShowTreeInfo] = useState(false)
   const [sharing, setSharing] = useState(false)
-  const viewShotRef = useRef<ViewShot>(null)
+  const viewShotRef = useRef<ViewShotRef>(null)
   // step-16: dev-only preview toggle for the 4 hero background states — never
   // shown in production builds, lets the 4 variants be checked without
   // manipulating real streak data.
@@ -1223,7 +1223,7 @@ const styles = StyleSheet.create({
 
   // Today inner ring (inside gradient, so always visible)
   todayInnerRing: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderWidth:  2,
     borderColor:  'rgba(255,255,255,0.7)',
     borderRadius: 10,

@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   skelTile: { width: 44, height: 44, borderRadius: radius['2xl'] },
   skelLine: { height: 12, borderRadius: 4 },
 
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,

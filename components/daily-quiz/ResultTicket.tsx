@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   dateText: { color: MUTED, fontSize: 10, fontWeight: '600' },
 
   scoreRow: { flexDirection: 'row', gap: 18, marginTop: 20, alignItems: 'center' },
-  ringCenter: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  ringCenter: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   ringScore: { textAlign: 'center' },
 
   scoreRight: { flex: 1, gap: 4 },

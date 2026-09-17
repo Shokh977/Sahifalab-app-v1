@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   swipeActionLabel: { color: '#fff', fontSize: 9.5, fontWeight: '700' },
 
   // Long-press sheet
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,

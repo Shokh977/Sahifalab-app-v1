@@ -61,7 +61,7 @@ export function HeroCard({ level, totalXP }: Props) {
       style={styles.card}
     >
       {/* ── Subtle white grid overlay ── */}
-      <Svg style={StyleSheet.absoluteFillObject}>
+      <Svg style={StyleSheet.absoluteFill}>
         <Defs>
           <SvgPattern
             id="grid"
