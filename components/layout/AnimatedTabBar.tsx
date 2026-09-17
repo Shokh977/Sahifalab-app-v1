@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
     paddingTop:     12,
-    gap:            4,
+    gap:            1,
   },
   label: {
     fontSize: 9.5,
