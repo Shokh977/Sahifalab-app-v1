@@ -5,7 +5,6 @@ import { Home, Timer, GraduationCap, Layers, Trophy } from 'lucide-react-native'
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types'
 import * as Haptics from 'expo-haptics'
 import { useTheme } from '../../hooks/useTheme'
-import { getPremiumTheme } from '../../lib/premiumTheme'
 import { typography } from '../../lib/constants'
 
 const TAB_BAR_HEIGHT = 56
@@ -34,8 +33,13 @@ const TAB_CONFIG: Array<{ name: string; label: string; Icon: LucideIcon }> = [
 const TAB_COUNT = TAB_CONFIG.length
 
 export function AnimatedTabBar({ state, navigation }: BottomTabBarProps) {
-  const { theme }   = useTheme()
-  const t           = getPremiumTheme(theme)
+  // Main app theme, not premiumTheme — premiumTheme is explicitly scoped to
+  // Reyting/Kurslar screens only (see its own doc comment). This bar is
+  // global, always-on chrome that sits directly above the system nav bar,
+  // whose background is synced to `c.bgPrimary` (see _layout.tsx's SystemUI
+  // effect) — using premiumTheme's warmer-tinted colors here instead made
+  // the tab bar visibly a different tone from the system bar right below it.
+  const { c }       = useTheme()
   const insets      = useSafeAreaInsets()
 
   const screenWidth = Dimensions.get('window').width
@@ -64,8 +68,8 @@ export function AnimatedTabBar({ state, navigation }: BottomTabBarProps) {
         {
           height:          TAB_BAR_HEIGHT + insets.bottom,
           paddingBottom:   insets.bottom,
-          backgroundColor: t.navBar,
-          borderTopColor:  t.hairline,
+          backgroundColor: c.bgPrimary,
+          borderTopColor:  c.border,
         },
       ]}
     >
@@ -73,7 +77,7 @@ export function AnimatedTabBar({ state, navigation }: BottomTabBarProps) {
       <Animated.View
         style={[
           styles.tick,
-          { backgroundColor: t.accent, transform: [{ translateX: tickX }] },
+          { backgroundColor: c.accentPrimary, transform: [{ translateX: tickX }] },
         ]}
       />
 
@@ -82,7 +86,7 @@ export function AnimatedTabBar({ state, navigation }: BottomTabBarProps) {
         if (!cfg) return null
 
         const isFocused = state.index === index
-        const color     = isFocused ? t.accentText : t.textTertiary
+        const color     = isFocused ? c.accentPrimary : c.textTertiary
 
         return (
           <Pressable
