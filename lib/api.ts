@@ -639,7 +639,7 @@ export const follows = {
 }
 
 // ── Block / report (trust & safety) ──────────────────────────────────────────
-// The mobile app's social layer (feed, messenger, public profiles) had no
+// The mobile app's social layer (feed, public profiles) had no
 // block or report mechanism at all. These hit the same backend endpoints
 // already wired up for the Telegram Mini App web frontend.
 
@@ -866,147 +866,12 @@ export const lessons = {
     ),
 }
 
-// ── Messenger ─────────────────────────────────────────────────────────────────
+// ── Push notifications ────────────────────────────────────────────────────────
 
-export interface OtherUser {
-  telegram_id: number
-  full_name:   string
-  username:    string | null
-  photo_url:   string | null
-  role:        string
-  level:       number
-  xp:          number
-}
-
-export interface Conversation {
-  id:              number
-  other_user:      OtherUser
-  last_message:    string | null
-  unread_count:    number
-  last_message_at: string | null
-}
-
-export interface MessageReaction {
-  emoji:    string
-  count:    number
-  user_ids: number[]
-}
-
-export interface Message {
-  id:                  number
-  conversation_id:     number
-  sender_id:           number
-  content:             string
-  is_delivered:        boolean
-  is_read:             boolean
-  created_at:          string
-  reply_to_id?:        number | null
-  reply_to_content?:   string | null
-  reply_to_sender_id?: number | null
-  reactions?:          MessageReaction[]
-}
-
-export const messenger = {
-  listConversations: () =>
-    request<Conversation[]>('/api/v1/messenger/conversations', { auth: true }),
-
-  getOrCreate: (otherUserId: number) =>
-    request<Conversation>(`/api/v1/messenger/conversations/${otherUserId}`, {
-      method: 'POST', auth: true,
-    }),
-
-  listMessages: (convId: number, beforeId?: number, limit = 40) => {
-    const q = new URLSearchParams({ limit: String(limit) })
-    if (beforeId) q.set('before_id', String(beforeId))
-    return request<Message[]>(`/api/v1/messenger/conversations/${convId}/messages?${q}`, { auth: true })
-  },
-
-  sendMessage: (convId: number, content: string, replyToId?: number | null) =>
-    request<Message>(`/api/v1/messenger/conversations/${convId}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ content, reply_to_id: replyToId ?? null }),
-      auth: true,
-    }),
-
-  markRead: (convId: number) =>
-    request<{ ok: boolean }>(`/api/v1/messenger/conversations/${convId}/read`, {
-      method: 'PATCH', auth: true,
-    }),
-
-  toggleReaction: (messageId: number, emoji: string) =>
-    request<{ action: 'added' | 'removed'; emoji: string; user_id: number; message_id: number }>(
-      `/api/v1/messenger/messages/${messageId}/react`,
-      { method: 'POST', body: JSON.stringify({ emoji }), auth: true },
-    ),
-
-  deleteMessage: (messageId: number) =>
-    request<{ ok: boolean }>(`/api/v1/messenger/messages/${messageId}`, {
-      method: 'DELETE', auth: true,
-    }),
-
-  deleteConversation: (convId: number) =>
-    request<{ ok: boolean }>(`/api/v1/messenger/conversations/${convId}`, {
-      method: 'DELETE', auth: true,
-    }),
-
-  getUnreadCount: () =>
-    request<{ count: number }>('/api/v1/messenger/unread-count', { auth: true }),
-
+export const push = {
   savePushToken: (token: string) =>
     request<{ ok: boolean }>('/api/auth/push-token', {
       method: 'POST', body: JSON.stringify({ token }), auth: true,
-    }),
-}
-
-// ── Group chats ───────────────────────────────────────────────────────────────
-
-export interface GroupChat {
-  id:              number
-  name:            string
-  cover_url:       string | null
-  course_id:       number
-  created_by:      number
-  last_message:    string | null
-  last_message_at: string | null
-  member_count:    number
-  unread_count:    number
-}
-
-export interface GroupMessage {
-  id:           number
-  group_id:     number
-  sender_id:    number
-  sender_name:  string
-  sender_photo: string | null
-  content:      string
-  created_at:   string
-}
-
-export const groups = {
-  list: () =>
-    request<GroupChat[]>('/api/v1/groups', { auth: true }),
-
-  create: (course_id: number, name: string, cover_url?: string) =>
-    request<GroupChat>('/api/v1/groups', {
-      method: 'POST',
-      body: JSON.stringify({ course_id, name, cover_url }),
-      auth: true,
-    }),
-
-  get: (groupId: number) =>
-    request<GroupChat & { my_role: string; members: any[] }>(`/api/v1/groups/${groupId}`, { auth: true }),
-
-  listMessages: (groupId: number, beforeId?: number, limit = 40) => {
-    const q = new URLSearchParams({ limit: String(limit) })
-    if (beforeId) q.set('before_id', String(beforeId))
-    return request<GroupMessage[]>(`/api/v1/groups/${groupId}/messages?${q}`, { auth: true })
-  },
-
-  sendMessage: (groupId: number, content: string) =>
-    request<GroupMessage>(`/api/v1/groups/${groupId}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-      auth: true,
     }),
 }
 

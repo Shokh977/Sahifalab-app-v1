@@ -166,8 +166,8 @@ async function registerPushToken() {
     // Save new token
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, token)
     // Send to backend — use dynamic require to avoid circular imports
-    const { messenger } = require('../lib/api')
-    await messenger.savePushToken(token).catch(() => {})
+    const { push } = require('../lib/api')
+    await push.savePushToken(token).catch(() => {})
   } catch {}
 }
 

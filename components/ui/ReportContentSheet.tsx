@@ -1,7 +1,7 @@
 /**
  * ReportContentSheet — report a post or a user for moderator review.
- * Shared trust-and-safety primitive; the social layer (feed, profiles,
- * messenger) previously had no report or block mechanism anywhere.
+ * Shared trust-and-safety primitive; the social layer (feed, profiles)
+ * previously had no report or block mechanism anywhere.
  */
 import React, { useEffect, useRef, useState } from 'react'
 import {
