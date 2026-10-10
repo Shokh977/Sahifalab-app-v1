@@ -61,6 +61,14 @@ function buildSections(ls: Lesson[]): Section[] {
   }))
 }
 
+// Free ("preview") video lessons can be watched before enrolling. The lessons
+// list never carries video URLs, so this checks type only — the URL is fetched
+// from GET /lessons/{id} when the preview starts.
+const NON_VIDEO_TYPES = new Set(['material', 'quiz', 'live', 'text', 'reading'])
+function isPreviewable(l: Lesson) {
+  return l.is_free && !NON_VIDEO_TYPES.has(l.lesson_type)
+}
+
 function isYouTubeUrl(url: string) {
   return /youtube\.com|youtu\.be/i.test(url)
 }
@@ -974,8 +982,10 @@ export default function CourseDetailScreen() {
   const [videoLoading,   setVideoLoading]   = useState(false)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
   const [videoWatchRatio, setVideoWatchRatio] = useState(0)
+  const [previewing,     setPreviewing]     = useState(false)
 
   const priceY          = useRef(0)
+  const mktScrollRef    = useRef<ScrollView>(null)
   const tabScrollRef    = useRef<ScrollView>(null)
   const videoDurationRef = useRef(0)
   const advancedFromRef  = useRef<number | null>(null)
@@ -1049,7 +1059,9 @@ export default function CourseDetailScreen() {
   const currentIsDownloaded = currentLesson ? isDownloaded(currentLesson.id) : false
 
   useEffect(() => {
-    if (!currentLesson) {
+    // Not enrolled: only free preview lessons are playable, so don't fetch the
+    // locked ones (the backend returns blank URLs for them anyway).
+    if (!currentLesson || (!canAccess && !currentLesson.is_free)) {
       setVideoUri(null); setEmbedUrl(null); setVideoLoading(false)
       return
     }
@@ -1105,7 +1117,7 @@ export default function CourseDetailScreen() {
     })()
 
     return () => { cancelled = true }
-  }, [currentLesson?.id, currentIsDownloaded, isOnline])
+  }, [currentLesson?.id, currentIsDownloaded, isOnline, canAccess])
 
   // ── Wishlist toggle ────────────────────────────────────────────────────────
   async function toggleWishlist() {
@@ -1247,6 +1259,13 @@ export default function CourseDetailScreen() {
     setCurrentLesson(lesson)
   }
 
+  // Marketing view: play a free lesson in the hero slot without enrolling.
+  function playPreview(lesson: Lesson) {
+    setCurrentLesson(lesson)
+    setPreviewing(true)
+    mktScrollRef.current?.scrollTo({ y: 0, animated: true })
+  }
+
   function goPrev() {
     if (!currentLesson) return
     const idx  = lessons.findIndex(l => l.id === currentLesson.id)
@@ -1289,7 +1308,7 @@ export default function CourseDetailScreen() {
 
   const sections        = buildSections(lessons)
   const totalMins       = course.total_duration_minutes ?? 0
-  const firstFreeLesson = lessons.find(l => l.is_free && getVideoUri(l))
+  const firstFreeLesson = lessons.find(isPreviewable)
   const hasDiscount     = !!(course.original_price && course.original_price > course.price)
   const completedCount  = progress.size
   const ratingCount     = course.ratings_count ?? reviews.length
@@ -1466,13 +1485,49 @@ export default function CourseDetailScreen() {
       </View>
 
       <ScrollView
+        ref={mktScrollRef}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={e => setShowStickyBar(e.nativeEvent.contentOffset.y > priceY.current + 20)}
         contentContainerStyle={{ paddingBottom: 32 }}
       >
-        {/* Hero */}
-        <Pressable onPress={() => firstFreeLesson && setCurrentLesson(firstFreeLesson)} disabled={!firstFreeLesson}>
+        {/* Hero — becomes the player while a free preview lesson is playing */}
+        {previewing && currentLesson && isPreviewable(currentLesson) ? (
+          <View>
+            <View style={styles.playerWrap}>
+              {(videoUri || embedUrl) ? (
+                <VideoPlayer
+                  key={`${currentLesson.id}`}
+                  uri={videoUri}
+                  embedUrl={embedUrl}
+                  onPlayingChange={setIsVideoPlaying}
+                />
+              ) : videoLoading ? (
+                <View style={styles.playerCenter}>
+                  <ActivityIndicator color="#fff" size="large" />
+                  <Text style={styles.playerStatusText}>Video yuklanmoqda...</Text>
+                </View>
+              ) : (
+                <View style={styles.playerCenter}>
+                  <BookOpen size={40} color="rgba(255,255,255,0.4)" />
+                  <Text style={styles.playerStatusText}>Video mavjud emas</Text>
+                </View>
+              )}
+            </View>
+            <View style={[styles.lessonTitleBar, { backgroundColor: c.bgSecondary, borderBottomColor: c.border }]}>
+              <View style={styles.navArrow}>
+                <Play size={16} color={c.brand} />
+              </View>
+              <Text numberOfLines={1} style={[styles.lessonTitleText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                {currentLesson.title}
+              </Text>
+              <Pressable onPress={() => setPreviewing(false)} hitSlop={8} style={styles.navArrow}>
+                <X size={18} color={c.textMuted} />
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+        <Pressable onPress={() => firstFreeLesson && playPreview(firstFreeLesson)} disabled={!firstFreeLesson}>
           {course.thumbnail_url
             ? <Image source={{ uri: course.thumbnail_url }} style={styles.cover} resizeMode="cover" />
             : <View style={[styles.cover, { backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }]}>
@@ -1488,6 +1543,7 @@ export default function CourseDetailScreen() {
             </View>
           )}
         </Pressable>
+        )}
 
         <View style={styles.mktBody}>
           {course.categories && (
@@ -1653,7 +1709,14 @@ export default function CourseDetailScreen() {
               </Text>
               <View style={{ marginHorizontal: -spacing.base }}>
                 {visibleSections.map((sec, i) => (
-                  <MktSectionPreview key={i} section={sec} c={c} />
+                  <MktSectionPreview
+                    key={i}
+                    section={sec}
+                    defaultOpen={i === 0 || sec.lessons.some(isPreviewable)}
+                    playingId={previewing ? currentLesson?.id ?? null : null}
+                    onPreview={playPreview}
+                    c={c}
+                  />
                 ))}
               </View>
               {sections.length > 3 && (
@@ -1925,11 +1988,14 @@ export default function CourseDetailScreen() {
   )
 }
 
-function MktSectionPreview({ section, c }: { section: Section; c: any }) {
-  const [open, setOpen] = useState(false)
+function MktSectionPreview({ section, defaultOpen, playingId, onPreview, c }: {
+  section: Section; defaultOpen: boolean; playingId: number | null
+  onPreview: (lesson: Lesson) => void; c: any
+}) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <View style={[styles.secHeader, { borderColor: c.border, backgroundColor: c.bgSecondary }]}>
-      <Pressable onPress={() => setOpen(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: spacing.sm }}>
+    <View style={[styles.secHeader, styles.mktSecBlock, { borderColor: c.border, backgroundColor: c.bgSecondary }]}>
+      <Pressable onPress={() => setOpen(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
           <Text numberOfLines={2} style={[styles.secTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>{section.title}</Text>
           <Text style={[styles.secMeta, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
@@ -1938,13 +2004,33 @@ function MktSectionPreview({ section, c }: { section: Section; c: any }) {
         </View>
         {open ? <ChevronUp size={15} color={c.textMuted} /> : <ChevronDown size={15} color={c.textMuted} />}
       </Pressable>
-      {open && section.lessons.map((l) => (
-        <View key={l.id} style={[styles.previewLesson, { borderTopColor: c.border }]}>
-          {l.is_free ? <Play size={13} color={c.brand} /> : <Lock size={13} color={c.textMuted} />}
-          <Text numberOfLines={1} style={[{ flex: 1, color: c.textSecondary, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>{l.title}</Text>
-          {l.duration_minutes > 0 && <Text style={[{ color: c.textMuted, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>{fmtDuration(l.duration_minutes)}</Text>}
-        </View>
-      ))}
+      {open && section.lessons.map((l) => {
+        const canPreview = isPreviewable(l)
+        const playing    = playingId === l.id
+        return (
+          <Pressable
+            key={l.id}
+            onPress={canPreview ? () => onPreview(l) : undefined}
+            disabled={!canPreview}
+            style={[styles.previewLesson, { borderTopColor: c.border }]}
+          >
+            {canPreview
+              ? <Play size={13} color={c.brand} fill={playing ? c.brand : 'transparent'} />
+              : <Lock size={13} color={c.textMuted} />}
+            <Text numberOfLines={1} style={[{
+              flex: 1, fontSize: typography.size.xs,
+              color: canPreview ? c.textPrimary : c.textSecondary,
+              fontFamily: canPreview ? typography.fontFamily.semibold : typography.fontFamily.regular,
+            }]}>{l.title}</Text>
+            {canPreview && (
+              <Text style={[styles.previewTag, { color: c.brand, backgroundColor: c.brandSubtle, fontFamily: typography.fontFamily.semibold }]}>
+                {playing ? "Ko'rilmoqda" : "Ko'rish"}
+              </Text>
+            )}
+            {l.duration_minutes > 0 && <Text style={[{ color: c.textMuted, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>{fmtDuration(l.duration_minutes)}</Text>}
+          </Pressable>
+        )
+      })}
     </View>
   )
 }
@@ -2098,6 +2184,9 @@ const styles = StyleSheet.create({
   currMeta:        { fontSize: typography.size.xs, marginTop: -spacing.xs },
 
   previewLesson: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingTop: spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, marginTop: spacing.xs },
+  // secHeader is a row; the marketing block stacks its header over the lesson rows
+  mktSecBlock:   { flexDirection: 'column', alignItems: 'stretch', gap: 0 },
+  previewTag:    { fontSize: 10, paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.full, overflow: 'hidden' },
 
   bulletRow:  { flexDirection: 'row', gap: spacing.xs, alignItems: 'flex-start' },
   bulletText: { flex: 1, fontSize: typography.size.sm, lineHeight: 22 },
