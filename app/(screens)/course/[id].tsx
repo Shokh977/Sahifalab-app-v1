@@ -13,7 +13,7 @@ import {
   BookOpen, Play, Pause, Star, Users, Clock, Globe, Calendar,
   CheckCircle, Heart, Award, Folder, Infinity as InfinityIcon,
   Smartphone, FileText, Share2, Download, Lock, Pencil, Copy, X,
-  MessageCircle, ExternalLink, WifiOff, AlertCircle, HardDrive,
+  MessageCircle, WifiOff, AlertCircle, HardDrive,
 } from 'lucide-react-native'
 import { MotiView } from 'moti'
 import * as FileSystem from 'expo-file-system/legacy'
@@ -968,6 +968,7 @@ export default function CourseDetailScreen() {
   const paySlideAnim    = useRef(new Animated.Value(500)).current
   const [payCode,        setPayCode]        = useState<EnrollmentCodeResponse | null>(null)
   const [payCodeLoading, setPayCodeLoading] = useState(false)
+  const [payCodeError,   setPayCodeError]   = useState<string | null>(null)
   const [pendingStatus,  setPendingStatus]  = useState<PendingEnrollmentStatus | null>(null)
   const [codeCopied,     setCodeCopied]     = useState(false)
   const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
@@ -1133,12 +1134,29 @@ export default function CourseDetailScreen() {
     if (!course) return
     if (course.is_paid) {
       setShowPaySheet(true)
+      fetchPayCode()
       return
     }
     setEnrolling(true)
     try { await enroll(courseId) }
     catch (e: any) { Alert.alert('Xatolik', e?.message ?? "Ro'yxatdan o'tishda xatolik") }
     finally { setEnrolling(false) }
+  }
+
+  // Same flow as the website's PaymentModal: get a PAY-XXXX-YYYY code, which
+  // the student sends to the pay bot. Errors stay in the sheet with a retry.
+  async function fetchPayCode() {
+    setPayCodeLoading(true)
+    setPayCodeError(null)
+    try {
+      const res = await enrollmentsApi.requestCode(courseId)
+      setPayCode(res)
+      setPendingStatus({ has_pending: true, reference_code: res.reference_code, status: res.status, expires_at: res.expires_at })
+    } catch (e: any) {
+      setPayCodeError(e?.message ?? "Kod olinmadi. Qayta urinib ko'ring.")
+    } finally {
+      setPayCodeLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -1936,30 +1954,91 @@ export default function CourseDetailScreen() {
 
           <View style={[styles.paySheetDivider, { backgroundColor: c.border }]} />
 
-          {/* Info body */}
-          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.md }}>
-            <Text style={[{ color: c.textSecondary, fontSize: typography.size.sm, fontFamily: typography.fontFamily.regular, lineHeight: 20 }]}>
-              Bu kurs pullik. To'liq ro'yxatdan o'tish va to'lov uchun vebsaytimizga o'ting.
-            </Text>
-
-            {/* Open website button */}
-            <Pressable
-              onPress={() => {
-                setShowPaySheet(false)
-                Linking.openURL(`https://sahifalab.uz/courses/${courseId}`)
-              }}
-              style={[styles.paySheetPrimaryBtn, { backgroundColor: c.brand }]}
-            >
-              <ExternalLink size={16} color="#fff" />
-              <Text style={[{ color: '#fff', fontSize: typography.size.base, fontFamily: typography.fontFamily.bold }]}>
-                sahifalab.uz da sotib olish
+          {payCodeLoading ? (
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <ActivityIndicator color={c.brand} size="large" />
+              <Text style={[{ color: c.textMuted, marginTop: 12, fontFamily: typography.fontFamily.regular, fontSize: typography.size.sm }]}>
+                Kod tayyorlanmoqda...
               </Text>
-            </Pressable>
+            </View>
+          ) : payCodeError || !payCode ? (
+            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.md }}>
+              <View style={[styles.payErrorBox, { backgroundColor: c.bgTertiary, borderColor: c.border }]}>
+                <AlertCircle size={16} color="#dc2626" />
+                <Text style={[{ flex: 1, color: c.textSecondary, fontSize: typography.size.sm, fontFamily: typography.fontFamily.regular, lineHeight: 20 }]}>
+                  {payCodeError ?? "Kod olinmadi. Qayta urinib ko'ring."}
+                </Text>
+              </View>
+              <Pressable onPress={fetchPayCode} style={[styles.paySheetPrimaryBtn, { backgroundColor: c.brand }]}>
+                <Text style={[{ color: '#fff', fontSize: typography.size.base, fontFamily: typography.fontFamily.bold }]}>
+                  Qayta urinish
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => setShowPaySheet(false)} style={{ alignItems: 'center', paddingVertical: spacing.xs }}>
+                <Text style={[{ color: c.textMuted, fontSize: typography.size.sm, fontFamily: typography.fontFamily.medium }]}>Yopish</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Steps — mirror the website's PaymentModal */}
+              {[
+                {
+                  label: "Telegram bot bilan bog'laning:",
+                  extra: (
+                    <Pressable onPress={() => Linking.openURL(payCode.telegram_bot_url)} style={[styles.paySheetLink, { backgroundColor: c.brandSubtle }]}>
+                      <MessageCircle size={14} color={c.brand} />
+                      <Text style={[styles.paySheetLinkText, { color: c.brand, fontFamily: typography.fontFamily.semibold }]}>@sahifalab_pay_bot</Text>
+                    </Pressable>
+                  ),
+                },
+                {
+                  label: 'Botga quyidagi kodni yuboring:',
+                  extra: (
+                    <Pressable onPress={handleCopyCode} style={[styles.paySheetCodeRow, { backgroundColor: c.bgTertiary, borderColor: c.border }]}>
+                      <Text style={[styles.paySheetCode, { color: c.textPrimary, fontFamily: typography.fontFamily.mono }]}>
+                        {payCode.reference_code}
+                      </Text>
+                      {codeCopied
+                        ? <CheckCircle size={15} color={c.brand} />
+                        : <Copy size={15} color={c.textMuted} />
+                      }
+                    </Pressable>
+                  ),
+                },
+                {
+                  label: "Bot to'lov ko'rsatmalarini yuboradi:",
+                  sub: "Karta raqami, kurs narxi va nima yozish kerakligi",
+                },
+                {
+                  label: "To'lov qilgach, bot avtomatik ravishda kursga kirishni faollashtiradi (5–30 daqiqa ichida).",
+                },
+              ].map((step, i) => (
+                <View key={i} style={styles.paySheetStep}>
+                  <View style={[styles.paySheetStepNum, { backgroundColor: c.brandSubtle }]}>
+                    <Text style={[{ color: c.brand, fontSize: 12, fontFamily: typography.fontFamily.bold }]}>{i + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Text style={[styles.paySheetStepText, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}>
+                      {step.label}
+                    </Text>
+                    {step.sub && (
+                      <Text style={[{ color: c.textSecondary, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>
+                        {step.sub}
+                      </Text>
+                    )}
+                    {step.extra}
+                  </View>
+                </View>
+              ))}
 
-            <Pressable onPress={() => setShowPaySheet(false)} style={{ alignItems: 'center', paddingVertical: spacing.xs }}>
-              <Text style={[{ color: c.textMuted, fontSize: typography.size.sm, fontFamily: typography.fontFamily.medium }]}>Yopish</Text>
-            </Pressable>
-          </View>
+              {/* Footer */}
+              <View style={styles.paySheetFooter}>
+                <Pressable onPress={() => setShowPaySheet(false)}>
+                  <Text style={[{ color: c.textMuted, fontSize: typography.size.sm, fontFamily: typography.fontFamily.medium }]}>Yopish</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          )}
           </Animated.View>
         </View>
       </Modal>
@@ -2274,5 +2353,6 @@ const styles = StyleSheet.create({
   paySheetCodeRow:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs + 2, borderRadius: radius.sm, borderWidth: 1, marginTop: 4 },
   paySheetCode:   { fontSize: typography.size.base, letterSpacing: 1 },
   paySheetFooter:      { gap: spacing.sm, alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.base },
+  payErrorBox:         { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.sm, borderWidth: 1 },
   paySheetPrimaryBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.md, borderRadius: radius.lg },
 })
