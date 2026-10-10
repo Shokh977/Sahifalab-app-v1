@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { Bell } from 'phosphor-react-native'
 import { ArrowRight, X } from 'lucide-react-native'
 
@@ -268,7 +268,9 @@ export default function HomeTab() {
     atRiskModalShownCount, bumpAtRiskModalShown,
   } = useDashboardStore()
 
-  useEffect(() => { fetch() }, [])
+  // On focus, not just mount: the tabs stay mounted under the root Stack, so
+  // returning from a lesson or test must re-check. fetch() is TTL-gated.
+  useFocusEffect(useCallback(() => { fetch() }, []))
 
   const onRefresh = useCallback(() => { refresh() }, [])
 

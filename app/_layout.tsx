@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, Component } from 'react'
 import { Linking, View, Text, Pressable, StyleSheet, Platform, AppState } from 'react-native'
-import { Slot, useRouter, useSegments } from 'expo-router'
+import { Stack, useRouter, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts } from 'expo-font'
 import { StatusBar } from 'expo-status-bar'
@@ -473,7 +473,22 @@ export default function RootLayout() {
     <AppErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.bgPrimary }}>
         <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
-        <Slot />
+        {/* A Stack, not a Slot: a Slot renders only the focused group, so
+            opening any (screens) route unmounted the whole tab navigator
+            and going back rebuilt it from scratch — the ~1s freeze on back
+            in release builds. The Stack keeps (tabs) mounted underneath.
+            dangerouslySingular: a push to any /(tabs)/… route from a pushed
+            screen reuses the one tab navigator instead of stacking a copy.
+            Protected: on logout the app's screens are dropped from the
+            history, so they don't stay mounted (with no user) under login. */}
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bgPrimary } }}>
+          <Stack.Protected guard={isAuthenticated}>
+            <Stack.Screen name="(tabs)"    options={{ animation: 'fade' }} dangerouslySingular />
+            <Stack.Screen name="(screens)" />
+          </Stack.Protected>
+          <Stack.Screen name="(auth)"       options={{ animation: 'fade' }} />
+          <Stack.Screen name="(onboarding)" options={{ animation: 'fade' }} />
+        </Stack>
         <OfflineBanner />
         <NotifToast />
         <AppIntroModal visible={showAppIntro} onFinish={dismissAppIntro} />

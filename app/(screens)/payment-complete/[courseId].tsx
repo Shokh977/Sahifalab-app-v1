@@ -79,7 +79,7 @@ export default function PaymentCompleteScreen() {
                 Kursga o'tish
               </Text>
             </Pressable>
-            <Pressable onPress={() => router.replace('/(tabs)')} style={styles.link}>
+            <Pressable onPress={() => router.dismissTo('/(tabs)')} style={styles.link}>
               <Text style={[styles.linkText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
                 Bosh sahifaga qaytish
               </Text>

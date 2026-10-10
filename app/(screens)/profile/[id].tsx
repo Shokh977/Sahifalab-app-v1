@@ -622,7 +622,7 @@ export default function PublicProfileScreen() {
 
   // Redirect to own profile tab instead of showing public view
   useEffect(() => {
-    if (isOwn) router.replace('/(tabs)/profile' as any)
+    if (isOwn) router.dismissTo('/(tabs)/profile' as any)
   }, [isOwn])
 
   const load = useCallback(async () => {

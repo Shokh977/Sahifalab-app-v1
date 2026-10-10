@@ -20,7 +20,7 @@ export default function QollabQuvvatlashRoute() {
     config.flags().then(({ donationScreenEnabled }) => {
       if (cancelled) return
       if (!donationScreenEnabled) {
-        router.replace('/(tabs)' as any)
+        router.dismissTo('/(tabs)' as any)
       } else {
         setAllowed(true)
       }

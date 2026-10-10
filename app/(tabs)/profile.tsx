@@ -5,7 +5,7 @@ import {
   Image, Animated, Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { Settings, Share2, ChevronRight, X, GraduationCap, Heart } from 'lucide-react-native'
 import { shareProfile } from '../../lib/share'
 import { useTheme } from '../../hooks/useTheme'
@@ -373,6 +373,17 @@ export default function ProfileTab() {
   }, [loadOwnProfile, dashData])
 
   useEffect(() => { load() }, [])
+
+  // Quiet reload when coming back to this tab from a pushed screen (e.g.
+  // after editing the profile) — the tab stays mounted under the root Stack.
+  // load is read through a ref so a dashData change doesn't re-fire this.
+  const loadRef     = useRef(load)
+  loadRef.current   = load
+  const focusedOnce = useRef(false)
+  useFocusEffect(useCallback(() => {
+    if (focusedOnce.current) loadRef.current(true)
+    focusedOnce.current = true
+  }, []))
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
