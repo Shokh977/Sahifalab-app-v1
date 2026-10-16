@@ -9,19 +9,19 @@ interface PendingDeepLinkState {
   consume:    () => Promise<string | null>
 }
 
-export const usePendingDeepLinkStore = create<PendingDeepLinkState>(() => ({
+export const usePendingDeepLinkStore = create<PendingDeepLinkState>((set, get) => ({
   pendingUrl: null,
 
   setPending: async (url) => {
     try { await AsyncStorage.setItem(KEY, url) } catch {}
-    usePendingDeepLinkStore.setState({ pendingUrl: url })
+    set({ pendingUrl: url })
   },
 
   consume: async () => {
-    const inMemory = usePendingDeepLinkStore.getState().pendingUrl
+    const inMemory = get().pendingUrl
     const url = inMemory ?? await AsyncStorage.getItem(KEY).catch(() => null)
     try { await AsyncStorage.removeItem(KEY) } catch {}
-    usePendingDeepLinkStore.setState({ pendingUrl: null })
+    set({ pendingUrl: null })
     return url
   },
 }))

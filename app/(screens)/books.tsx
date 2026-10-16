@@ -114,7 +114,7 @@ export default function BooksScreen() {
   const [search,     setSearch]     = useState('')
   const [category,   setCategory]   = useState('Barchasi')
   const [freeOnly,   setFreeOnly]   = useState(false)
-  const debounce = useRef<ReturnType<typeof setTimeout>>()
+  const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const load = useCallback(async (opts: { q?: string; cat?: string; free?: boolean; refresh?: boolean } = {}) => {
     const { q = search, cat = category, free = freeOnly, refresh = false } = opts

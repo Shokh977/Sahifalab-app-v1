@@ -1,9 +1,20 @@
 import { create } from 'zustand'
-import type { NotifItem } from '../lib/api'
+
+/** In-app toast built from a foreground push (app/_layout.tsx) — the push's
+ *  own title/body/data, not a server NotifItem row (which has no title/body). */
+export interface ToastItem {
+  id:         number
+  type:       string
+  title:      string
+  body:       string
+  is_read:    boolean
+  created_at: string
+  data:       Record<string, any>
+}
 
 interface NotifToastState {
-  toast:     NotifItem | null
-  showToast: (item: NotifItem) => void
+  toast:     ToastItem | null
+  showToast: (item: ToastItem) => void
   hideToast: () => void
 }
 

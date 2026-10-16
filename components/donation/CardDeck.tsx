@@ -10,6 +10,12 @@ import type { PaymentMethod } from '../../lib/api'
 import PaymentCard from './PaymentCard'
 import { CARD_WIDTH, CARD_GAP } from './donationTheme'
 
+// FadeInUp types its transform as a single translateY entry; the extra scale
+// works at runtime (Reanimated applies the whole array), so widen the type.
+const CARD_ENTER_FROM = { transform: [{ translateY: 22 }, { scale: 0.94 }], opacity: 0 } as unknown as {
+  transform: [{ translateY: number }]; opacity: number
+}
+
 const ITEM_WIDTH = CARD_WIDTH + CARD_GAP
 
 interface Props {
@@ -50,7 +56,7 @@ export default function CardDeck({ methods, activeIndex, onActiveChange, disable
     // Spec: 1 method -> centered, no peeks, not scrollable, no indicator.
     return (
       <View style={[styles.singleWrap, { opacity: disabled ? 0.5 : 1 }]}>
-        <Animated.View entering={FadeInUp.duration(500).withInitialValues({ transform: [{ translateY: 22 }, { scale: 0.94 }], opacity: 0 })}>
+        <Animated.View entering={FadeInUp.duration(500).withInitialValues(CARD_ENTER_FROM)}>
           <PaymentCard method={methods[0]} sheenTrigger={sheenTrigger} />
         </Animated.View>
       </View>
@@ -119,7 +125,7 @@ function DeckCard({ item, index, scrollX, entranceDelay, sheenTrigger }: {
       entering={FadeInUp
         .duration(500)
         .delay(entranceDelay)
-        .withInitialValues({ transform: [{ translateY: 22 }, { scale: 0.94 }], opacity: 0 })
+        .withInitialValues(CARD_ENTER_FROM)
         .reduceMotion(ReduceMotion.System)}
     >
       <PaymentCard method={item} sheenTrigger={sheenTrigger} />
