@@ -1864,6 +1864,7 @@ export const ai = {
     color?: string | null
     icon?: string | null
     cards: GeneratedFlashcard[]
+    input_mode?: 'text' | 'image'
   }) =>
     request<{ ok: boolean; deck_id: number; card_count: number }>('/api/ai/flashcards/generate/confirm', {
       method: 'POST',

@@ -150,6 +150,7 @@ export default function AiFlashcardGenerateScreen() {
       const res = await aiApi.confirmFlashcards({
         deck_title: deckTitle.trim() || 'Yangi to\'plam',
         cards: cleanCards,
+        input_mode: mode,  // admin analytics: AI-from-text vs AI-from-photo decks
       })
       router.replace({ pathname: `/(screens)/flashcard-deck/${res.deck_id}` } as any)
     } catch (e: any) {
