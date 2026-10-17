@@ -58,7 +58,7 @@ export function ListRow({ title, subtitle, leading, trailing, onPress, done, loa
   const tail = end && (
     end.kind === 'chevron' ? <ChevronRight size={iconSize.sm} color={colors.textFaint} strokeWidth={iconStroke} />
     : end.kind === 'value' ? <Text style={[typeScale.callout, tabular, { color: colors.textMuted }]} numberOfLines={1}>{end.value}</Text>
-    : end.kind === 'count' ? <Badge kind="count" count={end.count} />
+    : end.kind === 'count' ? <Badge kind="count" count={end.count} style={styles.center} />
     : <Check size={iconSize.sm} color={colors.successText} strokeWidth={iconStroke} />
   )
 
@@ -100,4 +100,5 @@ const styles = StyleSheet.create({
   },
   tile: { width: tileSize, height: tileSize, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1, gap: 2 },
+  center: { alignSelf: 'center' },
 })

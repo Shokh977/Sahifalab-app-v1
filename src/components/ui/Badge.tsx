@@ -25,7 +25,7 @@ export function Badge(props: BadgeProps) {
     const label = props.count > max ? `${max}+` : String(props.count)
     return (
       <View style={[styles.pill, { backgroundColor: colors.accent }, props.style]} accessibilityLabel={label}>
-        <Text style={[typeScale.overline, tabular, styles.noCase, { color: colors.onAccent }]}>{label}</Text>
+        <Text style={[typeScale.overline, tabular, styles.numeric, { color: colors.onAccent }]}>{label}</Text>
       </View>
     )
   }
@@ -61,5 +61,6 @@ const styles = StyleSheet.create({
   },
   status: { flexDirection: 'row', gap: space.xxs + 2, paddingHorizontal: space.xs, paddingVertical: space.xxs },
   dot: { width: DOT, height: DOT, borderRadius: radius.full },
-  noCase: { textTransform: 'none' },
+  // Numbers in overline type: no caps transform, no tracking ("1 2" otherwise).
+  numeric: { textTransform: 'none', letterSpacing: 0 },
 })
