@@ -145,7 +145,7 @@ export default function HomeTab() {
     streakState: data.streakState,
     freezeCount: data.focusStats.freeze_count ?? 0,
     hour: new Date(now).getHours(),
-    quiz: quiz ? { state: quiz.state, theme: quiz.theme || null } : null,
+    quiz: quiz ? { state: quiz.state, theme: quiz.theme || null, answered: quiz.answered_count ?? 0 } : null,
     dueCards: topDeck?.due ?? 0,
     course: currentCourse,
   })
@@ -212,7 +212,7 @@ export default function HomeTab() {
 
         <TodayPlan
           input={{
-            quiz: quiz ? { number: quiz.quiz_number, state: quiz.state, correct: quiz.correct_count, secondsLeft: quizSecondsLeft } : null,
+            quiz: quiz ? { number: quiz.quiz_number, state: quiz.state, correct: quiz.correct_count, secondsLeft: quizSecondsLeft, answered: quiz.answered_count ?? 0 } : null,
             dueCards: data.hasDecks === undefined ? null : data.hasDecks ? data.flashcardDueCount : null,
             course: currentCourse,
           }}

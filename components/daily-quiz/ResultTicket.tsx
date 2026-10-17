@@ -1,9 +1,13 @@
-import React, { useEffect, useRef } from 'react'
-import { View, Text, StyleSheet, Animated } from 'react-native'
+import React, { useEffect } from 'react'
+import { View, Text, StyleSheet } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
+import Animated, {
+  FadeIn, ReduceMotion, useAnimatedProps, useReducedMotion, useSharedValue, withTiming,
+} from 'react-native-reanimated'
 import { useTheme } from '../../hooks/useTheme'
-import { useReduceMotion } from '../../hooks/useReduceMotion'
 import { typography, radius } from '../../lib/constants'
+import { durations, easing, stagger } from '../../src/design/motion'
+import { useCountUp } from '../../src/components/ui/StatTile'
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
@@ -30,6 +34,9 @@ export interface ResultTicketProps {
   date: string        // ISO date
   referralCode: string
   scale?: number
+  /** On-screen result reveal (ring fills, dots appear one by one, rank
+   *  counts up). The off-screen share capture leaves it off: static. */
+  reveal?: boolean
   hideStats?: boolean // privacy: opted out of public stats (no such setting
                        // exists in this app yet — always false today, but
                        // the component honors it if a caller ever sets it)
@@ -44,20 +51,23 @@ function fmtDate(iso: string): string {
 
 function variantFor(score: number, total: number) {
   if (score === total) return { headline: `${score}/${total} — benuqson`, accent: GREEN, gold: true }
-  if (score >= 3) return { headline: `${score} to'g'ri javob`, accent: ORANGE, gold: false }
-  if (score >= 1) return { headline: `${score} to'g'ri javob`, accent: ORANGE, gold: false }
+  if (score >= 3) return { headline: `${score} toʻgʻri javob`, accent: ORANGE, gold: false }
+  if (score >= 1) return { headline: `${score} toʻgʻri javob`, accent: ORANGE, gold: false }
   return { headline: "Birinchi urinish", accent: MUTED, gold: false }
 }
 
-function ProgressRing({ score, total, accent, reduceMotion }: { score: number; total: number; accent: string; reduceMotion: boolean }) {
+function ProgressRing({ score, total, accent, animate }: { score: number; total: number; accent: string; animate: boolean }) {
   const fraction = total > 0 ? score / total : 0
   const targetOffset = RING_CIRC * (1 - fraction)
-  const progress = useRef(new Animated.Value(reduceMotion || score !== total ? targetOffset : RING_CIRC)).current
+  // Result reveal: the ring fills from empty to the score on the UI thread.
+  const offset = useSharedValue(animate ? RING_CIRC : targetOffset)
 
   useEffect(() => {
-    if (reduceMotion || score !== total) return
-    Animated.timing(progress, { toValue: targetOffset, duration: 600, useNativeDriver: false }).start()
-  }, [])
+    if (!animate) { offset.set(targetOffset); return }
+    offset.set(withTiming(targetOffset, { duration: durations.celebrate, easing: easing.standard }))
+  }, [animate, targetOffset, offset])
+
+  const ringProps = useAnimatedProps(() => ({ strokeDashoffset: offset.get() }))
 
   return (
     <View style={{ width: RING_SIZE, height: RING_SIZE }}>
@@ -70,7 +80,7 @@ function ProgressRing({ score, total, accent, reduceMotion }: { score: number; t
           cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS}
           stroke={accent} strokeWidth={RING_STROKE} fill="none"
           strokeDasharray={`${RING_CIRC}, ${RING_CIRC}`}
-          strokeDashoffset={progress}
+          animatedProps={ringProps}
           strokeLinecap="round"
           rotation={-90}
           originX={RING_SIZE / 2} originY={RING_SIZE / 2}
@@ -92,7 +102,7 @@ function ProgressRing({ score, total, accent, reduceMotion }: { score: number; t
   )
 }
 
-function QuestionStrip({ answers }: { answers: AnswerMark[] }) {
+function QuestionStrip({ answers, animate }: { answers: AnswerMark[]; animate: boolean }) {
   return (
     <View style={styles.qStrip}>
       {answers.map((a, i) => {
@@ -100,11 +110,18 @@ function QuestionStrip({ answers }: { answers: AnswerMark[] }) {
         const glyph = a === 'correct' ? '✓' : a === 'wrong' ? '✕' : '–'
         const glyphColor = a === 'correct' ? '#DFF6E6' : a === 'wrong' ? '#E39B92' : MUTED
         return (
-          <View key={i} style={[styles.qSquare, { backgroundColor: bg }]}>
+          <Animated.View
+            key={i}
+            // Result reveal: answer dots appear one by one (stagger.step apart).
+            entering={animate
+              ? FadeIn.duration(durations.fade).delay(i * stagger.step).reduceMotion(ReduceMotion.System)
+              : undefined}
+            style={[styles.qSquare, { backgroundColor: bg }]}
+          >
             <Text maxFontSizeMultiplier={1.2} style={{ color: glyphColor, fontSize: 13, fontFamily: typography.fontFamily.bold }}>
               {glyph}
             </Text>
-          </View>
+          </Animated.View>
         )
       })}
     </View>
@@ -117,12 +134,14 @@ function QuestionStrip({ answers }: { answers: AnswerMark[] }) {
  * rendered on screen or off-screen for capture (see useShareTicket).
  */
 export function ResultTicket({
-  round, score, total, answers, streak, rank, level, date, referralCode: _referralCode, scale = 1, hideStats = false,
+  round, score, total, answers, streak, rank, level, date, referralCode: _referralCode, scale = 1, reveal = false, hideStats = false,
 }: ResultTicketProps) {
   // referralCode is accepted (kept for a future QR code) but not rendered.
   const { theme } = useTheme()
-  const reduceMotion = useReduceMotion()
+  const reduceMotion = useReducedMotion()
+  const animate = reveal && !reduceMotion
   const variant = variantFor(score, total)
+  const shownRank = useCountUp(rank ?? 0, animate)
 
   const surface = theme === 'dark' ? '#191C22' : '#1A1815'
   const border = theme === 'dark' ? 'rgba(255,255,255,0.08)' : undefined
@@ -130,12 +149,12 @@ export function ResultTicket({
 
   const statCells = hideStats ? [] : [
     { value: String(streak), label: 'SERIYA', accent: undefined as string | undefined },
-    ...(rank != null ? [{ value: `#${rank}`, label: 'REYTING', accent: ORANGE }] : []),
+    ...(rank != null ? [{ value: `#${animate ? shownRank : rank}`, label: 'REYTING', accent: ORANGE }] : []),
     { value: `Lv.${level}`, label: 'DARAJA', accent: undefined },
   ]
 
   const a11yLabel =
-    `5 savol, tur ${round}, ${score} dan ${total} to'g'ri, seriya ${streak}` +
+    `5 savol, tur ${round}, ${score} dan ${total} toʻgʻri, seriya ${streak}` +
     (rank != null ? `, reyting ${rank}` : '')
 
   return (
@@ -163,11 +182,11 @@ export function ResultTicket({
 
       {/* Score row */}
       <View style={styles.scoreRow}>
-        <ProgressRing score={score} total={total} accent={variant.accent} reduceMotion={reduceMotion} />
+        <ProgressRing score={score} total={total} accent={variant.accent} animate={animate} />
         <View style={styles.scoreRight}>
           <Text maxFontSizeMultiplier={1.2} style={styles.overline}>{`KUNLIK TUR #${round}`}</Text>
           <Text maxFontSizeMultiplier={1.2} style={styles.headline} numberOfLines={2}>{variant.headline}</Text>
-          <QuestionStrip answers={answers} />
+          <QuestionStrip answers={answers} animate={animate} />
         </View>
       </View>
 
@@ -192,7 +211,7 @@ export function ResultTicket({
       <View style={styles.footer}>
         <View>
           <Text maxFontSizeMultiplier={1.2} style={[styles.footerTitle, { fontFamily: typography.fontFamily.bold }]}>
-            Sen ham sinab ko'r
+            Sen ham sinab koʻr
           </Text>
           <Text maxFontSizeMultiplier={1.2} style={styles.footerDomain}>sahifalab.uz</Text>
         </View>

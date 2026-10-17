@@ -1,54 +1,80 @@
+/**
+ * 5 Savol play screen — redesign Phase 3a.
+ *
+ * Each tap locks the answer on the server (POST /api/quiz/answer) and
+ * reveals it: the correct/wrong moment, then an explanation card and the
+ * next button. Locked answers come back from GET /today, so leaving (or
+ * killing the app) resumes at the next question. Against a backend without
+ * /answer the screen falls back to the old flow: no per-answer reveal,
+ * one submit at the end.
+ */
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, AppState } from 'react-native'
+import { AppState, ScrollView, StyleSheet, Text, View } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { ChevronLeft, Clock } from 'lucide-react-native'
-import { useTheme } from '../../hooks/useTheme'
+import { useReducedMotion } from 'react-native-reanimated'
+import { CalendarClock, WifiOff, X } from 'lucide-react-native'
 import { useAuthStore } from '../../stores/authStore'
 import { useRewardStore } from '../../stores/rewardStore'
-import { dailyQuiz, type DailyQuizToday } from '../../lib/api'
-import { typography, spacing, radius } from '../../lib/constants'
-import { QuizResultView } from '../../components/daily-quiz/QuizResultView'
+import { useDashboardStore } from '../../stores/dashboardStore'
+import { dailyQuiz, type DailyQuizAnswerResult, type DailyQuizToday } from '../../lib/api'
+import { QuizResultView, type QuizFriend } from '../../components/daily-quiz/QuizResultView'
 import { track } from '../../lib/analytics'
+import { useTheme } from '../../src/design/ThemeProvider'
+import { layout, space } from '../../src/design/spacing'
+import { type as typeScale } from '../../src/design/typography'
+import { haptics } from '../../src/lib/haptics'
+import { EmptyState, IconButton, SkeletonBlock, SkeletonLine, ToastHost, showToast } from '../../src/components/ui'
+import { AnswerOption, type AnswerState } from '../../src/features/quiz/AnswerOption'
+import { ExplanationCard } from '../../src/features/quiz/ExplanationCard'
+import { QuizProgress } from '../../src/features/quiz/QuizProgress'
+import {
+  feedbackTitle, isAnswerUnsupported, nextLabel, questionCounter, quizOverline, resumeIndex, segmentStates,
+} from '../../src/features/quiz/quizPlay'
 
 // Foreground-only play time per round, persisted so leaving the screen and
 // coming back keeps what was already played. Its presence also marks a round
 // this device already started (→ quiz_resume rather than quiz_start).
 const activeKey = (quizId: number) => `sahifalab_quiz_active_ms_${quizId}`
 
-function fmtCountdown(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}`
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
+/** Old flow (no /answer): how long the tapped option shows before moving on. */
+const LEGACY_ADVANCE_MS = 250
+
+type Phase = 'choose' | 'pending' | 'revealed'
+type SubmitResult = {
+  correct_count: number; tanga_awarded: number
+  per_question_correct: boolean[]; elapsed_ms?: number; quiz_streak_days: number
 }
 
 export default function DailyQuizScreen() {
-  const { c }  = useTheme()
+  const { colors } = useTheme()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const reduceMotion = useReducedMotion()
 
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState<string | null>(null)
-  const [quiz, setQuiz]         = useState<DailyQuizToday | null>(null)
-  const [index, setIndex]       = useState(0)
-  const [answers, setAnswers]   = useState<Record<number, number>>({})
-  const [picked, setPicked]     = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [quiz, setQuiz] = useState<DailyQuizToday | null>(null)
+  const [index, setIndex] = useState(0)
+  const [phase, setPhase] = useState<Phase>('choose')
+  const [picked, setPicked] = useState<number | null>(null)
+  const [reveals, setReveals] = useState<Map<number, DailyQuizAnswerResult>>(new Map())
+  const [answers, setAnswers] = useState<Record<number, number>>({})
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<{
-    correct_count: number; tanga_awarded: number
-    per_question_correct: boolean[]; elapsed_ms?: number; quiz_streak_days: number
-  } | null>(null)
+  const [result, setResult] = useState<SubmitResult | null>(null)
   const [rank, setRank] = useState<number | null>(null)
+  const [friends, setFriends] = useState<QuizFriend[]>([])
+  const [fresh, setFresh] = useState(false)   // submitted in this visit → reveal moment
+  const legacyRef = useRef(false)
 
-  // ── Foreground-only timing (redesign Phase 0) ───────────────────────────────
+  // ── Foreground-only timing (redesign Phase 0) ─────────────────────────────
   // The server's elapsed_ms runs from delivery to submit, background included;
   // this counts only time with the quiz on screen and the app in the
   // foreground. Refs + timestamps only: nothing re-renders while it runs.
-  const activeMsRef    = useRef(0)
+  const activeMsRef = useRef(0)
   const activeSinceRef = useRef<number | null>(null)
-  const timingQuizRef  = useRef<number | null>(null)
+  const timingQuizRef = useRef<number | null>(null)
 
   function pauseTiming() {
     if (activeSinceRef.current != null) {
@@ -67,7 +93,7 @@ export default function DailyQuizScreen() {
 
   async function beginTiming(q: DailyQuizToday) {
     const stored = await AsyncStorage.getItem(activeKey(q.id)).catch(() => null)
-    activeMsRef.current   = stored ? Number(stored) || 0 : 0
+    activeMsRef.current = stored ? Number(stored) || 0 : 0
     timingQuizRef.current = q.id
     track(stored != null ? 'quiz_resume' : 'quiz_start', { quiz_id: q.id, quiz_number: q.quiz_number }, q.id)
     if (stored == null) AsyncStorage.setItem(activeKey(q.id), '0').catch(() => {})
@@ -90,15 +116,13 @@ export default function DailyQuizScreen() {
     return () => { sub.remove(); pauseTiming() }
   }, [])
 
-  // The result ticket's "REYTING" cell is the caller's rank among TODAY'S
-  // quiz solvers (correct_count desc, elapsed_ms asc) — an earlier version
-  // of this wrongly sourced it from the unrelated Musobaqalar challenges
-  // rank. Results (and so rank) are only fetchable once this user has
-  // submitted their own attempt — see daily_quiz.py's get_results() gate.
+  // The result ticket's "REYTING" is the caller's rank among today's solvers.
+  // Results are only fetchable once this user has submitted.
   async function fetchRank(quizId: number) {
     try {
       const res = await dailyQuiz.results(quizId)
       setRank(res.caller?.rank ?? null)
+      setFriends(res.friends ?? [])
     } catch {
       setRank(null)
     }
@@ -109,30 +133,41 @@ export default function DailyQuizScreen() {
     setError(null)
     try {
       const res = await dailyQuiz.today()
-      setQuiz(res.quiz)
-      if (res.quiz?.state === 'submitted') {
-        // GET /today now carries the full cached result once submitted —
-        // no second network call needed (an earlier version of this tried
-        // POST /submit with an empty answers array to re-fetch it, which
-        // 422'd outright since SubmitRequest.answers requires at least 1).
+      const q = res.quiz
+      setQuiz(q)
+      if (q?.state === 'submitted') {
         setResult({
-          correct_count: res.quiz.correct_count ?? 0,
-          tanga_awarded: res.quiz.tanga_awarded ?? 0,
-          per_question_correct: res.quiz.per_question_correct ?? [],
-          quiz_streak_days: res.quiz.quiz_streak_days ?? 0,
+          correct_count: q.correct_count ?? 0,
+          tanga_awarded: q.tanga_awarded ?? 0,
+          per_question_correct: q.per_question_correct ?? [],
+          quiz_streak_days: q.quiz_streak_days ?? 0,
         })
-        fetchRank(res.quiz.id)
-      } else if (res.quiz) {
-        beginTiming(res.quiz)
+        fetchRank(q.id)
+      } else if (q) {
+        // Resume: answers locked earlier (this or another device).
+        const answered = q.answered ?? []
+        setReveals(new Map(answered.map(a => [a.question_id, a])))
+        setAnswers(Object.fromEntries(answered.map(a => [a.question_id, a.selected_index])))
+        const ids = q.questions.map(x => x.question_id)
+        const at = resumeIndex(ids, answered)
+        if (at >= ids.length && ids.length > 0) {
+          // Everything locked, not submitted yet: show the last reveal + "Natijani koʻrish".
+          setIndex(ids.length - 1)
+          setPhase('revealed')
+        } else {
+          setIndex(at)
+          setPhase('choose')
+        }
+        beginTiming(q)
       }
     } catch (e: any) {
-      setError(e?.message ?? "Yuklab bo'lmadi")
+      setError(e?.message ?? 'Yuklab boʻlmadi')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submitAll(finalAnswers: Record<number, number>) {
     if (!quiz) return
@@ -141,12 +176,15 @@ export default function DailyQuizScreen() {
       const payload = quiz.questions.map(q => ({ question_id: q.question_id, selected_index: finalAnswers[q.question_id] }))
       const activeMs = stopTiming()
       const res = await dailyQuiz.submit(quiz.id, payload, activeMs)
-      // Correctness is only known once the server scores the round, so the
-      // per-answer events are sent here, one per question, in order.
-      res.per_question_correct.forEach((correct, index) =>
-        track('quiz_answer', { quiz_id: quiz.id, index, correct }, quiz.id))
+      // Answers revealed one by one were already tracked at tap time; the
+      // old flow (no /answer) still sends them here, in order.
+      res.per_question_correct.forEach((correct, i) => {
+        if (!reveals.has(quiz.questions[i]?.question_id)) track('quiz_answer', { quiz_id: quiz.id, index: i, correct }, quiz.id)
+      })
       track('quiz_complete', { quiz_id: quiz.id, score: res.correct_count, active_ms: Math.round(activeMs) }, quiz.id)
       AsyncStorage.removeItem(activeKey(quiz.id)).catch(() => {})
+      useDashboardStore.getState().patchQuiz({ state: 'submitted', correct_count: res.correct_count, answered_count: 0 })
+      setFresh(true)
       setResult({
         correct_count: res.correct_count, tanga_awarded: res.tanga_awarded,
         per_question_correct: res.per_question_correct, elapsed_ms: res.elapsed_ms,
@@ -154,153 +192,187 @@ export default function DailyQuizScreen() {
       })
       useAuthStore.getState().refreshUser()
       fetchRank(quiz.id)
-      // tanga-economy-rework (092) Part 5 trigger point: after quiz
-      // submission. Deferred slightly so it doesn't fight the result-ticket
-      // transition for the screen the instant the score reveals.
+      // tanga-economy-rework (092) Part 5 trigger point: after submission,
+      // deferred so it doesn't fight the result reveal.
       setTimeout(() => useRewardStore.getState().check(), 600)
     } catch (e: any) {
-      setError(e?.message ?? "Yuborib bo'lmadi")
+      showToast('error', e?.message ?? 'Yuborib boʻlmadi')
     } finally {
       setSubmitting(false)
     }
   }
 
-  function selectOption(shownIndex: number) {
-    if (!quiz || picked !== null) return
-    const q = quiz.questions[index]
-    setPicked(shownIndex)
-    const next = { ...answers, [q.question_id]: shownIndex }
-    setAnswers(next)
-
+  function legacyAdvance(next: Record<number, number>) {
+    if (!quiz) return
     setTimeout(() => {
       setPicked(null)
       if (index < quiz.questions.length - 1) {
         setIndex(index + 1)
+        setPhase('choose')
       } else {
         submitAll(next)
       }
-    }, 250)
+    }, LEGACY_ADVANCE_MS)
+  }
+
+  async function select(shownIndex: number) {
+    if (!quiz || phase !== 'choose') return
+    const q = quiz.questions[index]
+    setPicked(shownIndex)
+    setPhase('pending')
+
+    if (legacyRef.current) {
+      const next = { ...answers, [q.question_id]: shownIndex }
+      setAnswers(next)
+      legacyAdvance(next)
+      return
+    }
+
+    try {
+      const r = await dailyQuiz.answer(quiz.id, q.question_id, shownIndex)
+      setReveals(prev => new Map(prev).set(q.question_id, r))
+      setAnswers(prev => ({ ...prev, [q.question_id]: r.selected_index }))
+      setPhase('revealed')
+      if (r.correct) haptics.light()
+      else haptics.error()
+      track('quiz_answer', { quiz_id: quiz.id, index, correct: r.correct }, quiz.id)
+      useDashboardStore.getState().patchQuiz({ state: 'in_progress', answered_count: r.answered_count ?? index + 1 })
+    } catch (e: any) {
+      if (isAnswerUnsupported(e?.message)) {
+        // Backend without /answer yet: finish this round the old way.
+        legacyRef.current = true
+        const next = { ...answers, [q.question_id]: shownIndex }
+        setAnswers(next)
+        legacyAdvance(next)
+        return
+      }
+      showToast('error', e?.message ?? 'Javob yuborilmadi. Qayta urinib koʻring.')
+      setPicked(null)
+      setPhase('choose')
+    }
+  }
+
+  function next() {
+    if (!quiz) return
+    if (index >= quiz.questions.length - 1) {
+      submitAll(answers)
+      return
+    }
+    setIndex(index + 1)
+    setPicked(null)
+    setPhase('choose')
+  }
+
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)' as any))
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  const header = (
+    <View style={[styles.header, { paddingTop: insets.top + space.xxs }]}>
+      <IconButton icon={X} accessibilityLabel="Yopish (javoblar saqlanadi)" onPress={close} />
+      <View style={styles.headerText}>
+        <Text style={[typeScale.overline, { color: colors.textMuted }]} numberOfLines={1}>
+          {quiz ? quizOverline(quiz.quiz_number, quiz.theme) : '5 SAVOL'}
+        </Text>
+        {quiz && !result && quiz.questions.length > 0 ? (
+          <Text style={[typeScale.callout, { color: colors.text }]}>{questionCounter(index, quiz.questions.length)}</Text>
+        ) : null}
+      </View>
+      <View style={styles.headerSide} />
+    </View>
+  )
+
+  let body: React.ReactNode
+  if (loading) {
+    body = (
+      <View style={styles.play}>
+        <SkeletonBlock height={space.xs} />
+        <SkeletonLine width="90%" />
+        <SkeletonLine width="60%" />
+        {[0, 1, 2, 3].map(i => <SkeletonBlock key={i} height={space.huge} />)}
+      </View>
+    )
+  } else if (error) {
+    body = (
+      <EmptyState
+        icon={WifiOff}
+        title="Savollar yuklanmadi"
+        body={error}
+        action={{ label: 'Qayta urinish', onPress: load }}
+      />
+    )
+  } else if (!quiz) {
+    body = (
+      <EmptyState icon={CalendarClock} title="Bugungi savollar hali tayyor emas" body="Birozdan soʻng qayta tekshiring." />
+    )
+  } else if (result) {
+    body = <QuizResultView quiz={quiz} result={result} rank={rank} friends={friends} fresh={fresh} />
+  } else {
+    const q = quiz.questions[index]
+    const ids = quiz.questions.map(x => x.question_id)
+    const verdicts = new Map<number, boolean | null>()
+    for (const id of ids) {
+      if (reveals.has(id)) verdicts.set(id, reveals.get(id)!.correct)
+      else if (answers[id] != null) verdicts.set(id, null)
+    }
+    const r = reveals.get(q.question_id)
+    const isLast = index >= quiz.questions.length - 1
+    const stateFor = (j: number): AnswerState => {
+      if (phase === 'pending') return j === picked ? 'pending' : 'idle'
+      if (phase === 'revealed' && r) {
+        if (j === r.selected_index) return r.correct ? 'correct' : 'wrong'
+        if (!r.correct && j === r.correct_index) return 'reveal'
+        return 'dim'
+      }
+      return 'idle'
+    }
+    const correctText = r && r.correct_index != null ? q.options[r.correct_index] ?? null : null
+
+    body = (
+      <ScrollView contentContainerStyle={[styles.play, { paddingBottom: insets.bottom + space.xl }]} showsVerticalScrollIndicator={false}>
+        <QuizProgress states={segmentStates(ids, verdicts, index)} />
+        <Text style={[typeScale.title2, { color: colors.text }]} accessibilityRole="header">{q.question_text}</Text>
+        <View style={styles.options}>
+          {q.options.map((opt, j) => (
+            <AnswerOption
+              key={`${q.question_id}-${j}`}
+              index={j}
+              text={opt}
+              state={stateFor(j)}
+              disabled={phase !== 'choose' || submitting}
+              onPress={() => select(j)}
+            />
+          ))}
+        </View>
+        {phase === 'revealed' && (
+          <ExplanationCard
+            key={q.question_id}
+            correct={r ? r.correct : null}
+            title={r ? feedbackTitle(r.correct, r.tanga_per_correct, correctText) : null}
+            explanation={r?.explanation ?? null}
+            nextLabel={nextLabel(isLast)}
+            onNext={next}
+            loading={submitting}
+            reduceMotion={reduceMotion}
+          />
+        )}
+      </ScrollView>
+    )
   }
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
-      <View style={[s.navBar, { borderBottomColor: c.border }]}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)' as any))} hitSlop={12} style={s.navBtn}>
-          <ChevronLeft size={24} color={c.accentPrimary} />
-        </Pressable>
-        <Text style={[s.navTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-          {quiz ? `5 SAVOL #${quiz.quiz_number}` : '5 Savol'}
-        </Text>
-        <View style={s.navBtn} />
-      </View>
-
-      {loading ? (
-        <View style={s.center}><ActivityIndicator color={c.accentPrimary} size="large" /></View>
-      ) : error ? (
-        <View style={s.center}>
-          <Text style={[s.stateBody, { color: c.textSecondary }]}>{error}</Text>
-          <Pressable onPress={load} style={[s.retryBtn, { backgroundColor: c.accentPrimary }]}>
-            <Text style={s.retryText}>Qayta urinish</Text>
-          </Pressable>
-        </View>
-      ) : !quiz ? (
-        <View style={s.center}>
-          <Text style={s.stateIcon}>🗓️</Text>
-          <Text style={[s.stateTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-            Bugungi savollar hali tayyor emas
-          </Text>
-          <Text style={[s.stateBody, { color: c.textSecondary }]}>Birozdan so'ng qayta tekshiring.</Text>
-        </View>
-      ) : result ? (
-        <QuizResultView quiz={quiz} result={result} rank={rank} />
-      ) : (
-        <View style={s.playArea}>
-          <View style={s.topRow}>
-            <View style={s.dots}>
-              {quiz.questions.map((q, i) => (
-                <View
-                  key={q.question_id}
-                  style={[
-                    s.dot,
-                    { backgroundColor: i < index ? c.accentPrimary : i === index ? c.accentPrimary + '88' : c.bgTertiary },
-                  ]}
-                />
-              ))}
-            </View>
-            <View style={s.timerRow}>
-              <Clock size={13} color={c.textMuted} />
-              <Text style={[s.timerText, { color: c.textMuted }]}>{fmtCountdown(quiz.seconds_remaining)}</Text>
-            </View>
-          </View>
-
-          <Text style={[s.questionText, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-            {quiz.questions[index].question_text}
-          </Text>
-
-          <View style={{ gap: spacing.sm }}>
-            {quiz.questions[index].options.map((opt, i) => {
-              const isPicked = picked === i
-              return (
-                <Pressable
-                  key={i}
-                  disabled={picked !== null || submitting}
-                  onPress={() => selectOption(i)}
-                  style={[
-                    s.option,
-                    {
-                      backgroundColor: isPicked ? c.accentPrimary + '22' : c.bgSecondary,
-                      borderColor: isPicked ? c.accentPrimary : c.border,
-                    },
-                  ]}
-                >
-                  <Text style={[s.optionText, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>
-                    {opt}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-
-          {submitting && (
-            <View style={s.submittingRow}>
-              <ActivityIndicator color={c.accentPrimary} />
-              <Text style={[s.submittingText, { color: c.textMuted }]}>Yuborilmoqda...</Text>
-            </View>
-          )}
-        </View>
-      )}
-    </SafeAreaView>
+    <View style={[styles.root, { backgroundColor: colors.bg }]}>
+      {header}
+      {body}
+      <ToastHost />
+    </View>
   )
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   root: { flex: 1 },
-  navBar: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  navBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  navTitle: { flex: 1, textAlign: 'center', fontSize: 15 },
-
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: spacing.xl },
-  stateIcon: { fontSize: 40 },
-  stateTitle: { fontSize: 16 },
-  stateBody: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
-  retryBtn: { marginTop: 8, paddingHorizontal: 28, paddingVertical: 12, borderRadius: radius.full },
-  retryText: { color: '#fff', fontSize: 14 },
-
-  playArea: { flex: 1, padding: spacing.lg, gap: spacing.lg },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dots: { flexDirection: 'row', gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  timerRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  timerText: { fontSize: 12 },
-
-  questionText: { fontSize: 20, lineHeight: 28 },
-
-  option: { borderRadius: radius.lg, borderWidth: 1.5, padding: spacing.md },
-  optionText: { fontSize: 15, lineHeight: 21 },
-
-  submittingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: spacing.md },
-  submittingText: { fontSize: 13 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.xxs },
+  headerText: { flex: 1, alignItems: 'center', gap: 2 },
+  headerSide: { width: layout.minTouch },
+  play: { paddingHorizontal: layout.gutter, paddingTop: space.sm, gap: space.lg },
+  options: { gap: space.sm },
 })

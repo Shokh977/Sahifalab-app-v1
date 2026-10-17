@@ -1893,6 +1893,17 @@ export interface DailyQuizQuestionForPlay {
   options:       string[]
 }
 
+/** POST /api/quiz/answer — one locked answer and its reveal. */
+export interface DailyQuizAnswerResult {
+  question_id:       number
+  selected_index:    number          // the LOCKED choice (a re-send never changes it)
+  correct:           boolean
+  correct_index:     number | null   // in this user's shuffled order
+  explanation:       string | null
+  tanga_per_correct: number
+  answered_count?:   number
+}
+
 export interface DailyQuizToday {
   id:                number
   quiz_number:       number
@@ -1906,6 +1917,8 @@ export interface DailyQuizToday {
   per_question_correct?: boolean[]
   tanga_awarded?:         number
   quiz_streak_days?:      number
+  /** In progress only: answers already locked, oldest first (resume). */
+  answered?:              DailyQuizAnswerResult[] | null
 }
 
 /** GET /api/quiz/today/status — read-only, for display surfaces (Home).
@@ -1917,6 +1930,8 @@ export interface DailyQuizStatus {
   state:             'not_started' | 'in_progress' | 'submitted'
   correct_count:     number | null
   seconds_remaining: number
+  /** Locked answers in an in-progress round (absent on older backends). */
+  answered_count?:   number
 }
 
 export interface DailyQuizSubmitResult {
@@ -1967,6 +1982,8 @@ export interface DailyQuizResults {
   total_players:    number
   caller:           DailyQuizCallerStanding | null
   quiz_streak_days: number
+  /** People the caller follows (+ the caller), global rank. Newer backends only. */
+  friends?:         (DailyQuizLeaderboardEntry & { is_me: boolean })[]
 }
 
 export const dailyQuiz = {
@@ -1983,6 +2000,14 @@ export const dailyQuiz = {
     request<DailyQuizSubmitResult>('/api/quiz/submit', {
       method: 'POST',
       body: JSON.stringify({ quiz_id: quizId, answers, ...(activeMs != null ? { active_ms: Math.round(activeMs) } : {}) }),
+      auth: true,
+    }),
+
+  /** Locks one answer and reveals it. Older backends answer 404. */
+  answer: (quizId: number, questionId: number, selectedIndex: number) =>
+    request<DailyQuizAnswerResult>('/api/quiz/answer', {
+      method: 'POST',
+      body: JSON.stringify({ quiz_id: quizId, question_id: questionId, selected_index: selectedIndex }),
       auth: true,
     }),
 

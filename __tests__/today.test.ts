@@ -75,6 +75,8 @@ describe('buildPlanRows', () => {
     expect(r.rows.map(x => [x.key, x.done])).toEqual([['quiz', false], ['cards', true]])
     expect(r.rows[0].subtitle).toBe('Yopilishiga 1 s 1 d')
     expect(buildPlanRows({ quiz: null, dueCards: null, course: null })).toEqual({ rows: [], done: 0, total: 0 })
+    const resumed = buildPlanRows({ quiz: { number: 2, state: 'in_progress', correct: null, secondsLeft: 600, answered: 3 }, dueCards: null, course: null })
+    expect(resumed.rows[0].subtitle).toBe('Davom etish · 3/5 · Yopilishiga 0 s 10 d')
   })
 })
 

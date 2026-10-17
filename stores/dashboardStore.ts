@@ -83,6 +83,8 @@ interface DashboardState {
   fetch:                 () => Promise<void>
   refresh:               () => Promise<void>
   refreshToday:          () => Promise<void>
+  /** Local update after a 5 Savol answer/submit, so Home is right on return. */
+  patchQuiz:             (patch: Partial<DailyQuizStatus>) => void
   patchFocusStats:       (patch: Partial<FocusStats>) => void
   markStreakLostSeen:    () => void
   bumpAtRiskModalShown:  () => void
@@ -314,6 +316,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => {
     const data = get().data
     if (!data || Object.keys(extras).length === 0) return
     const updated = { ...data, ...extras }
+    set({ data: updated })
+    saveCache(updated)
+  },
+
+  patchQuiz: (patch) => {
+    const data = get().data
+    if (!data?.quiz) return
+    const updated = { ...data, quiz: { ...data.quiz, ...patch } }
     set({ data: updated })
     saveCache(updated)
   },

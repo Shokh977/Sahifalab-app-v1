@@ -72,7 +72,7 @@ export function rankGap(entries: readonly RankEntry[], myRank: number | null | u
 // ── Today plan ───────────────────────────────────────────────────────────────
 
 export interface PlanInput {
-  quiz: { number: number; state: 'not_started' | 'in_progress' | 'submitted'; correct: number | null; secondsLeft: number } | null
+  quiz: { number: number; state: 'not_started' | 'in_progress' | 'submitted'; correct: number | null; secondsLeft: number; answered?: number } | null
   /** null = the user has no decks, so the row is hidden. */
   dueCards: number | null
   course: { id: number; title: string; progress: number } | null
@@ -97,7 +97,11 @@ export function buildPlanRows(input: PlanInput): { rows: PlanRow[]; done: number
     rows.push({
       key: 'quiz',
       title: `5 Savol #${q.number}`,
-      subtitle: done ? `${q.correct ?? 0}/5 · bajarildi` : quizClosesIn(q.secondsLeft),
+      subtitle: done
+        ? `${q.correct ?? 0}/5 · bajarildi`
+        : q.state === 'in_progress' && (q.answered ?? 0) > 0
+          ? `Davom etish · ${q.answered}/5 · ${quizClosesIn(q.secondsLeft)}`
+          : quizClosesIn(q.secondsLeft),
       done,
     })
   }
