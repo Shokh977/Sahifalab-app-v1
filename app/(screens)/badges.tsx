@@ -4,7 +4,7 @@
  * then locked ones as readable silhouettes.
  */
 import React, { useCallback, useState } from 'react'
-import { StyleSheet, View, useWindowDimensions } from 'react-native'
+import { StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
 import { Award, WifiOff } from 'lucide-react-native'
@@ -27,7 +27,9 @@ const COLS = 4
 export default function BadgesScreen() {
   const { colors } = useTheme()
   const router = useRouter()
-  const { width } = useWindowDimensions()
+  const { width: windowWidth } = useWindowDimensions()
+  // The screen's own width (correct in split screen and previews too).
+  const [width, setWidth] = useState(windowWidth)
   const profileLevel = useProfileStore(s => s.ownProfile?.level)
   const authLevel = useAuthStore(s => s.user?.level)
   const level = profileLevel ?? authLevel ?? 1
@@ -63,7 +65,7 @@ export default function BadgesScreen() {
   )
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.bg }]}>
+    <View style={[styles.root, { backgroundColor: colors.bg }]} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
       <ScreenHeader title={`Nishonlar · ${counts.label}`} onBack={back} />
       {failed && !groups ? (
         <EmptyState
