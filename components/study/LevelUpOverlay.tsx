@@ -7,7 +7,7 @@
  */
 import React, { useEffect } from 'react'
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import LottieView from 'lottie-react-native'
+import { Lottie } from '../../src/components/ui/Lottie'
 import Animated, {
   useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming,
 } from 'react-native-reanimated'
@@ -66,7 +66,7 @@ export function LevelUpOverlay({ visible, newLevel, onDismiss }: Props) {
       >
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
           <View style={styles.stage}>
-            <LottieView
+            <Lottie
               source={LEVEL_UP}
               autoPlay={!reduceMotion}
               loop={false}
