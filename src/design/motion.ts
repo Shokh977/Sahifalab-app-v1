@@ -28,3 +28,6 @@ export const toast = { hold: 3000 }
 
 /** Sheet drag: close past this fraction of its height or this fling speed (px/s). */
 export const sheetDrag = { dismissFraction: 0.3, dismissVelocity: 800 }
+
+/** Streak tick (section 5 signature moment): flame peak, tree pop delay. */
+export const streakTick = { flamePeak: 1.35, treePeak: 1.08, treeDelay: 380 }

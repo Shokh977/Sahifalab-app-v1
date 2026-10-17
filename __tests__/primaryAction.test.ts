@@ -18,7 +18,7 @@ describe('getPrimaryAction — focus goal not met', () => {
     const a = getPrimaryAction(base)
     expect(a).toEqual({
       target: 'focus', label: 'Fokusni davom ettirish',
-      caption: 'Seriyani saqlash uchun yana 8 daqiqa', minutesLeft: 8,
+      caption: 'Seriyani saqlash uchun yana 8 daqiqa', tone: 'default', minutesLeft: 8,
     })
   })
 
@@ -29,12 +29,14 @@ describe('getPrimaryAction — focus goal not met', () => {
   it('first day: no streak, nothing done', () => {
     const a = getPrimaryAction({ ...base, todayMinutes: 0, streakDays: 0, hour: 21 })
     expect(a.caption).toBe('Birinchi maqsadingiz — 20 daqiqa')
+    expect(a.tone).toBe('default')
     expect(a.minutesLeft).toBe(20)
   })
 
   it('after 20:00 warns, with freezes', () => {
     const a = getPrimaryAction({ ...base, hour: 20, freezeCount: 2 })
     expect(a.caption).toBe('Seriya xavf ostida: yana 8 daqiqa. Muzlatish: 2 ta')
+    expect(a.tone).toBe('warning')
   })
 
   it('at_risk warns before 20:00, without freezes', () => {
@@ -52,7 +54,7 @@ describe('getPrimaryAction — goal met', () => {
 
   it('plays the quiz with today’s theme', () => {
     expect(getPrimaryAction(met)).toEqual({
-      target: 'quiz', label: '5 Savolni oʻynash', caption: 'Bugungi mavzu: Pul va iqtisod',
+      target: 'quiz', label: '5 Savolni oʻynash', caption: 'Bugungi mavzu: Pul va iqtisod', tone: 'default',
     })
   })
 
@@ -64,7 +66,7 @@ describe('getPrimaryAction — goal met', () => {
 
   it('reviews due cards once the quiz is submitted', () => {
     expect(getPrimaryAction({ ...met, quiz: { state: 'submitted', theme: 'x' } })).toEqual({
-      target: 'review', label: 'Kartalarni takrorlash · 6 ta', caption: 'Taxminan 1 daqiqa',
+      target: 'review', label: 'Kartalarni takrorlash · 6 ta', caption: 'Taxminan 1 daqiqa', tone: 'default',
     })
   })
 
@@ -76,13 +78,13 @@ describe('getPrimaryAction — goal met', () => {
 
   it('continues the course when nothing else is left', () => {
     expect(getPrimaryAction({ ...met, quiz: null, dueCards: 0 })).toEqual({
-      target: 'course', label: 'Kursni davom ettirish', caption: 'Ingliz tili',
+      target: 'course', label: 'Kursni davom ettirish', caption: 'Ingliz tili', tone: 'default',
     })
   })
 
   it('shows only the caption when everything is done', () => {
     expect(getPrimaryAction({ ...met, quiz: { state: 'submitted', theme: null }, dueCards: 0, course: null })).toEqual({
-      target: 'none', label: null, caption: 'Bugungi reja bajarildi',
+      target: 'none', label: null, caption: 'Bugungi reja bajarildi', tone: 'success',
     })
   })
 })

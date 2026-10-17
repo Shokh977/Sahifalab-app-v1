@@ -64,3 +64,6 @@ export const textAreaMinHeight = 112
 
 /** Leaderboard rank column: fits "#999" in one line with tabular figures. */
 export const rankColumnWidth = 44
+
+/** Bugun week strip day circle. */
+export const weekDotSize = 28

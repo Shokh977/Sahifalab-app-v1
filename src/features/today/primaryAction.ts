@@ -25,6 +25,8 @@ export interface PrimaryAction {
   /** null: no button, the caption stands alone. */
   label: string | null
   caption: string
+  /** Caption colour: warning when the streak is at risk, success when all done. */
+  tone: 'default' | 'warning' | 'success'
   /** Focus: minutes still needed for the goal (the timer preset). */
   minutesLeft?: number
 }
@@ -51,6 +53,7 @@ export function getPrimaryAction(s: TodayState): PrimaryAction {
       target: 'focus',
       label: today === 0 ? 'Fokusni boshlash' : 'Fokusni davom ettirish',
       caption,
+      tone: atRisk ? 'warning' : 'default',
       minutesLeft: left,
     }
   }
@@ -60,6 +63,7 @@ export function getPrimaryAction(s: TodayState): PrimaryAction {
       target: 'quiz',
       label: '5 Savolni oʻynash',
       caption: s.quiz.theme ? `Bugungi mavzu: ${uzText(s.quiz.theme)}` : 'Bugungi 5 savol',
+      tone: 'default',
     }
   }
 
@@ -68,12 +72,13 @@ export function getPrimaryAction(s: TodayState): PrimaryAction {
       target: 'review',
       label: `Kartalarni takrorlash · ${s.dueCards} ta`,
       caption: `Taxminan ${reviewMinutes(s.dueCards)} daqiqa`,
+      tone: 'default',
     }
   }
 
   if (s.course) {
-    return { target: 'course', label: 'Kursni davom ettirish', caption: uzText(s.course.title) }
+    return { target: 'course', label: 'Kursni davom ettirish', caption: uzText(s.course.title), tone: 'default' }
   }
 
-  return { target: 'none', label: null, caption: 'Bugungi reja bajarildi' }
+  return { target: 'none', label: null, caption: 'Bugungi reja bajarildi', tone: 'success' }
 }

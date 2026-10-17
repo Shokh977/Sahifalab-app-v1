@@ -31,6 +31,8 @@ export function isMonday(d: Date): boolean {
   return d.getDay() === 1
 }
 
+export const MINUTE_MS = 60_000
+
 /** Local calendar date as yyyy-mm-dd. */
 export function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
