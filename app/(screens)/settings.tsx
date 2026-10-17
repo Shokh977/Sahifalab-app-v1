@@ -730,6 +730,20 @@ export default function SettingsScreen() {
           </>
         )}
 
+        {/* Dev builds only: redesign component gallery */}
+        {__DEV__ && (
+          <>
+            <SectionHeader title="DEV" />
+            <SettingGroup>
+              <SettingRow
+                label="Komponentlar galereyasi"
+                onPress={() => router.push('/(screens)/dev-gallery' as any)}
+                isLast
+              />
+            </SettingGroup>
+          </>
+        )}
+
         {/* BILDIRISHNOMALAR */}
         <SectionHeader title="BILDIRISHNOMALAR" />
         <SettingGroup>
