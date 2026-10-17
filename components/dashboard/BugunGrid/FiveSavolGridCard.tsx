@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router'
 import { Sparkles } from 'lucide-react-native'
 import { useTheme } from '../../../hooks/useTheme'
 import { typography, radius } from '../../../lib/constants'
-import { dailyQuiz, type DailyQuizToday } from '../../../lib/api'
+import { dailyQuiz, type DailyQuizStatus } from '../../../lib/api'
 import { GridCard } from './GridCard'
 
 const AMBER = '#F0A32B'
@@ -13,12 +13,13 @@ const GREEN = '#37B457'
 export function FiveSavolGridCard({ staggerIndex }: { staggerIndex: number }) {
   const { c } = useTheme()
   const router = useRouter()
-  const [quiz, setQuiz] = useState<DailyQuizToday | null>(null)
+  const [quiz, setQuiz] = useState<DailyQuizStatus | null>(null)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    dailyQuiz.today().then(res => { if (!cancelled) setQuiz(res.quiz) })
+    // status(), not today(): showing the card must not start the round.
+    dailyQuiz.status().then(res => { if (!cancelled) setQuiz(res.quiz) })
       .catch(() => {}).finally(() => { if (!cancelled) setLoaded(true) })
     return () => { cancelled = true }
   }, [])
