@@ -120,6 +120,7 @@ function Column() {
             <IconButton icon={Bell} accessibilityLabel="Bildirishnomalar" onPress={noop} />
             <IconButton icon={Bell} accessibilityLabel="Bildirishnomalar" dot onPress={noop} />
             <IconButton icon={Search} accessibilityLabel="Qidirish" disabled />
+            <IconButton icon={Star} accessibilityLabel="Faol" active onPress={noop} />
             <CoinPill amount={340} onPress={noop} />
             <CoinPill amount={12_480} />
           </View>

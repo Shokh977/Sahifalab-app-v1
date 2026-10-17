@@ -12,7 +12,7 @@ import { ChevronDown, Pause, Play, Square, Sun, SunDim } from 'lucide-react-nati
 import { useTheme } from '../../design/ThemeProvider'
 import { layout, space } from '../../design/spacing'
 import { type as typeScale } from '../../design/typography'
-import { Button, IconButton } from '../../components/ui'
+import { Button, IconButton, ToastHost, showToast } from '../../components/ui'
 import { FocusRing } from './FocusRing'
 import { TimerText } from './TimerText'
 import type { StrokeTone } from './timerMath'
@@ -64,6 +64,11 @@ export function RunningMode({
     const next = !awake
     setAwake(next)
     AsyncStorage.setItem(KEEP_AWAKE_KEY, next ? '1' : '0').catch(() => {})
+    // The effect itself is invisible until the phone would have dimmed,
+    // so say what changed.
+    showToast('info', next
+      ? 'Ekran taymer davomida oʻchmaydi'
+      : 'Ekran odatdagidek oʻchadi')
   }
 
   const label = phase === 'break' ? 'Tanaffus' : status === 'paused' ? 'Toʻxtatildi' : 'Fokus vaqti'
@@ -75,7 +80,8 @@ export function RunningMode({
           <IconButton icon={ChevronDown} accessibilityLabel="Kichraytirish" onPress={onMinimize} />
           <IconButton
             icon={awake ? Sun : SunDim}
-            accessibilityLabel={awake ? 'Ekran yoniq qoladi' : 'Ekranni yoniq saqlash'}
+            active={awake}
+            accessibilityLabel="Ekranni yoniq saqlash"
             onPress={toggleAwake}
           />
         </View>
@@ -106,6 +112,8 @@ export function RunningMode({
           )}
           <Button label="Tugatish" icon={Square} size="lg" variant="ghost" onPress={onStop} style={styles.flex} />
         </View>
+        {/* Inside the Modal so its toasts show above the full-screen view. */}
+        <ToastHost />
       </View>
     </Modal>
   )

@@ -1,6 +1,7 @@
 /**
  * IconButton — a Lucide icon in a 48×48 target, with an optional unread dot.
- * Default, pressed, disabled.
+ * Default, pressed, disabled, and active (a toggle that is on: accent icon
+ * on a soft accent circle).
  */
 import React from 'react'
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
@@ -16,13 +17,15 @@ export interface IconButtonProps {
   accessibilityLabel: string
   /** Shows a small accent dot (unread, new). */
   dot?: boolean
+  /** Toggle state; also announced to screen readers. */
+  active?: boolean
   disabled?: boolean
   style?: StyleProp<ViewStyle>
 }
 
 const DOT = space.xs
 
-export function IconButton({ icon: Icon, onPress, accessibilityLabel, dot, disabled, style }: IconButtonProps) {
+export function IconButton({ icon: Icon, onPress, accessibilityLabel, dot, active, disabled, style }: IconButtonProps) {
   const { colors } = useTheme()
   return (
     <Pressable
@@ -30,10 +33,12 @@ export function IconButton({ icon: Icon, onPress, accessibilityLabel, dot, disab
       disabled={disabled}
       baseOpacity={disabled ? stateOpacity.disabled : 1}
       accessibilityLabel={dot ? `${accessibilityLabel}, yangi` : accessibilityLabel}
+      accessibilityState={active === undefined ? undefined : { checked: active, disabled: !!disabled }}
+      accessibilityRole={active === undefined ? 'button' : 'switch'}
       style={[styles.target, style]}
     >
-      <View>
-        <Icon size={iconSize.md} color={colors.text} strokeWidth={iconStroke} />
+      <View style={[styles.circle, active && { backgroundColor: colors.accentSoft }]}>
+        <Icon size={iconSize.md} color={active ? colors.accentText : colors.text} strokeWidth={iconStroke} />
         {dot && <View style={[styles.dot, { backgroundColor: colors.accent, borderColor: colors.bg }]} />}
       </View>
     </Pressable>
@@ -42,10 +47,17 @@ export function IconButton({ icon: Icon, onPress, accessibilityLabel, dot, disab
 
 const styles = StyleSheet.create({
   target: { width: layout.minTouch, height: layout.minTouch, alignItems: 'center', justifyContent: 'center' },
+  circle: {
+    width: layout.minTouch - space.xs,
+    height: layout.minTouch - space.xs,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dot: {
     position: 'absolute',
-    top: -2,
-    right: -2,
+    top: space.xxs,
+    right: space.xxs,
     width: DOT + 2,
     height: DOT + 2,
     borderRadius: radius.full,
