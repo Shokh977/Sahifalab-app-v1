@@ -23,6 +23,8 @@ import { usePublicDecksStore } from '../../../stores/publicDecksStore'
 import { typography, spacing, radius } from '../../../lib/constants'
 import { ReportSheet } from '../../../components/flashcards/ReportSheet'
 import { Avatar } from '../../../components/ui/Avatar'
+import { DailyNewSheet } from '../../../src/features/cards/DailyNewSheet'
+import { needsDailyPrompt } from '../../../src/features/cards/cards'
 
 export default function PublicDeckPreviewScreen() {
   const { id }  = useLocalSearchParams<{ id: string }>()
@@ -36,6 +38,7 @@ export default function PublicDeckPreviewScreen() {
 
   const [loading,    setLoading]    = useState(true)
   const [cloning,    setCloning]    = useState(false)
+  const [askDaily, setAskDaily] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
 
   const refresh = useCallback(async () => {
@@ -61,9 +64,20 @@ export default function PublicDeckPreviewScreen() {
       router.push(`/(tabs)/flashcards` as any)
       return
     }
+    // Big decks: ask how many new cards per day first (Phase 6).
+    if (needsDailyPrompt(deck.card_count)) {
+      setAskDaily(true)
+      return
+    }
+    doClone()
+  }
+
+  async function doClone(newPerDay?: number) {
+    if (!deck) return
     setCloning(true)
     try {
-      const cloned = await usePublicDecksStore.getState().cloneDeck(deckId)
+      const cloned = await usePublicDecksStore.getState().cloneDeck(deckId, newPerDay)
+      setAskDaily(false)
       addDeck(cloned)
       await fetchDeckPreview(deckId)
       router.replace(`/(screens)/flashcard-deck/${cloned.id}` as any)
@@ -289,6 +303,14 @@ export default function PublicDeckPreviewScreen() {
       </View>
 
       <ReportSheet visible={reportOpen} deckId={deckId} onClose={() => setReportOpen(false)} />
+      <DailyNewSheet
+        visible={askDaily}
+        cardCount={deck.card_count}
+        confirmLabel="Nusxa olish"
+        loading={cloning}
+        onConfirm={n => doClone(n)}
+        onClose={() => setAskDaily(false)}
+      />
     </View>
   )
 }
