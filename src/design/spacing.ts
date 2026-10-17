@@ -61,3 +61,6 @@ export const progressThickness = { thin: 4, thick: 8 } as const
 
 /** TextArea minimum height. */
 export const textAreaMinHeight = 112
+
+/** Leaderboard rank column: fits "#999" in one line with tabular figures. */
+export const rankColumnWidth = 44

@@ -8,6 +8,8 @@ import { dailyQuiz, type DailyQuizResults } from '../../lib/api'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { ShareCard } from '../../components/daily-quiz/ShareCard'
 import { typography, spacing, radius } from '../../lib/constants'
+import { rankColumnWidth } from '../../src/design/spacing'
+import { tabular } from '../../src/design/typography'
 
 export default function DailyQuizResultsScreen() {
   const { c }  = useTheme()
@@ -167,7 +169,7 @@ export default function DailyQuizResultsScreen() {
           <View style={[s.leaderboard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
             {data.leaderboard.map(row => (
               <View key={row.user_id} style={s.lbRow}>
-                <Text style={[s.lbRank, { color: c.textMuted }]}>#{row.rank}</Text>
+                <Text numberOfLines={1} style={[s.lbRank, { color: c.textMuted }]}>#{row.rank}</Text>
                 <Text style={[s.lbName, { color: c.textPrimary }]} numberOfLines={1}>
                   {row.first_name || row.username || 'Foydalanuvchi'}
                 </Text>
@@ -236,7 +238,7 @@ const s = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#00000010',
   },
-  lbRank: { fontSize: 12, width: 32 },
+  lbRank: { fontSize: 12, width: rankColumnWidth, ...tabular },
   lbName: { fontSize: 13, flex: 1 },
   lbScore: { fontSize: 13 },
 })

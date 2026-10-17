@@ -9,6 +9,8 @@ import { ChevronLeft, Users, Trophy, Timer, Award } from 'lucide-react-native'
 import { Image } from 'expo-image'
 import { useTheme } from '../../../hooks/useTheme'
 import { typography, spacing, radius } from '../../../lib/constants'
+import { rankColumnWidth } from '../../../src/design/spacing'
+import { tabular } from '../../../src/design/typography'
 import { challenges as challengesApi, type ChallengeDetail, type TeamLeaderboard } from '../../../lib/api'
 import { useAuthStore } from '../../../stores/authStore'
 import {
@@ -283,7 +285,7 @@ export default function ChallengeDetailScreen() {
               ) : (
                 data.leaderboard.map(entry => (
                   <View key={entry.user_id} style={[styles.lbRow, { borderBottomColor: c.border }]}>
-                    <Text style={[styles.lbRank, { color: entry.rank <= 3 ? data.color : c.textMuted, fontFamily: typography.fontFamily.bold }]}>
+                    <Text numberOfLines={1} style={[styles.lbRank, { color: entry.rank <= 3 ? data.color : c.textMuted, fontFamily: typography.fontFamily.bold }]}>
                       #{entry.rank}
                     </Text>
                     {entry.photo_url ? (
@@ -306,7 +308,7 @@ export default function ChallengeDetailScreen() {
               {/* Caller's own row pinned if outside the top slice returned */}
               {data.joined && !callerInLeaderboard && data.rank != null && (
                 <View style={[styles.lbRow, styles.lbCallerRow, { borderTopColor: c.border, backgroundColor: data.color + '10' }]}>
-                  <Text style={[styles.lbRank, { color: data.color, fontFamily: typography.fontFamily.bold }]}>#{data.rank}</Text>
+                  <Text numberOfLines={1} style={[styles.lbRank, { color: data.color, fontFamily: typography.fontFamily.bold }]}>#{data.rank}</Text>
                   <Text style={[styles.lbName, { flex: 1, color: data.color, fontFamily: typography.fontFamily.semibold }]}>Siz</Text>
                   <Text style={[styles.lbHours, { color: data.color, fontFamily: typography.fontFamily.semibold }]}>
                     {fmtMetricValue(data.progress_value, data.metric)}
@@ -397,7 +399,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   lbCallerRow: { borderTopWidth: 1, borderBottomWidth: 0, marginTop: spacing.xs, borderRadius: radius.md, paddingHorizontal: spacing.sm },
-  lbRank: { width: 32, fontSize: 13 },
+  // Fixed width + tabular figures: "#10" and "#100" stay on one line.
+  lbRank: { width: rankColumnWidth, fontSize: 13, ...tabular },
   lbAvatar: { width: 28, height: 28, borderRadius: 14 },
   lbAvatarFallback: { alignItems: 'center', justifyContent: 'center' },
   lbAvatarInitial: { color: '#fff', fontSize: 12, fontWeight: '700' },
