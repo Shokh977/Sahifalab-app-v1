@@ -1932,6 +1932,9 @@ export interface DailyQuizStatus {
   seconds_remaining: number
   /** Locked answers in an in-progress round (absent on older backends). */
   answered_count?:   number
+  /** Others who finished today, and how many of them you follow (newer backends). */
+  players_count?:    number | null
+  friends_played?:   number | null
 }
 
 export interface DailyQuizSubmitResult {

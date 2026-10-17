@@ -273,6 +273,8 @@ export default function RootLayout() {
         if (data.screen === 'course'      && data.course_id) route = `/(screens)/course/${data.course_id}`
         if (data.screen === 'test'        && data.test_id)   route = `/(screens)/test/${data.test_id}`
         if (data.screen === 'certificate' && data.code)      route = `/(screens)/certificate/${data.code}`
+        // Bellashuv "Eslatma qoʻyish" (local) — opens the competition.
+        if (data.screen === 'challenge'   && data.slug)      route = `/(screens)/challenge/${data.slug}`
         // Static routes
         if (!route) route = routeMap[data.screen] ?? null
         if (route) router.push(route as any)

@@ -85,3 +85,18 @@ export function playersLine(players: number | null | undefined, friends: number 
   const base = `${players} kishi oʻynadi`
   return friends ? `${base} · ${friends} ta doʻstingiz ham` : base
 }
+
+/** One-line result for a finished competition (moved from the old screen). */
+export function endedResultText(ch: Challenge, fmtValue: (v: number) => string, unit: string): string {
+  if (ch.challenge_type === 'team') return ch.is_winner ? 'Gʻolib guruh! 🏆' : 'Yakunlandi'
+  if (ch.challenge_type === 'sprint') {
+    if (ch.is_winner) return `Gʻolib · #${ch.final_rank}-oʻrin`
+    return ch.final_rank != null ? `#${ch.final_rank}-oʻrin` : 'Yakunlandi'
+  }
+  if (ch.challenge_type === 'consistency') {
+    return ch.completed_at
+      ? `Seriya yakunlandi · ${ch.qualifying_days} kun`
+      : `${ch.qualifying_days}/${ch.required_days ?? 0} kun`
+  }
+  return `${fmtValue(ch.progress_value)}/${fmtValue(ch.target_value ?? 0)} ${unit}`
+}
