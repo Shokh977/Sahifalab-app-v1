@@ -1,0 +1,24 @@
+/**
+ * Motion tokens (redesign spec section 5). Reanimated 4.5 supports
+ * `withSpring({ duration, dampingRatio })` natively, so the springs are used
+ * exactly as specified (no damping/stiffness conversion).
+ */
+import { Easing } from 'react-native-reanimated'
+
+export const springs = {
+  nav: { duration: 500, dampingRatio: 1 },    // push/pop, sheets, tab indicator: no bounce
+  ui:  { duration: 350, dampingRatio: 0.85 }, // toggles, chips, press release, cards settling
+  pop: { duration: 450, dampingRatio: 0.6 },  // celebrations only
+}
+
+export const easing = {
+  standard: Easing.bezier(0.32, 0.72, 0, 1),  // iOS-like curve for all timing animations
+  exit: Easing.bezier(0.3, 0, 1, 1),
+}
+
+export const durations = { fast: 150, fade: 220, slow: 360, celebrate: 700 }
+export const press = { scale: 0.97, opacity: 0.9 }
+export const stagger = { step: 30, maxItems: 5 }
+
+/** Skeleton shimmer cycle (the only idle loop besides the running timer). */
+export const shimmer = { duration: 1200 }
