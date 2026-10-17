@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import type { Badge } from '../lib/api'
 import { allBadges, earnedFirst, filterBy, summary, topEarned } from '../src/features/profile/badges'
+import { focusHours, groupThousands } from '../src/features/profile/profileFormat'
 
 const b = (key: string, earned: boolean, earned_at: string | null = null): Badge => ({
   key, name: key, description: `${key} desc`, group: 'achievements', tier: null, earned, earned_at,
@@ -42,5 +43,14 @@ describe('ordering and counts', () => {
     expect(filterBy(all, 'bosqich').map(x => x.key)).toEqual(['stages:stage_3', 'stages:stage_4'])
     expect(filterBy(all, 'all')).toHaveLength(10)
     expect(topEarned(all, 3).map(x => x.key)).toEqual(['achievements:first_focus', 'challenges:ch_oct', 'stages:stage_3'])
+  })
+})
+
+describe('profile formatting', () => {
+  it('groups thousands with a space and floors hours', () => {
+    expect(groupThousands(20687)).toBe('20 687')
+    expect(groupThousands(999)).toBe('999')
+    expect(groupThousands(1234567)).toBe('1 234 567')
+    expect(focusHours(179)).toBe(2)
   })
 })
