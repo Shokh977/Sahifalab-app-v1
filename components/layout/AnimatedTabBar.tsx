@@ -8,8 +8,8 @@
  * (tabs)/_layout.tsx) so the avatar and the bell can push to them, but
  * they are not tab buttons; the pill index is clamped for them.
  */
-import React, { useEffect, useRef } from 'react'
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import React, { useEffect, useRef, useState } from 'react'
+import { Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated'
 import { GraduationCap, Home, Layers, Timer, Trophy, type LucideIcon } from 'lucide-react-native'
@@ -33,10 +33,12 @@ const PILL_TOP = space.xs - 2
 export function AnimatedTabBar({ state, navigation }: BottomTabBarProps) {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
-  const { width } = useWindowDimensions()
+  const { width: windowWidth } = useWindowDimensions()
   const reduceMotion = useReducedMotion()
+  // The bar's own width (not the window's): correct in split screen too.
+  const [barWidth, setBarWidth] = useState(windowWidth)
 
-  const tabWidth = width / TAB_COUNT
+  const tabWidth = barWidth / TAB_COUNT
   // The active route may be a hidden one (profile, notifications): keep the
   // pill on the last tab it was on rather than sliding past the bar.
   const visibleIndex = TAB_CONFIG.findIndex(t => t.name === state.routes[state.index]?.name)
@@ -59,6 +61,7 @@ export function AnimatedTabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <View
       accessibilityRole="tablist"
+      onLayout={(e: LayoutChangeEvent) => setBarWidth(e.nativeEvent.layout.width)}
       style={[
         styles.bar,
         {

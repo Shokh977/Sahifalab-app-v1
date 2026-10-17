@@ -75,21 +75,25 @@ export function CompetitionCard({ main, now, onOpen }: { main: NonNullable<MainC
     }
   }
 
+  // Not a pressable card: it holds buttons of its own (no nested buttons).
   return (
-    <Card variant="pressable" onPress={onOpen} accessibilityLabel={`Keyingi bellashuv: ${c.title}`}>
+    <Card accessibilityLabel={`Keyingi bellashuv: ${c.title}`}>
       <View style={styles.gap}>
         <Text style={[typeScale.overline, { color: colors.textMuted }]}>Keyingi bellashuv</Text>
         <Text style={[typeScale.title2, { color: colors.text }]} numberOfLines={2}>{uzText(c.title)}</Text>
         <Countdown target={c.starts_at} />
         <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={2}>{uzText(challengeGoalText(c))}</Text>
-        <Button
-          label={reminded ? 'Eslatma qoʻyildi' : 'Eslatma qoʻyish'}
-          icon={reminded ? BellRing : Bell}
-          variant="secondary"
-          fullWidth
-          disabled={reminded}
-          onPress={remind}
-        />
+        <View style={styles.row}>
+          <Button
+            label={reminded ? 'Eslatma qoʻyildi' : 'Eslatma qoʻyish'}
+            icon={reminded ? BellRing : Bell}
+            variant="secondary"
+            disabled={reminded}
+            onPress={remind}
+            style={styles.grow}
+          />
+          <Button label="Batafsil" variant="ghost" onPress={onOpen} />
+        </View>
       </View>
     </Card>
   )
@@ -99,4 +103,5 @@ const styles = StyleSheet.create({
   gap: { gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   flex: { flex: 1 },
+  grow: { flex: 1, alignSelf: 'auto' },
 })
