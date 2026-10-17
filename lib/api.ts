@@ -6,6 +6,7 @@
  */
 import * as SecureStore from 'expo-secure-store'
 import { API_URL } from './constants'
+import { rememberCourses } from './coursePreview'
 import type {
   FlashcardDeck, Flashcard, FlashcardStats,
   StudySession, ReviewResult, CompleteSessionResult, PublishDeckError,
@@ -783,14 +784,15 @@ export const courses = {
     const qs = q.toString()
     return request<{ courses: Course[]; total: number; limit: number; offset: number }>(
       `/api/courses${qs ? `?${qs}` : ''}`, { auth: true },
-    )
+    ).then(res => { rememberCourses(res.courses ?? []); return res })
   },
 
   getCategories: () =>
     request<Category[]>('/api/courses/categories'),
 
   get: (id: number) =>
-    request<Course>(`/api/courses/${id}`, { auth: true }),
+    request<Course>(`/api/courses/${id}`, { auth: true })
+      .then(course => { rememberCourses([course]); return course }),
 
   getReviews: (courseId: number) =>
     request<CourseReview[]>(`/api/courses/${courseId}/reviews`),
@@ -1286,7 +1288,7 @@ export const enrollments = {
   mine: () =>
     request<Array<{ course_id: number; created_at: string; courses: Course | null }>>(
       '/api/enrollments/mine', { auth: true },
-    ),
+    ).then(rows => { if (Array.isArray(rows)) rememberCourses(rows.map(r => r.courses)); return rows }),
 
   requestCode: (courseId: number) =>
     request<EnrollmentCodeResponse>(
