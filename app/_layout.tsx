@@ -35,6 +35,11 @@ import { useAnnouncementStore } from '../stores/announcementStore'
 import { useRewardStore } from '../stores/rewardStore'
 import { RewardModal } from '../components/rewards/RewardModal'
 import { track, trackOnce } from '../lib/analytics'
+import { ThemeProvider } from '../src/design'
+
+// Native push on Android that matches iOS: the incoming screen slides in
+// from the right while the outgoing one shifts left (redesign motion spec).
+const PUSH_ANIMATION = Platform.OS === 'android' ? 'ios_from_right' : 'default'
 
 const APP_INTRO_KEY = 'sahifalab_app_intro_v1'
 
@@ -497,6 +502,7 @@ export default function RootLayout() {
 
   return (
     <AppErrorBoundary>
+      <ThemeProvider>
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.bgPrimary }}>
         <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
         {/* A Stack, not a Slot: a Slot renders only the focused group, so
@@ -507,7 +513,7 @@ export default function RootLayout() {
             screen reuses the one tab navigator instead of stacking a copy.
             Protected: on logout the app's screens are dropped from the
             history, so they don't stay mounted (with no user) under login. */}
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bgPrimary } }}>
+        <Stack screenOptions={{ headerShown: false, animation: PUSH_ANIMATION, contentStyle: { backgroundColor: c.bgPrimary } }}>
           <Stack.Protected guard={isAuthenticated}>
             <Stack.Screen name="(tabs)"    options={{ animation: 'fade' }} dangerouslySingular />
             <Stack.Screen name="(screens)" />
@@ -521,6 +527,7 @@ export default function RootLayout() {
         {hasAnnouncement && <AnnouncementModal />}
         <RewardModal visible={rewardModalVisible} rewards={pendingRewards} onClose={dismissRewards} />
       </GestureHandlerRootView>
+      </ThemeProvider>
     </AppErrorBoundary>
   )
 }
