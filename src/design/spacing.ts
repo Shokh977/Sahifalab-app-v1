@@ -70,3 +70,6 @@ export const weekDotSize = 28
 
 /** 5 Savol answer button minimum height (spec Phase 3). */
 export const answerMinHeight = 58
+
+/** Bottom tab bar: bar height (without the safe area) and the active pill. */
+export const tabBar = { height: 56, pillWidth: 56, pillHeight: 30 } as const

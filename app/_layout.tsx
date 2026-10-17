@@ -22,6 +22,7 @@ import { useThemeStore } from '../stores/themeStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { useNotifToastStore } from '../stores/notifToastStore'
 import { usePendingDeepLinkStore } from '../stores/pendingDeepLinkStore'
+import { parseDeepLink } from '../lib/deepLinks'
 import { useOfflineQueueStore } from '../stores/offlineQueueStore'
 import { useOfflineLessonQueueStore } from '../stores/offlineLessonQueueStore'
 import { useDownloadStore } from '../stores/downloadStore'
@@ -52,61 +53,6 @@ try { Notifications = require('expo-notifications') } catch {}
 let Constants: typeof import('expo-constants').default | null = null
 try { Constants = require('expo-constants').default } catch {}
 
-// ── Deep link URL → in-app route ─────────────────────────────────────────────
-
-function parseDeepLink(url: string): string | null {
-  const path  = url
-    .replace(/^sahifalab:\/\//, '')
-    .replace(/^https?:\/\/(www\.)?sahifalab\.uz\/?/, '')
-  const parts = path.split('/')
-  const seg0  = parts[0] ?? ''
-  const seg1  = parts[1]
-  const seg2  = parts[2]
-  const seg3  = parts[3]
-
-  // Dynamic profile must be checked before tabRoutes swallows bare "profile"
-  if (seg0 === 'profile' && seg1) return `/(screens)/profile/${seg1}`
-  if (seg0 === 'streak-detail')   return '/(screens)/streak-detail'
-
-  const tabRoutes: Record<string, string> = {
-    '':            '/(tabs)',
-    home:          '/(tabs)',
-    study:         '/(tabs)/study',
-    courses:       '/(tabs)/courses',
-    notifications: '/(tabs)/notifications',
-    profile:       '/(tabs)/profile',
-  }
-  if (seg0 in tabRoutes) return tabRoutes[seg0]
-
-  if (seg0 === 'leaderboard')                              return '/(screens)/leaderboard'
-  if (seg0 === 'course'          && seg1)                  return `/(screens)/course/${seg1}`
-  // sahifalab://courses/{id}/lesson/{lessonId}
-  if (seg0 === 'courses' && seg1 && seg2 === 'lesson' && seg3)
-                                                           return `/(screens)/lesson/${seg3}`
-  // sahifalab://courses/{id}
-  if (seg0 === 'courses' && seg1 && !seg2)                 return `/(screens)/course/${seg1}`
-  if (seg0 === 'tests'           && seg1)                  return `/(screens)/test/${seg1}`
-  if (seg0 === 'certificates'    && seg1)                  return `/(screens)/certificate/${seg1}`
-  if (seg0 === 'payment-complete'&& seg1)                  return `/(screens)/payment-complete/${seg1}`
-  // Flashcard deep links
-  // sahifalab://flashcards → Kartalar tab
-  if (seg0 === 'flashcards' && !seg1)                      return '/(tabs)/flashcards'
-  // sahifalab://flashcards/{id} → deck detail
-  if (seg0 === 'flashcards' && seg1 && seg2 !== 'study')   return `/(screens)/flashcard-deck/${seg1}`
-  // sahifalab://flashcards/{id}/study → study session
-  if (seg0 === 'flashcards' && seg1 && seg2 === 'study')   return `/(screens)/flashcard-study/${seg1}`
-  // sahifalab://deck/{id} or https://sahifalab.uz/deck/{id} → public deck preview
-  if (seg0 === 'deck' && seg1)                             return `/(screens)/public-deck/${seg1}`
-  // 088/089 Tanga+AI deep links
-  // sahifalab://ai/flashcards → AI flashcard-generation screen
-  if (seg0 === 'ai' && seg1 === 'flashcards')              return '/(screens)/ai-flashcard-generate'
-  // sahifalab://weekly-review → this week's AI-generated personal review
-  if (seg0 === 'weekly-review')                            return '/(screens)/weekly-review'
-  // 090_daily_quiz — sahifalab://daily-quiz → today's "5 Savol"
-  if (seg0 === 'daily-quiz')                               return '/(screens)/daily-quiz'
-
-  return null
-}
 
 // ── Global error boundary ─────────────────────────────────────────────────────
 class AppErrorBoundary extends Component<
@@ -327,6 +273,8 @@ export default function RootLayout() {
         if (data.screen === 'course'      && data.course_id) route = `/(screens)/course/${data.course_id}`
         if (data.screen === 'test'        && data.test_id)   route = `/(screens)/test/${data.test_id}`
         if (data.screen === 'certificate' && data.code)      route = `/(screens)/certificate/${data.code}`
+        // Bellashuv "Eslatma qoʻyish" (local) — opens the competition.
+        if (data.screen === 'challenge'   && data.slug)      route = `/(screens)/challenge/${data.slug}`
         // Static routes
         if (!route) route = routeMap[data.screen] ?? null
         if (route) router.push(route as any)
