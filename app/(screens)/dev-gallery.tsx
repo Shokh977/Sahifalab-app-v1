@@ -5,13 +5,13 @@
 import React, { useState } from 'react'
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { Redirect } from 'expo-router'
-import { BookOpen, Clock, Flame, Inbox, Mail, Search, Settings2, Star } from 'lucide-react-native'
+import { Bell, BookOpen, Clock, Flame, Inbox, Mail, Search, Settings2, Star } from 'lucide-react-native'
 import { ThemeProvider, useTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
 import { type as typeScale } from '../../src/design/typography'
 import type { Scheme } from '../../src/design/tokens'
 import {
-  Avatar, Badge, Button, Card, Chip, Countdown, EmptyState, Input, ListRow, ProgressBar, ProgressRing,
+  Avatar, Badge, Button, Card, Chip, CoinPill, Countdown, IconButton, EmptyState, Input, ListRow, ProgressBar, ProgressRing,
   ScreenHeader, SegmentedControl, Sheet, SkeletonBlock, SkeletonLine, SkeletonRow, StatTile, TextArea, Toast,
   ToastHost, showToast,
 } from '../../src/components/ui'
@@ -111,6 +111,16 @@ function Column() {
             <Badge kind="status" status="success" label="Faol" />
             <Badge kind="status" status="danger" label="Muddati oʻtgan" />
             <Badge kind="status" status="neutral" label="Qoralama" />
+          </View>
+        </Section>
+
+        <Section title="IconButton · CoinPill">
+          <View style={styles.wrapCenter}>
+            <IconButton icon={Bell} accessibilityLabel="Bildirishnomalar" onPress={noop} />
+            <IconButton icon={Bell} accessibilityLabel="Bildirishnomalar" dot onPress={noop} />
+            <IconButton icon={Search} accessibilityLabel="Qidirish" disabled />
+            <CoinPill amount={340} onPress={noop} />
+            <CoinPill amount={12_480} />
           </View>
         </Section>
 

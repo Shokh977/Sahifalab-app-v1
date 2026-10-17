@@ -1,283 +1,60 @@
+/**
+ * Bugun (Home) — redesign Phase 2. One obvious action (getPrimaryAction),
+ * today's plan, the weekly rank teaser and one extra slot.
+ *
+ * Loading: the persisted dashboard cache renders first and refreshes in the
+ * background; skeletons only when there is no cache at all.
+ */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  View, Text, ScrollView, RefreshControl, StyleSheet,
-  Pressable, Linking,
-} from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Image } from 'expo-image'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { Bell } from 'phosphor-react-native'
-import { ArrowRight, X } from 'lucide-react-native'
+import { WifiOff } from 'lucide-react-native'
 
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
-import { useNotificationStore } from '../../stores/notificationStore'
-import { useTheme } from '../../hooks/useTheme'
-import { typography, spacing, radius, getLevelTier } from '../../lib/constants'
-import { hero, streaks as streaksApi, type HeroContent } from '../../lib/api'
+import { useTimerStore } from '../../stores/timerStore'
+import { useOnline } from '../../hooks/useOnline'
+import { streaks as streaksApi } from '../../lib/api'
+import { track } from '../../lib/analytics'
 import { StreakLostModal } from '../../components/streak/StreakLostModal'
 import { StreakAtRiskModal } from '../../components/streak/StreakAtRiskModal'
-import { SkeletonBlock } from '../../components/dashboard/SkeletonBlock'
-import { UnifiedBanner } from '../../components/dashboard/UnifiedBanner'
-import { ContextualActionRow } from '../../components/dashboard/ContextualActionRow'
-import { CourseHCard } from '../../components/dashboard/CourseHCard'
-import { CourseVCard } from '../../components/dashboard/CourseVCard'
-import { LeaderboardCard } from '../../components/dashboard/LeaderboardCard'
-import { BugunSection } from '../../components/dashboard/BugunGrid/BugunSection'
-import { TangaInfoSheet } from '../../components/dashboard/TangaInfoSheet'
+import { useTheme } from '../../src/design/ThemeProvider'
+import { layout, space } from '../../src/design/spacing'
+import { Card, EmptyState, SkeletonRow } from '../../src/components/ui'
+import { getPrimaryAction } from '../../src/features/today/primaryAction'
+import { localDateKey, pickCurrentCourse, rankGap, type PlanRowKey } from '../../src/features/today/today'
+import { useMinuteClock } from '../../src/features/today/useMinuteClock'
+import { TodayHeader } from '../../src/features/today/TodayHeader'
+import { TodayHero } from '../../src/features/today/TodayHero'
+import { TodayPlan } from '../../src/features/today/TodayPlan'
+import { RankTeaser } from '../../src/features/today/RankTeaser'
+import { ExtraSlot } from '../../src/features/today/ExtraSlot'
+import { AnnouncementCard } from '../../src/features/today/AnnouncementCard'
 
-// ── Top bar ──────────────────────────────────────────────────────────────────
-
-// 1_000 -> "1K", 1_500 -> "1.5K", 1_000_000 -> "1M" — drops the decimal
-// entirely on round numbers so it doesn't read "1.0K".
-function formatTanga(n: number): string {
-  const fmt = (value: number, suffix: string) => {
-    const rounded = Math.round(value * 10) / 10
-    return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}${suffix}`
-  }
-  if (n >= 1_000_000) return fmt(n / 1_000_000, 'M')
-  if (n >= 1_000)     return fmt(n / 1_000, 'K')
-  return String(n)
-}
-
-function TopBar() {
-  const { c }       = useTheme()
-  const router      = useRouter()
-  const insets      = useSafeAreaInsets()
-  const user        = useAuthStore(s => s.user)
-  const unreadCount = useNotificationStore(s => s.unreadCount)
-  const level       = user?.level ?? 1
-  const tier        = getLevelTier(level)
-  const [showTangaInfo, setShowTangaInfo] = useState(false)
-
-  return (
-    <View style={[styles.topBar, { paddingTop: insets.top + 8, backgroundColor: 'transparent' }]}>
-      {/* Left: brand name */}
-      <Text style={[styles.brandName, { color: c.textPrimary, fontFamily: typography.fontFamily.extrabold }]}>
-        SAHIFALAB
-      </Text>
-
-      {/* Right: coin balance + bell + avatar — coin lives here, not in the
-          scrollable hero card, so it never scrolls out of view. */}
-      <View style={styles.topRight}>
-        {user?.tanga_balance !== undefined && (
-          <Pressable
-            onPress={() => setShowTangaInfo(true)}
-            style={[styles.coinBadge, { backgroundColor: '#f59e0b1a', borderColor: '#f59e0b44' }]}
-          >
-            <Text style={styles.coinEmoji}>🪙</Text>
-            <Text style={[styles.coinNum, { color: '#f59e0b', fontFamily: typography.fontFamily.bold }]}>
-              {formatTanga(user.tanga_balance)}
-            </Text>
-          </Pressable>
-        )}
-
-        <Pressable onPress={() => router.push('/(tabs)/notifications' as any)} style={styles.bellBtn}>
-          <View style={{ position: 'relative' }}>
-            <Bell size={24} color={c.textPrimary} weight="regular" />
-            {unreadCount > 0 && (
-              <View style={[bellBadgeStyle.badge, { backgroundColor: '#FF453A' }]}>
-                {unreadCount < 10 && (
-                  <Text style={bellBadgeStyle.text}>{unreadCount}</Text>
-                )}
-              </View>
-            )}
-          </View>
-        </Pressable>
-
-        <Pressable onPress={() => router.push('/(tabs)/profile' as any)}>
-          {user?.photo_url ? (
-            <Image source={{ uri: user.photo_url }} style={[styles.avatar, { borderColor: tier.border }]} contentFit="cover" cachePolicy="memory-disk" />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: c.accentPrimary }]}>
-              <Text style={[styles.avatarInitials, { color: '#fff', fontFamily: typography.fontFamily.bold }]}>
-                {user?.first_name?.slice(0, 1).toUpperCase() ?? '?'}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-      </View>
-
-      <TangaInfoSheet
-        visible={showTangaInfo}
-        tangaBalance={user?.tanga_balance ?? 0}
-        onClose={() => setShowTangaInfo(false)}
-      />
-    </View>
-  )
-}
-
-// ── Hero card (streak + level + XP + daily goal) ─────────────────────────────
-
-function BannerSection() {
-  const user    = useAuthStore(s => s.user)
-  const loading = useDashboardStore(s => s.loading)
-  const data    = useDashboardStore(s => s.data)
-
-  if (loading && !data) {
-    return (
-      <View style={{ paddingHorizontal: spacing.screenMargin }}>
-        <SkeletonBlock height={190} borderRadius={20} />
-      </View>
-    )
-  }
-  if (!data) return null
-
-  // focusStats.streak_days may be 0 from stale cache while authStore has the real value.
-  // Prefer focusStats when > 0 (it's the live source), fall back to user.streak_days.
-  // Exception: streakState 'lost' means dashboardStore deliberately zeroed
-  // focusStats.streak_days (the backend itself never resets streak_days on
-  // loss — see dashboardStore.ts). That zero must win outright, or a lost
-  // streak silently falls back to user.streak_days, which stays stuck at
-  // its last pre-loss value forever (found live: a user's streak count
-  // stayed frozen at 19 for weeks after they stopped studying).
-  const mergedStats = {
-    ...data.focusStats,
-    streak_days: data.streakState === 'lost'
-      ? 0
-      : data.focusStats.streak_days > 0
-        ? data.focusStats.streak_days
-        : (user?.streak_days ?? 0),
-    daily_goal: data.focusStats.daily_goal > 0
-      ? data.focusStats.daily_goal
-      : (user?.daily_goal_minutes ?? 20),
-  }
-
-  return (
-    <UnifiedBanner
-      stats={mergedStats}
-      level={user?.level    ?? 1}
-      totalXP={user?.total_xp ?? 0}
-      streakState={data.streakState}
-    />
-  )
-}
-
-// ── Skeleton screens for each section ────────────────────────────────────────
-
-function SectionSkeleton({ rows = 1 }: { rows?: number }) {
-  return (
-    <View style={{ paddingHorizontal: spacing.screenMargin, gap: 8 }}>
-      {Array.from({ length: rows }).map((_, i) => (
-        <SkeletonBlock key={i} height={16} width={i === 0 ? '60%' : '100%'} />
-      ))}
-    </View>
-  )
-}
-
-// ── Hero announcement banner (admin-managed) ──────────────────────────────────
-
-function HeroBanner() {
-  const { c }  = useTheme()
-  const [content,   setContent]   = useState<HeroContent | null>(null)
-  const [dismissed, setDismissed] = useState(false)
-
-  useEffect(() => {
-    hero.get().then(async c => {
-      if (!c) return
-      const key = `sahifalab_hero_dismissed_${c.id}`
-      const wasDismissed = await AsyncStorage.getItem(key).catch(() => null)
-      if (!wasDismissed) setContent(c)
-    })
-  }, [])
-
-  if (!content || dismissed) return null
-
-  const handleDismiss = () => {
-    setDismissed(true)
-    AsyncStorage.setItem(`sahifalab_hero_dismissed_${content.id}`, '1').catch(() => {})
-  }
-
-  const handlePress = () => {
-    if (content.cta_link) Linking.openURL(content.cta_link).catch(() => {})
-  }
-
-  return (
-    <Pressable
-      onPress={handlePress}
-      style={({ pressed }) => [
-        heroBannerStyles.card,
-        { backgroundColor: c.bgSecondary, borderColor: c.border, opacity: pressed ? 0.88 : 1 },
-      ]}
-    >
-      {content.image_url && (
-        <Image source={{ uri: content.image_url }} style={heroBannerStyles.image} contentFit="cover" cachePolicy="memory-disk" />
-      )}
-      <View style={heroBannerStyles.body}>
-        <Text style={[heroBannerStyles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]} numberOfLines={2}>
-          {content.title}
-        </Text>
-        {content.subtitle && (
-          <Text style={[heroBannerStyles.sub, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]} numberOfLines={1}>
-            {content.subtitle}
-          </Text>
-        )}
-        {content.cta_text && (
-          <View style={heroBannerStyles.ctaRow}>
-            <Text style={[heroBannerStyles.cta, { color: c.accentPrimary, fontFamily: typography.fontFamily.medium }]}>
-              {content.cta_text}
-            </Text>
-            <ArrowRight size={12} color={c.accentPrimary} strokeWidth={2} />
-          </View>
-        )}
-      </View>
-      <Pressable onPress={handleDismiss} hitSlop={10} style={heroBannerStyles.dismiss}>
-        <X size={14} color={c.textDisabled} strokeWidth={2} />
-      </Pressable>
-    </Pressable>
-  )
-}
-
-const heroBannerStyles = StyleSheet.create({
-  card: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    borderRadius:   14,
-    borderWidth:    StyleSheet.hairlineWidth,
-    overflow:       'hidden',
-    gap:            12,
-    paddingVertical:   12,
-    paddingHorizontal: 14,
-  },
-  image: {
-    width:        44,
-    height:       44,
-    borderRadius: 10,
-    flexShrink:   0,
-  },
-  body:   { flex: 1, gap: 3 },
-  title:  { fontSize: 13, lineHeight: 18 },
-  sub:    { fontSize: 11 },
-  ctaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  cta:    { fontSize: 11 },
-  dismiss: {
-    padding:  4,
-    flexShrink: 0,
-  },
-})
-
-// ── Main dashboard ────────────────────────────────────────────────────────────
+/** Shortest timer the Fokus preset will set from Home. */
+const MIN_FOCUS_PRESET = 5
 
 export default function HomeTab() {
-  const { c }      = useTheme()
-  const router     = useRouter()
+  const { colors } = useTheme()
+  const router = useRouter()
+  const user = useAuthStore(s => s.user)
+  const isOnline = useOnline()
+  const now = useMinuteClock()
   const {
-    fetch, refresh, data, loading, refreshing,
+    fetch, refresh, refreshToday, data, loading, refreshing, error,
     streakLostSeen, markStreakLostSeen,
     atRiskModalShownCount, bumpAtRiskModalShown,
   } = useDashboardStore()
 
   // On focus, not just mount: the tabs stay mounted under the root Stack, so
-  // returning from a lesson or test must re-check. fetch() is TTL-gated.
-  useFocusEffect(useCallback(() => { fetch() }, []))
+  // returning from a lesson, quiz or review must re-check. fetch() is
+  // TTL-gated; refreshToday() re-reads only the quiz and decks (throttled).
+  useFocusEffect(useCallback(() => { fetch(); refreshToday() }, [fetch, refreshToday]))
 
-  const onRefresh = useCallback(() => { refresh() }, [])
-
-  // ── Streak-lost modal ────────────────────────────────────────────────────────
+  // ── Streak-lost modal ────────────────────────────────────────────────────
   const shownLostRef = useRef(false)
-  const [showLostModal,  setShowLostModal]  = useState(false)
-  const [prevStreakDays, setPrevStreakDays]  = useState(0)
+  const [showLostModal, setShowLostModal] = useState(false)
+  const [prevStreakDays, setPrevStreakDays] = useState(0)
 
   useEffect(() => {
     if (!data?.streakJustLost || streakLostSeen || shownLostRef.current) return
@@ -286,24 +63,22 @@ export default function HomeTab() {
     setPrevStreakDays(data.streakLostPrevDays ?? 0)
     const t = setTimeout(() => setShowLostModal(true), 800)
     return () => clearTimeout(t)
-  }, [data?.streakJustLost, streakLostSeen, markStreakLostSeen])
+  }, [data?.streakJustLost, data?.streakLostPrevDays, streakLostSeen, markStreakLostSeen])
 
-  // ── Streak-at-risk modal ─────────────────────────────────────────────────────
-  // Allowed to reappear once more per session while the window stays open —
-  // atRiskModalShownCount resets in dashboardStore the moment streak_state
-  // moves off 'at_risk', so a later separate episode gets a fresh allowance.
+  // ── Streak-at-risk modal ─────────────────────────────────────────────────
+  // May reappear once more per session while the window stays open; the
+  // count resets in dashboardStore when streak_state leaves 'at_risk'.
   const [showAtRiskModal, setShowAtRiskModal] = useState(false)
   useEffect(() => {
     if (!data?.streakAtRisk || atRiskModalShownCount >= 2) return
     bumpAtRiskModalShown()
     const t = setTimeout(() => setShowAtRiskModal(true), 800)
     return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.streakAtRisk])
 
   async function handleUseFreeze() {
-    try {
-      await streaksApi.useFreeze()
-    } catch {}
+    try { await streaksApi.useFreeze() } catch {}
     setShowLostModal(false)
     setShowAtRiskModal(false)
     refresh()
@@ -320,247 +95,175 @@ export default function HomeTab() {
     router.push('/(tabs)/study' as any)
   }
 
+  // ── No data yet: skeleton, or an error with retry ────────────────────────
+  if (!data) {
+    return (
+      <View style={[styles.root, { backgroundColor: colors.bg }]}>
+        <TodayHeader offline={!isOnline} now={now} />
+        {error && !loading ? (
+          <EmptyState
+            icon={WifiOff}
+            title="Maʼlumot yuklanmadi"
+            body={isOnline ? 'Birozdan soʻng qayta urinib koʻring.' : 'Internet aloqasini tekshiring.'}
+            action={{ label: 'Qayta urinish', onPress: () => { refresh() } }}
+          />
+        ) : (
+          <View style={styles.content}>
+            <Card variant="hero" loading />
+            <Card>
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+            </Card>
+          </View>
+        )}
+      </View>
+    )
+  }
+
+  // ── Derived state ────────────────────────────────────────────────────────
+  // focusStats.streak_days may be a stale 0 while authStore has the real
+  // value; a 'lost' streak is deliberately zeroed and must win outright.
+  const streak = data.streakState === 'lost'
+    ? 0
+    : data.focusStats.streak_days > 0 ? data.focusStats.streak_days : (user?.streak_days ?? 0)
+  const goalMinutes = data.focusStats.daily_goal > 0 ? data.focusStats.daily_goal : (user?.daily_goal_minutes ?? 20)
+  const todayMinutes = data.focusStats.today_minutes ?? 0
+  const quiz = data.quiz ?? null
+  const quizSecondsLeft = quiz
+    ? Math.max(0, quiz.seconds_remaining - Math.floor((now - (data.quizFetchedAt ?? now)) / 1000))
+    : 0
+  const current = pickCurrentCourse(data.enrolled)
+  const currentCourse = current?.courses ? { id: current.course_id, title: current.courses.title, progress: current.progress } : null
+  const topDeck = data.topDueDeck ?? null
+  const fresh = localDateKey(new Date(data.fetchedAt)) === localDateKey(new Date(now))
+
+  const action = getPrimaryAction({
+    todayMinutes,
+    goalMinutes,
+    streakDays: streak,
+    streakState: data.streakState,
+    freezeCount: data.focusStats.freeze_count ?? 0,
+    hour: new Date(now).getHours(),
+    quiz: quiz ? { state: quiz.state, theme: quiz.theme || null } : null,
+    dueCards: topDeck?.due ?? 0,
+    course: currentCourse,
+  })
+
+  // ── Navigation ───────────────────────────────────────────────────────────
+  const openQuiz = () => {
+    if (quiz) router.push({ pathname: '/(screens)/daily-quiz', params: { quizId: String(quiz.id) } } as any)
+  }
+  const openReview = () => {
+    if (topDeck) router.push(`/(screens)/flashcard-study/${topDeck.id}` as any)
+    else router.push('/(tabs)/flashcards' as any)
+  }
+  const openCourse = (id: number) => router.push(`/(screens)/course/${id}` as any)
+
+  function onPrimary() {
+    track('today_primary_action_tap', { action: action.target })
+    switch (action.target) {
+      case 'focus': {
+        // Preset the timer to what's left of the goal (only when idle).
+        useTimerStore.getState().selectMinutes(Math.max(MIN_FOCUS_PRESET, action.minutesLeft ?? goalMinutes))
+        router.push('/(tabs)/study' as any)
+        break
+      }
+      case 'quiz': openQuiz(); break
+      case 'review': openReview(); break
+      case 'course': if (currentCourse) openCourse(currentCourse.id); break
+      default: break
+    }
+  }
+
+  function onPlanRow(key: PlanRowKey) {
+    if (key === 'quiz') openQuiz()
+    else if (key === 'cards') openReview()
+    else if (currentCourse) openCourse(currentCourse.id)
+  }
+
   return (
-    <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
-      <TopBar />
+    <View style={[styles.root, { backgroundColor: colors.bg }]}>
+      <TodayHeader offline={!isOnline} now={now} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={c.accentPrimary}
-            colors={[c.accentPrimary]}
+            onRefresh={() => { refresh() }}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
           />
         }
-        contentContainerStyle={styles.scrollContent}
       >
-        {/* Unified streak + level banner */}
-        <BannerSection />
+        <TodayHero
+          streak={streak}
+          streakState={data.streakState}
+          todayMinutes={todayMinutes}
+          goalMinutes={goalMinutes}
+          weekCalendar={data.weekCalendar}
+          action={action}
+          onAction={onPrimary}
+          onTreePress={() => router.push('/(screens)/streak-detail' as any)}
+          fresh={fresh}
+        />
 
-        <View style={styles.gap} />
+        <TodayPlan
+          input={{
+            quiz: quiz ? { number: quiz.quiz_number, state: quiz.state, correct: quiz.correct_count, secondsLeft: quizSecondsLeft } : null,
+            dueCards: data.hasDecks === undefined ? null : data.hasDecks ? data.flashcardDueCount : null,
+            course: currentCourse,
+          }}
+          onOpen={onPlanRow}
+        />
 
-        {/* "Bugun" 2x2 action grid (design 1a) — replaces the old stacked
-            5-Savol row, orange reyting strip, and AI-feature rows. */}
-        <BugunSection />
+        <RankTeaser
+          gap={rankGap(data.leaderboard, data.myLeaderRank)}
+          onPress={() => router.push('/(tabs)/musobaqalar' as any)}
+        />
 
-        <View style={styles.gap} />
+        <ExtraSlot
+          now={now}
+          hasEnrolment={data.enrolled.length > 0}
+          recommended={data.recommended[0] ?? null}
+          onWeeklyReview={() => router.push('/(screens)/weekly-review' as any)}
+          onCourse={openCourse}
+        />
 
-        {/* Contextual action chips — secondary pill row, now below the grid */}
-        {data && <ContextualActionRow data={data} />}
-
-        <View style={styles.gap} />
-
-        {/* Hero announcement (admin-managed, dismissible) */}
-        <View style={{ paddingHorizontal: spacing.screenMargin }}>
-          <HeroBanner />
-        </View>
-
-        <View style={styles.gap} />
-
-        {/* My Courses */}
-        {(() => {
-          const enrolled = data?.enrolled ?? []
-          if (enrolled.length === 0) return null
-          return (
-            <>
-              <SectionHeader
-                title="Mening kurslarim"
-                actionLabel="Barchasi"
-                onAction={() => router.push('/(tabs)/courses' as any)}
-              />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.hScroll}
-                snapToInterval={212}
-                decelerationRate="fast"
-              >
-                {enrolled.map(e => e.courses && (
-                  <CourseHCard key={e.course_id} course={e.courses} progress={e.progress} />
-                ))}
-              </ScrollView>
-            </>
-          )
-        })()}
-
-        {data?.enrolled.length ? <View style={styles.gap} /> : null}
-
-        {/* Recommended */}
-        {(() => {
-          const rec = data?.recommended ?? []
-          if (loading && rec.length === 0) {
-            return (
-              <>
-                <SectionHeader title="Tavsiya etilgan" />
-                <SectionSkeleton rows={3} />
-              </>
-            )
-          }
-          if (rec.length === 0) return null
-          return (
-            <>
-              <SectionHeader
-                title="Tavsiya etilgan"
-                actionLabel="Ko'proq"
-                onAction={() => router.push('/(tabs)/courses' as any)}
-              />
-              <View style={[styles.vList, { paddingHorizontal: spacing.screenMargin }]}>
-                {rec.slice(0, 3).map(course => <CourseVCard key={course.id} course={course} />)}
-              </View>
-            </>
-          )
-        })()}
-
-        <View style={styles.gap} />
-
-        {/* Leaderboard */}
-        {(() => {
-          if (loading && !data) {
-            return (
-              <View style={{ paddingHorizontal: spacing.screenMargin }}>
-                <SkeletonBlock height={220} borderRadius={radius.cardLg} />
-              </View>
-            )
-          }
-          if (!data) return null
-          return (
-            <View style={{ paddingHorizontal: spacing.screenMargin }}>
-              <LeaderboardCard entries={data.leaderboard} myRank={data.myLeaderRank} />
-            </View>
-          )
-        })()}
-
-        <View style={{ height: spacing['2xl'] }} />
+        <AnnouncementCard />
       </ScrollView>
 
       <StreakLostModal
         visible={showLostModal}
         prevStreak={prevStreakDays}
-        freezeCount={data?.focusStats.freeze_count ?? 0}
+        freezeCount={data.focusStats.freeze_count ?? 0}
         onClose={() => setShowLostModal(false)}
-        onUseFreeze={data?.streakLostCanFreeze ? handleUseFreeze : undefined}
-        onBuyFreeze={data?.streakLostCanBuyFreeze ? handleBuyFreeze : undefined}
+        onUseFreeze={data.streakLostCanFreeze ? handleUseFreeze : undefined}
+        onBuyFreeze={data.streakLostCanBuyFreeze ? handleBuyFreeze : undefined}
       />
 
       <StreakAtRiskModal
         visible={showAtRiskModal}
-        streakDays={data?.focusStats.streak_days ?? 0}
-        freezeCount={data?.focusStats.freeze_count ?? 0}
-        windowClosesAt={data?.windowClosesAt ?? null}
+        streakDays={data.focusStats.streak_days ?? 0}
+        freezeCount={data.focusStats.freeze_count ?? 0}
+        windowClosesAt={data.windowClosesAt ?? null}
         onClose={() => setShowAtRiskModal(false)}
-        onUseFreeze={data?.streakCanFreeze ? handleUseFreeze : undefined}
-        onBuyFreeze={data?.streakCanBuyFreeze ? handleBuyFreeze : undefined}
+        onUseFreeze={data.streakCanFreeze ? handleUseFreeze : undefined}
+        onBuyFreeze={data.streakCanBuyFreeze ? handleBuyFreeze : undefined}
         onStudyNow={handleStudyNow}
       />
     </View>
   )
 }
 
-// ── Section header ────────────────────────────────────────────────────────────
-
-function SectionHeader({
-  title,
-  actionLabel,
-  onAction,
-}: {
-  title:        string
-  actionLabel?: string
-  onAction?:   () => void
-}) {
-  const { c } = useTheme()
-  return (
-    <View style={[styles.sectionHeader, { paddingHorizontal: spacing.screenMargin }]}>
-      <Text style={[styles.sectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-        {title}
-      </Text>
-      {actionLabel && (
-        <Pressable onPress={onAction}>
-          <Text style={[styles.sectionAction, { color: c.accentPrimary, fontFamily: typography.fontFamily.medium }]}>
-            {actionLabel}
-          </Text>
-        </Pressable>
-      )}
-    </View>
-  )
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  root:        { flex: 1 },
-  scrollContent: { paddingBottom: 24 },
-
-  topBar: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingHorizontal: spacing.screenMargin,
-    paddingBottom:     spacing.sm,
-    gap:               spacing.sm,
-  },
-  brandName: { fontSize: 20, letterSpacing: 0.5 },
-  topRight:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-
-  coinBadge: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               4,
-    paddingHorizontal: 8,
-    paddingVertical:   5,
-    borderRadius:      radius.full,
-    borderWidth:       1,
-  },
-  coinEmoji: { fontSize: 13 },
-  coinNum:   { fontSize: 13 },
-
-  avatar: {
-    width:        40,
-    height:       40,
-    borderRadius: 20,
-    borderWidth:  2,
-    overflow:     'hidden',
-  },
-  avatarFallback: {
-    alignItems:     'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: { fontSize: 15, color: '#fff' },
-  bellBtn:        { padding: 4 },
-
-  section: { gap: 8 },
-  gap:     { height: spacing.lg },
-
-  sectionHeader: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    marginBottom:   spacing.sm,
-  },
-  sectionTitle:  { fontSize: typography.size.base },
-  sectionAction: { fontSize: typography.size.sm },
-
-  hScroll: { paddingHorizontal: spacing.screenMargin, gap: spacing.sm },
-  vList:   { gap: spacing.sm },
-})
-
-const bellBadgeStyle = StyleSheet.create({
-  badge: {
-    position:     'absolute',
-    top:          -4,
-    right:        -4,
-    minWidth:     8,
-    height:       8,
-    borderRadius: 4,
-    alignItems:   'center',
-    justifyContent: 'center',
-    paddingHorizontal: 0,
-  },
-  text: {
-    color:      '#fff',
-    fontSize:   8,
-    fontWeight: '700',
-    lineHeight: 8,
+  root: { flex: 1 },
+  content: {
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.xs,
+    paddingBottom: space.xxl,
+    gap: layout.sectionGap,
   },
 })
