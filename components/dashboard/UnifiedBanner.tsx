@@ -242,10 +242,11 @@ export function UnifiedBanner({ stats, level, totalXP, streakState }: Props) {
                 </Text>
               </View>
 
-              {/* Row 2: contextual message */}
+              {/* Row 2: contextual message — two lines, so "…bugun o'qing!"
+                  isn't cut to "bugu…" beside the tree */}
               <Text
                 style={[styles.message, { color: msgColor, fontFamily: typography.fontFamily.medium }]}
-                numberOfLines={1}
+                numberOfLines={2}
               >
                 {msgText}
               </Text>
