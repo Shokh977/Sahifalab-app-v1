@@ -275,7 +275,7 @@ export default function FlashcardStudyScreen() {
           setDone(true)
         } else {
           // Every session starts on the front.
-          rotate.value = 0
+          rotate.set(0)
           setFlipped(false)
           setBackMounted(false)
           initialQueueRef.current = session.cards.length
