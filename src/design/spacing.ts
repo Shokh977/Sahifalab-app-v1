@@ -46,3 +46,12 @@ export const shadow: ViewStyle = Platform.select({
 
 export const iconSize = { sm: 20, md: 24 } as const
 export const iconStroke = 1.8
+
+/** Control heights: Button sm 40 / md 48 / lg 54 (spec section 6). */
+export const controlHeight = { sm: 40, md: 48, lg: 54 } as const
+
+/** Avatar diameters used by the kit. */
+export const avatarSize = { sm: 32, md: 40, lg: 56, xl: 80 } as const
+
+/** Leading tile in ListRow (icon tile / thumbnail). */
+export const tileSize = 40

@@ -92,6 +92,9 @@ export const deckColors = [
   '#E0A93B', // amber
 ] as const
 
+/** Opacity for states that dim rather than recolour. */
+export const stateOpacity = { disabled: 0.4, done: 0.55 } as const
+
 /** Text tokens the contrast test checks; textFaint is decoration-only. */
 export const textTokens = ['text', 'textMuted', 'accentText', 'successText', 'dangerText', 'freeze', 'coin'] as const
 export const backgroundTokens = ['bg', 'surface', 'surfaceRaised', 'tabBar'] as const
