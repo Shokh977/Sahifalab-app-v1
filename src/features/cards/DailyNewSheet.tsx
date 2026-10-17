@@ -3,7 +3,7 @@
  * cards (and when changing it later on the deck). 10 / 20 / 30, default 20.
  * Only that many new cards are introduced per day (server-side limit).
  */
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useTheme } from '../../design/ThemeProvider'
 import { space } from '../../design/spacing'
@@ -23,7 +23,12 @@ export function DailyNewSheet({ visible, cardCount, initial, confirmLabel, loadi
   const { colors } = useTheme()
   const start = initial && (DAILY_NEW_OPTIONS as readonly number[]).includes(initial) ? initial : DAILY_NEW_DEFAULT
   const [perDay, setPerDay] = useState<number>(start)
-  useEffect(() => { if (visible) setPerDay(start) }, [visible, start])
+  // Back to the saved value each time the sheet opens.
+  const [wasVisible, setWasVisible] = useState(visible)
+  if (visible !== wasVisible) {
+    setWasVisible(visible)
+    if (visible) setPerDay(start)
+  }
   const days = Math.ceil(cardCount / perDay)
 
   return (

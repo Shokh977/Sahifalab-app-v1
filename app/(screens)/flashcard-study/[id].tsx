@@ -5,7 +5,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, Pressable, ScrollView,
-  Modal, Alert, Dimensions, Platform, ActivityIndicator,
+  Modal, Alert, Dimensions, ActivityIndicator,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -14,7 +14,7 @@ import Animated, {
   runOnJS, Easing, interpolate,
 } from 'react-native-reanimated'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
-import { X, ArrowLeft } from 'phosphor-react-native'
+import { X } from 'phosphor-react-native'
 
 import { useTheme } from '../../../hooks/useTheme'
 import { flashcards as flashcardsApi } from '../../../lib/api'
@@ -405,7 +405,6 @@ export default function FlashcardStudyScreen() {
     )
   }
 
-  const total    = queue.length
   const progress = reviewed / Math.max(1, reviewed + queue.length - cardIndex)
   const mins     = Math.floor(sessionSec / 60)
   const secs     = sessionSec % 60
@@ -605,18 +604,6 @@ const styles = StyleSheet.create({
 
   // Rating
   ratingArea: { paddingHorizontal: spacing.screenMargin },
-  ratingRow:  { flexDirection: 'row', gap: 10 },
-  ratingPlaceholder: { height: 52 },
-  ratingBtnWrap: { flex: 1 },
-  ratingBtn: {
-    height:         52,
-    borderRadius:   14,
-    alignItems:     'center',
-    justifyContent: 'center',
-    gap:            2,
-  },
-  ratingIcon:  { fontSize: 14, fontWeight: '700' },
-  ratingLabel: { fontSize: 12 },
 
   // Confirm modal
   confirmOverlay: {
@@ -635,33 +622,4 @@ const styles = StyleSheet.create({
   confirmBtnText: { fontSize: typography.size.base },
   confirmLink:    { paddingVertical: spacing.sm },
   confirmLinkText: { fontSize: typography.size.sm },
-
-  // Session complete
-  completeWrap:    { flex: 1 },
-  completeContent: { padding: spacing.screenMargin, alignItems: 'center', gap: spacing.lg },
-  completeCelebration: { fontSize: 56, textAlign: 'center' },
-  completeTitle:   { fontSize: 22, textAlign: 'center' },
-  completeStats: {
-    width: '100%', borderRadius: radius.cardLg, borderWidth: 1, padding: spacing.base, gap: spacing.sm,
-  },
-  completeRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  completeRowLabel: { fontSize: typography.size.sm },
-  completeRowValue: { fontSize: typography.size.sm },
-  xpEarnedWrap: { alignItems: 'center' },
-  xpEarned:     { fontSize: 24 },
-  masteryHeader:  { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
-  masteryLabel:   { fontSize: typography.size.sm },
-  masteryTrack:   { height: 8, borderRadius: 4, width: '100%', overflow: 'hidden', position: 'relative' },
-  masteryFillBefore: { height: 8, borderRadius: 4, position: 'absolute', left: 0, top: 0 },
-  masteryFillAfter:  { height: 8, borderRadius: 4, position: 'absolute', left: 0, top: 0 },
-  completeBtn: {
-    width: '100%', height: 52, borderRadius: radius['2xl'],
-    alignItems: 'center', justifyContent: 'center',
-  },
-  completeBtnText: { fontSize: typography.size.base },
-  completeOutlineBtn: {
-    width: '100%', height: 48, borderRadius: radius['2xl'], borderWidth: 1,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  completeOutlineBtnText: { fontSize: typography.size.base },
 })
