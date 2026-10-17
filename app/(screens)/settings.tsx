@@ -6,7 +6,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft } from 'lucide-react-native'
-import { Appearance } from 'react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useThemeStore } from '../../stores/themeStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -522,7 +521,7 @@ function TelegramLinkModal({
 export default function SettingsScreen() {
   const { c }                 = useTheme()
   const router                = useRouter()
-  const { theme, setTheme }   = useThemeStore()
+  const { preference, setPreference } = useThemeStore()
   const { user, logout, loginWithToken, refreshUser } = useAuthStore()
 
   // O'QISH
@@ -618,21 +617,18 @@ export default function SettingsScreen() {
   }, [logout])
 
   type ThemeChoice = 'dark' | 'light' | 'system'
-  const [themeChoice, setThemeChoice] = useState<ThemeChoice>(theme)
+  const [themeChoice, setThemeChoice] = useState<ThemeChoice>(preference)
 
+  // "Tizim" is stored as a preference, so the app follows later OS theme
+  // changes too (it used to snapshot the OS scheme once).
   const applyTheme = (choice: ThemeChoice) => {
     setThemeChoice(choice)
-    if (choice === 'system') {
-      const sys = Appearance.getColorScheme() ?? 'dark'
-      setTheme(sys as 'dark' | 'light')
-    } else {
-      setTheme(choice)
-    }
+    setPreference(choice)
   }
 
   const THEME_OPTIONS: { key: ThemeChoice; label: string }[] = [
-    { key: 'dark',   label: "Qorong'i" },
-    { key: 'light',  label: "Yorug'"   },
+    { key: 'dark',   label: 'Qorongʻi' },
+    { key: 'light',  label: 'Yorugʻ'   },
     { key: 'system', label: 'Tizim'    },
   ]
 
@@ -728,6 +724,20 @@ export default function SettingsScreen() {
               <SettingRow
                 label="Qo'llab-quvvatlash"
                 onPress={() => router.push('/(screens)/qollab-quvvatlash' as any)}
+                isLast
+              />
+            </SettingGroup>
+          </>
+        )}
+
+        {/* Dev builds only: redesign component gallery */}
+        {__DEV__ && (
+          <>
+            <SectionHeader title="DEV" />
+            <SettingGroup>
+              <SettingRow
+                label="Komponentlar galereyasi"
+                onPress={() => router.push('/(screens)/dev-gallery' as any)}
                 isLast
               />
             </SettingGroup>

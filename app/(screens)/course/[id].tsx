@@ -2163,7 +2163,7 @@ const styles = StyleSheet.create({
   playerCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   playerStatusText: {
     color: 'rgba(255,255,255,0.5)', marginTop: 4,
-    fontFamily: 'PlusJakartaSans-Regular', fontSize: 13,
+    fontFamily: 'Onest-Regular', fontSize: 13,
   },
   playerBack: { position: 'absolute', top: 12, left: 12 },
   playerBackBubble: {
@@ -2249,7 +2249,7 @@ const styles = StyleSheet.create({
   playOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
   playBtn:     { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   previewLabel: {
-    color: '#fff', fontSize: typography.size.sm, fontFamily: 'PlusJakartaSans-SemiBold',
+    color: '#fff', fontSize: typography.size.sm, fontFamily: 'Onest-SemiBold',
     textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
   mktBody:    { padding: spacing.base, gap: spacing.base },
@@ -2273,7 +2273,7 @@ const styles = StyleSheet.create({
   price:        { fontSize: 26 },
   oldPrice:     { fontSize: typography.size.base, textDecorationLine: 'line-through' },
   discountBadge:{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
-  discountText: { color: '#fff', fontSize: typography.size.xs, fontFamily: 'PlusJakartaSans-Bold' },
+  discountText: { color: '#fff', fontSize: typography.size.xs, fontFamily: 'Onest-Bold' },
   enrollBtn:    { paddingVertical: 14, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   enrollBtnText:{ color: '#fff', fontSize: typography.size.base },
   wishlistBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: 12, borderRadius: radius.sm, borderWidth: 1, marginTop: spacing.xs },

@@ -128,13 +128,15 @@ export const shadows = {
 } as const
 
 export const typography = {
+  // Onest since redesign Phase 1: Plus Jakarta Sans had no Cyrillic and no
+  // ʻ (U+02BB), so leaderboard names and oʻ/gʻ fell back to the system font.
   fontFamily: {
-    regular:   'PlusJakartaSans-Regular',
-    medium:    'PlusJakartaSans-Medium',
-    semibold:  'PlusJakartaSans-SemiBold',
-    bold:      'PlusJakartaSans-Bold',
-    extrabold: 'PlusJakartaSans-ExtraBold',
-    mono:      'PlusJakartaSans-Regular', // fallback until JetBrains Mono is added
+    regular:   'Onest-Regular',
+    medium:    'Onest-Medium',
+    semibold:  'Onest-SemiBold',
+    bold:      'Onest-Bold',
+    extrabold: 'Onest-ExtraBold',
+    mono:      'Onest-Regular', // fallback until JetBrains Mono is added
     serifDisplay: 'InstrumentSerif-Regular',
     monoMedium:   'JetBrainsMono-Medium',
   },
