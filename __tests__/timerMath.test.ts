@@ -1,9 +1,9 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   displayXp, formatClock, msToNextSecond, progressAt, statValue, strokeTone, validCustomMinutes, WARNING_MS,
-} from '../src/features/focus/focusTimer'
+} from '../src/features/focus/timerMath'
 
-describe('focusTimer', () => {
+describe('timerMath', () => {
   it('formats the clock, rounding up to whole seconds', () => {
     expect(formatClock(25 * 60_000)).toBe('25:00')
     expect(formatClock(25 * 60_000 - 1)).toBe('25:00')
