@@ -1,7 +1,7 @@
 /**
  * IconButton — a Lucide icon in a 48×48 target, with an optional unread dot.
- * Default, pressed, disabled, and active (a toggle that is on: accent icon
- * on a soft accent circle).
+ * Default, pressed, disabled, and active (a toggle that is on: the icon
+ * turns accent orange, no background).
  */
 import React from 'react'
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
@@ -37,8 +37,8 @@ export function IconButton({ icon: Icon, onPress, accessibilityLabel, dot, activ
       accessibilityRole={active === undefined ? 'button' : 'switch'}
       style={[styles.target, style]}
     >
-      <View style={[styles.circle, active && { backgroundColor: colors.accentSoft }]}>
-        <Icon size={iconSize.md} color={active ? colors.accentText : colors.text} strokeWidth={iconStroke} />
+      <View>
+        <Icon size={iconSize.md} color={active ? colors.accent : colors.text} strokeWidth={iconStroke} />
         {dot && <View style={[styles.dot, { backgroundColor: colors.accent, borderColor: colors.bg }]} />}
       </View>
     </Pressable>
@@ -47,17 +47,10 @@ export function IconButton({ icon: Icon, onPress, accessibilityLabel, dot, activ
 
 const styles = StyleSheet.create({
   target: { width: layout.minTouch, height: layout.minTouch, alignItems: 'center', justifyContent: 'center' },
-  circle: {
-    width: layout.minTouch - space.xs,
-    height: layout.minTouch - space.xs,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   dot: {
     position: 'absolute',
-    top: space.xxs,
-    right: space.xxs,
+    top: -2,
+    right: -2,
     width: DOT + 2,
     height: DOT + 2,
     borderRadius: radius.full,
