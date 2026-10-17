@@ -13,6 +13,7 @@ import { ai as aiApi } from '../../lib/api'
 import type { AiLimits, GeneratedFlashcard } from '../../lib/api'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { typography, spacing, radius } from '../../lib/constants'
+import { track } from '../../lib/analytics'
 
 type InputMode = 'text' | 'image'
 type Step = 'input' | 'preview'
@@ -89,6 +90,20 @@ export default function AiFlashcardGenerateScreen() {
   const willCostTanga = limits ? limits.free_remaining_today <= 0 : false
   const price = limits?.prices?.flashcard_gen ?? 100
 
+  // ai_quota_exhausted: once per screen visit per reason. 'free' (the daily
+  // free allowance is used up — the future Pro upsell moment), 'daily_cap'
+  // (hard daily limit), 'balance' (not enough Tanga, from a failed generate).
+  const quotaTrackedRef = useRef<Set<string>>(new Set())
+  const trackQuota = (reason: 'free' | 'daily_cap' | 'balance') => {
+    if (quotaTrackedRef.current.has(reason)) return
+    quotaTrackedRef.current.add(reason)
+    track('ai_quota_exhausted', { feature: 'flashcard_gen', reason })
+  }
+  useEffect(() => {
+    if (capReached) trackQuota('daily_cap')
+    else if (willCostTanga) trackQuota('free')
+  }, [capReached, willCostTanga])
+
   function onGeneratePressed() {
     if (!hasInput || capReached || generating) return
     if (willCostTanga) {
@@ -124,6 +139,9 @@ export default function AiFlashcardGenerateScreen() {
       // "confirm the Tanga refund landed") — surface them as-is, then
       // re-pull limits so the UI reflects the post-refund state, not a
       // stale pre-charge one.
+      const msg = String(e?.message ?? '')
+      if (msg.includes('Tanga yetarli emas')) trackQuota('balance')
+      else if (msg.includes('AI limitiga')) trackQuota('daily_cap')
       Alert.alert('Xatolik', friendlyError(e))
       await loadLimits()
     } finally {

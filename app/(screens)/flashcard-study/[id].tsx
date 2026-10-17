@@ -27,6 +27,7 @@ import { typography, spacing, radius } from '../../../lib/constants'
 import { EvolutionModal } from '../../../components/streak/EvolutionModal'
 import type { StageNumber } from '../../../lib/treeTheme'
 import { ChallengeCompletionModal, type CompletedChallenge } from '../../../components/study/ChallengeCompletionModal'
+import { track } from '../../../lib/analytics'
 
 const { width: SW } = Dimensions.get('window')
 const CARD_W = SW - 32
@@ -271,6 +272,7 @@ export default function FlashcardStudyScreen() {
         } else {
           initialQueueRef.current = session.cards.length
           setQueue(session.cards)
+          track('review_session_start', { deck_id: deckId, cards: session.cards.length, practice: practice === '1' }, deckId)
         }
       } catch (e: any) {
         if (sessionTimerRef.current) {
@@ -372,6 +374,10 @@ export default function FlashcardStudyScreen() {
       // Session done — show XP instantly based on cards reviewed this session
       const totalMs = Date.now() - startTimeRef.current
       const sessionCardCount = initialQueueRef.current || reviewed + 1
+      track('review_session_complete', {
+        deck_id: deckId, cards: sessionCardCount, reviews: reviewed + 1,
+        correct: correctCount + (rating >= 3 ? 1 : 0), duration_ms: totalMs,
+      }, deckId)
       const expectedXP = Math.ceil(sessionCardCount / 5)
       setTotalXP(t => t + expectedXP)
       flashcardsApi.completeSession(deckId, {
@@ -408,7 +414,7 @@ export default function FlashcardStudyScreen() {
     } else {
       advanceCard(remaining, 'left')
     }
-  }, [currentCard, deck, queue, cardIndex, reviewed, deckId, c.accentPrimary])
+  }, [currentCard, deck, queue, cardIndex, reviewed, correctCount, deckId, c.accentPrimary])
 
   // Keep ref in sync so the gesture handler always calls the latest version
   useEffect(() => { submitRatingRef.current = submitRating }, [submitRating])

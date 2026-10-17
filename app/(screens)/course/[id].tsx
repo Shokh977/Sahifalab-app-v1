@@ -31,6 +31,11 @@ import type { Course, Lesson, CourseReview, CourseCertificate } from '../../../l
 import type { ProfileData } from '../../../lib/types'
 import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 import { RoleBadge } from '../../../components/ui/RoleBadge'
+import { track, trackOnce } from '../../../lib/analytics'
+
+// Set when this device requested a payment code for the course; a later load
+// that finds the course enrolled is the admin's approval (purchase_approved).
+const pendingPurchaseKey = (courseId: number) => `sahifalab_pending_purchase_${courseId}`
 
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
@@ -1022,7 +1027,15 @@ export default function CourseDetailScreen() {
       // Fire-and-forget click tracking for the teacher's dashboard stats —
       // never blocks the screen and never surfaces an error to the student.
       coursesApi.recordView(courseId).catch(() => {})
-      await Promise.all([checkEnrollment(courseId), loadProgress(courseId)])
+      track('course_view', { courseId, is_paid: courseData.is_paid }, courseId)
+      const [enrollmentNow] = await Promise.all([checkEnrollment(courseId), loadProgress(courseId)])
+      if (enrollmentNow?.enrolled) {
+        AsyncStorage.getItem(pendingPurchaseKey(courseId)).then(pending => {
+          if (!pending) return
+          AsyncStorage.removeItem(pendingPurchaseKey(courseId)).catch(() => {})
+          trackOnce(`purchase_approved_${courseId}`, 'purchase_approved', { course_id: courseId, via: 'course_detail' }, courseId)
+        }).catch(() => {})
+      }
 
       // Check for pending payment if the course is paid and user is not enrolled
       if (courseData.is_paid) {
@@ -1133,6 +1146,7 @@ export default function CourseDetailScreen() {
   async function handleEnroll() {
     if (!course) return
     if (course.is_paid) {
+      track('purchase_sheet_open', { course_id: courseId, price: course.price }, courseId)
       setShowPaySheet(true)
       fetchPayCode()
       return
@@ -1150,6 +1164,7 @@ export default function CourseDetailScreen() {
     setPayCodeError(null)
     try {
       const res = await enrollmentsApi.requestCode(courseId)
+      AsyncStorage.setItem(pendingPurchaseKey(courseId), res.reference_code).catch(() => {})
       setPayCode(res)
       setPendingStatus({ has_pending: true, reference_code: res.reference_code, status: res.status, expires_at: res.expires_at })
     } catch (e: any) {
@@ -1985,7 +2000,13 @@ export default function CourseDetailScreen() {
                 {
                   label: "Telegram bot bilan bog'laning:",
                   extra: (
-                    <Pressable onPress={() => Linking.openURL(payCode.telegram_bot_url)} style={[styles.paySheetLink, { backgroundColor: c.brandSubtle }]}>
+                    <Pressable
+                      onPress={() => {
+                        track('purchase_start', { course_id: courseId }, courseId)
+                        Linking.openURL(payCode.telegram_bot_url)
+                      }}
+                      style={[styles.paySheetLink, { backgroundColor: c.brandSubtle }]}
+                    >
                       <MessageCircle size={14} color={c.brand} />
                       <Text style={[styles.paySheetLinkText, { color: c.brand, fontFamily: typography.fontFamily.semibold }]}>@sahifalab_pay_bot</Text>
                     </Pressable>
