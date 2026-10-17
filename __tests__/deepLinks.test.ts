@@ -45,6 +45,8 @@ const NEW_LINKS: [string, string][] = [
   ['sahifalab://book/12', '/(screens)/book/12'],
   ['sahifalab://kitoblar/12', '/(screens)/book/12'],
   ['sahifalab://read/12', '/(screens)/book-reader/12'],
+  ['sahifalab://badges', '/(screens)/badges'],
+  ['sahifalab://nishonlar', '/(screens)/badges'],
 ]
 
 describe('deep links: redesign names', () => {

@@ -41,6 +41,8 @@ export function parseDeepLink(url: string): string | null {
   if (seg0 in tabRoutes && !seg1) return tabRoutes[seg0]
 
   if (seg0 === 'leaderboard')                              return '/(screens)/leaderboard'
+  // Badge page (Phase 5)
+  if (seg0 === 'badges' || seg0 === 'nishonlar')           return '/(screens)/badges'
   // Competition detail: sahifalab://challenge/{slug} (also bellashuv/{slug})
   if ((seg0 === 'challenge' || seg0 === 'bellashuv') && seg1) return `/(screens)/challenge/${seg1}`
   // Books left the app (Phase 4a): these routes open sahifalab.uz instead.

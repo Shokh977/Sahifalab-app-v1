@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet,
   ActivityIndicator, RefreshControl, Modal, Animated, Dimensions, Platform,
 } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft, Snowflake, Map, Info, X, Share2 } from 'lucide-react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -25,6 +25,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { useStreakStagesStore } from '../../stores/streakStagesStore'
 import { syncWidget } from '../../lib/syncWidget'
+import { TreeStagesSection } from '../../src/features/streak/TreeStagesSection'
 
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
@@ -220,6 +221,14 @@ export default function StreakDetailScreen() {
   const insets  = useSafeAreaInsets()
   const user    = useAuthStore(s => s.user)
   const dashData = useDashboardStore(s => s.data)
+  // Tree stages live in this screen now (Phase 5); ?section=stages (the old
+  // tree-stages route redirects here) and the map icon scroll to them.
+  const { section } = useLocalSearchParams<{ section?: string }>()
+  const scrollRef = useRef<ScrollView>(null)
+  const stagesY = useRef<number | null>(null)
+  const scrollToStages = useCallback(() => {
+    if (stagesY.current != null) scrollRef.current?.scrollTo({ y: Math.max(0, stagesY.current - spacing.base), animated: true })
+  }, [])
 
   const [data, setData]               = useState<StreakDetail | null>(null)
   const [loading, setLoading]         = useState(true)
@@ -462,6 +471,7 @@ export default function StreakDetailScreen() {
       )}
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
         refreshControl={
           <RefreshControl
@@ -501,7 +511,8 @@ export default function StreakDetailScreen() {
                     </Pressable>
                     <Pressable
                       style={[styles.topIconBtn, { backgroundColor: hc.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(22,50,31,0.08)', borderColor: 'transparent' }]}
-                      onPress={() => router.push('/(screens)/tree-stages' as any)}
+                      onPress={scrollToStages}
+                      accessibilityLabel="Daraxt yoʻli"
                       hitSlop={8}
                     >
                       <Map size={15} color={hc.secondary} />
@@ -759,6 +770,14 @@ export default function StreakDetailScreen() {
             </Pressable>
           </View>
         </View>
+
+        <TreeStagesSection
+          streakDays={streakDays}
+          onLayout={e => {
+            stagesY.current = e.nativeEvent.layout.y
+            if (section === 'stages') scrollToStages()
+          }}
+        />
 
       </ScrollView>
 

@@ -1,133 +1,86 @@
 /**
- * Full-screen level-up celebration overlay.
- * Badge scales in with spring, 12 particles burst outward.
- * Auto-dismisses after 3 seconds or on tap.
+ * Level-up moment (redesign Phase 5) — the app's one Lottie: a ring burst
+ * and sparkles (assets/animations/level-up.json) behind the new level
+ * number and its title. Heavy haptic; tap or 3 s to dismiss. Under reduce
+ * motion the animation shows its final frame and the badge appears at
+ * once. Props unchanged, so callers (FocusTimer) are untouched.
  */
-import React, { useEffect, useRef } from 'react'
-import { View, Text, Modal, StyleSheet, Pressable } from 'react-native'
+import React, { useEffect } from 'react'
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Lottie } from '../../src/components/ui/Lottie'
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withTiming,
-  withDelay, Easing,
+  useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming,
 } from 'react-native-reanimated'
-import { useTheme } from '../../hooks/useTheme'
-import { typography, spacing, getLevelTier } from '../../lib/constants'
+import { getLevelInfo } from '../../lib/levelTitles'
+import { useTheme } from '../../src/design/ThemeProvider'
+import { durations, springs } from '../../src/design/motion'
+import { avatarSize, radius, space } from '../../src/design/spacing'
+import { tabular, type as typeScale } from '../../src/design/typography'
+import { haptics } from '../../src/lib/haptics'
+import { uzText } from '../../src/features/today/today'
 
-const PARTICLE_COUNT = 12
-const PARTICLE_COLORS = ['#F5A623', '#FFD700', '#FF8A00', '#FF5E00', '#FFB830']
+const LEVEL_UP = require('../../assets/animations/level-up.json')
+const AUTO_DISMISS_MS = 3000
+const BURST = avatarSize.xl * 4
+const BADGE = avatarSize.xl + space.lg
 
 interface Props {
-  visible:  boolean
-  newLevel: number
+  visible:   boolean
+  newLevel:  number
   onDismiss: () => void
 }
 
-function Particle({ index, trigger }: { index: number; trigger: boolean }) {
-  const angle = (index / PARTICLE_COUNT) * Math.PI * 2
-  const dx = Math.cos(angle) * 90
-  const dy = Math.sin(angle) * 90
-  const color = PARTICLE_COLORS[index % PARTICLE_COLORS.length]
-
-  const x       = useSharedValue(0)
-  const y       = useSharedValue(0)
-  const opacity = useSharedValue(0)
-  const scale   = useSharedValue(0)
-
-  useEffect(() => {
-    if (trigger) {
-      x.value       = 0
-      y.value       = 0
-      opacity.value = 0
-      scale.value   = 0
-
-      const delay = index * 30
-      x.value       = withDelay(delay, withTiming(dx, { duration: 800, easing: Easing.out(Easing.cubic) }))
-      y.value       = withDelay(delay, withTiming(dy, { duration: 800, easing: Easing.out(Easing.cubic) }))
-      scale.value   = withDelay(delay, withSpring(1, { damping: 6, stiffness: 300 }))
-      opacity.value = withDelay(delay, withTiming(0, { duration: 800, easing: Easing.in(Easing.cubic) }))
-    }
-  }, [trigger])
-
-  const style = useAnimatedStyle(() => ({
-    transform:  [{ translateX: x.value }, { translateY: y.value }, { scale: scale.value }],
-    opacity:    opacity.value,
-  }))
-
-  return (
-    <Animated.View style={[styles.particle, { backgroundColor: color }, style]} />
-  )
-}
-
 export function LevelUpOverlay({ visible, newLevel, onDismiss }: Props) {
-  const { c }   = useTheme()
-  const tier    = getLevelTier(newLevel)
-  const trigger = useRef(false)
-
-  const badgeScale  = useSharedValue(0)
-  const textOpacity = useSharedValue(0)
-  const particleTrig = useRef(false)
-
-  // Re-trigger on each open
-  const [particleKey, setParticleKey] = React.useState(0)
+  const { colors } = useTheme()
+  const reduceMotion = useReducedMotion()
+  const info = getLevelInfo(newLevel)
+  const badge = useSharedValue(reduceMotion ? 1 : 0)
+  const text = useSharedValue(reduceMotion ? 1 : 0)
 
   useEffect(() => {
-    if (visible) {
-      particleTrig.current = true
-      setParticleKey(k => k + 1)
-
-      badgeScale.value  = 0
-      textOpacity.value = 0
-
-      badgeScale.value = withSpring(1, { damping: 8, stiffness: 160, overshootClamping: false }, () => {
-        badgeScale.value = withSpring(1, { damping: 14, stiffness: 200 })
-      })
-      textOpacity.value = withDelay(400, withTiming(1, { duration: 300 }))
-
-      // Auto-dismiss after 3 seconds
-      const t = setTimeout(onDismiss, 3000)
-      return () => clearTimeout(t)
+    if (!visible) return
+    haptics.heavy()
+    if (reduceMotion) {
+      badge.set(1)
+      text.set(1)
+    } else {
+      badge.set(0)
+      text.set(0)
+      badge.set(withSpring(1, springs.pop))
+      text.set(withDelay(durations.slow, withTiming(1, { duration: durations.fade })))
     }
-  }, [visible])
+    const t = setTimeout(onDismiss, AUTO_DISMISS_MS)
+    return () => clearTimeout(t)
+  }, [visible, reduceMotion, badge, text, onDismiss])
 
-  const badgeStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: badgeScale.value }],
-  }))
-  const textStyle = useAnimatedStyle(() => ({ opacity: textOpacity.value }))
+  const badgeStyle = useAnimatedStyle(() => ({ transform: [{ scale: badge.get() }] }))
+  const textStyle = useAnimatedStyle(() => ({ opacity: text.get() }))
 
   return (
-    <Modal transparent animationType="fade" visible={visible} statusBarTranslucent>
-      <Pressable style={[styles.overlay, { backgroundColor: c.overlay }]} onPress={onDismiss}>
-        <View style={styles.center}>
-          {/* Particles */}
-          <View style={styles.particleOrigin} pointerEvents="none">
-            {Array.from({ length: PARTICLE_COUNT }).map((_, i) => (
-              <Particle key={`${particleKey}-${i}`} index={i} trigger={visible} />
-            ))}
+    <Modal transparent animationType="fade" visible={visible} statusBarTranslucent onRequestClose={onDismiss}>
+      <Pressable
+        style={[styles.overlay, { backgroundColor: colors.scrim }]}
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel={`Yangi daraja: ${newLevel}, ${uzText(info.title)}. Yopish`}
+      >
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View style={styles.stage}>
+            <Lottie
+              source={LEVEL_UP}
+              autoPlay={!reduceMotion}
+              loop={false}
+              progress={reduceMotion ? 1 : undefined}
+              style={styles.burst}
+            />
+            <Animated.View style={[styles.badge, { backgroundColor: colors.accent }, badgeStyle]}>
+              <Text style={[typeScale.display, tabular, { color: colors.onAccent }]}>{newLevel}</Text>
+            </Animated.View>
           </View>
-
-          {/* Badge */}
-          <Animated.View
-            style={[
-              styles.badge,
-              { borderColor: tier.border, backgroundColor: tier.bg },
-              badgeStyle,
-            ]}
-          >
-            <Text style={[styles.levelNum, { color: tier.border, fontFamily: typography.fontFamily.extrabold }]}>
-              {newLevel}
-            </Text>
-          </Animated.View>
-
-          {/* Text */}
-          <Animated.View style={[textStyle, { alignItems: 'center', gap: 8, marginTop: spacing.base }]}>
-            <Text style={[styles.tierLabel, { color: tier.border, fontFamily: typography.fontFamily.extrabold }]}>
-              {tier.label}
-            </Text>
-            <Text style={[styles.levelText, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-              {newLevel}-daraja
-            </Text>
-            <Text style={[styles.congrats, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-              Tabriklaymiz! 🎉
-            </Text>
+          <Animated.View style={[styles.text, textStyle]}>
+            <Text style={[typeScale.overline, { color: colors.accentText }]}>Yangi daraja</Text>
+            <Text style={[typeScale.title1, styles.center, { color: colors.text }]}>{uzText(info.title)}</Text>
+            <Text style={[typeScale.body, styles.center, { color: colors.textMuted }]}>{uzText(info.description)}</Text>
           </Animated.View>
         </View>
       </Pressable>
@@ -136,33 +89,11 @@ export function LevelUpOverlay({ visible, newLevel, onDismiss }: Props) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  center:  { alignItems: 'center' },
-
-  particleOrigin: {
-    position:  'absolute',
-    width:     0,
-    height:    0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  particle: {
-    position:     'absolute',
-    width:        8,
-    height:       8,
-    borderRadius: 4,
-  },
-
-  badge: {
-    width:        100,
-    height:       100,
-    borderRadius: 50,
-    borderWidth:  3,
-    alignItems:   'center',
-    justifyContent: 'center',
-  },
-  levelNum:   { fontSize: 36 },
-  tierLabel:  { fontSize: typography.size.xl },
-  levelText:  { fontSize: typography.size['2xl'] },
-  congrats:   { fontSize: typography.size.base },
+  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl },
+  card: { width: '100%', borderRadius: radius.sheet, alignItems: 'center', paddingBottom: space.xl, overflow: 'hidden' },
+  stage: { width: BURST, height: BURST * 0.8, alignItems: 'center', justifyContent: 'center' },
+  burst: { position: 'absolute', width: BURST, height: BURST },
+  badge: { width: BADGE, height: BADGE, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+  text: { alignItems: 'center', gap: space.xs, paddingHorizontal: space.xl },
+  center: { textAlign: 'center' },
 })

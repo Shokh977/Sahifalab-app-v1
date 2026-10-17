@@ -7,6 +7,7 @@ import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-n
 import { Redirect } from 'expo-router'
 import { Bell, BookOpen, Clock, Flame, Inbox, Mail, Search, Settings2, Star } from 'lucide-react-native'
 import { ThemeProvider, useTheme } from '../../src/design/ThemeProvider'
+import { LevelUpOverlay } from '../../components/study/LevelUpOverlay'
 import { layout, space } from '../../src/design/spacing'
 import { type as typeScale } from '../../src/design/typography'
 import type { Scheme } from '../../src/design/tokens'
@@ -35,6 +36,7 @@ function Column() {
   const [filters, setFilters] = useState<number[]>([1])
   const [seg, setSeg] = useState(0)
   const [steps, setSteps] = useState(2)
+  const [levelUp, setLevelUp] = useState(false)
   const [progress, setProgress] = useState(0.35)
   const [sheet, setSheet] = useState(false)
   const [text, setText] = useState('')
@@ -218,6 +220,11 @@ function Column() {
               <Button label="Davom etish" fullWidth icon={Clock} onPress={() => setSheet(false)} />
             </View>
           </Sheet>
+        </Section>
+
+        <Section title="Level-up (Lottie)">
+          <Button label="Level-up koʻrsatish" variant="secondary" onPress={() => setLevelUp(true)} />
+          <LevelUpOverlay visible={levelUp} newLevel={8} onDismiss={() => setLevelUp(false)} />
         </Section>
 
         <Section title="EmptyState">
