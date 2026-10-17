@@ -11,9 +11,16 @@ export const springs = {
   pop: { duration: 450, dampingRatio: 0.6 },  // celebrations only
 }
 
+/** Control points of the curves below, for animation APIs outside
+ *  Reanimated (e.g. react-navigation's tab transition takes RN Easing). */
+export const bezier = {
+  standard: [0.32, 0.72, 0, 1] as const,
+  exit: [0.3, 0, 1, 1] as const,
+}
+
 export const easing = {
-  standard: Easing.bezier(0.32, 0.72, 0, 1),  // iOS-like curve for all timing animations
-  exit: Easing.bezier(0.3, 0, 1, 1),
+  standard: Easing.bezier(...bezier.standard),  // iOS-like curve for all timing animations
+  exit: Easing.bezier(...bezier.exit),
 }
 
 export const durations = { fast: 150, fade: 220, slow: 360, celebrate: 700 }

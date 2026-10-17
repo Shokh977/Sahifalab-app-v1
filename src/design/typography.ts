@@ -22,6 +22,8 @@ export const type = {
   body:     { fontFamily: fonts.regular,   fontSize: 15, lineHeight: 22 },
   callout:  { fontFamily: fonts.medium,    fontSize: 13, lineHeight: 18 },
   overline: { fontFamily: fonts.bold,      fontSize: 11, lineHeight: 14, letterSpacing: 0.9, textTransform: 'uppercase' },
+  /** Tab bar labels and other tiny non-uppercase text. */
+  caption:  { fontFamily: fonts.semibold,  fontSize: 11, lineHeight: 14 },
 } as const satisfies Record<string, TypeToken>
 
 export type TypeTokenName = keyof typeof type
