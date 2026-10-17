@@ -19,7 +19,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useRewardStore } from '../../stores/rewardStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { dailyQuiz, type DailyQuizAnswerResult, type DailyQuizToday } from '../../lib/api'
-import { QuizResultView } from '../../components/daily-quiz/QuizResultView'
+import { QuizResultView, type QuizFriend } from '../../components/daily-quiz/QuizResultView'
 import { track } from '../../lib/analytics'
 import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
@@ -64,6 +64,8 @@ export default function DailyQuizScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<SubmitResult | null>(null)
   const [rank, setRank] = useState<number | null>(null)
+  const [friends, setFriends] = useState<QuizFriend[]>([])
+  const [fresh, setFresh] = useState(false)   // submitted in this visit → reveal moment
   const legacyRef = useRef(false)
 
   // ── Foreground-only timing (redesign Phase 0) ─────────────────────────────
@@ -120,6 +122,7 @@ export default function DailyQuizScreen() {
     try {
       const res = await dailyQuiz.results(quizId)
       setRank(res.caller?.rank ?? null)
+      setFriends(res.friends ?? [])
     } catch {
       setRank(null)
     }
@@ -181,6 +184,7 @@ export default function DailyQuizScreen() {
       track('quiz_complete', { quiz_id: quiz.id, score: res.correct_count, active_ms: Math.round(activeMs) }, quiz.id)
       AsyncStorage.removeItem(activeKey(quiz.id)).catch(() => {})
       useDashboardStore.getState().patchQuiz({ state: 'submitted', correct_count: res.correct_count, answered_count: 0 })
+      setFresh(true)
       setResult({
         correct_count: res.correct_count, tanga_awarded: res.tanga_awarded,
         per_question_correct: res.per_question_correct, elapsed_ms: res.elapsed_ms,
@@ -301,7 +305,7 @@ export default function DailyQuizScreen() {
       <EmptyState icon={CalendarClock} title="Bugungi savollar hali tayyor emas" body="Birozdan soʻng qayta tekshiring." />
     )
   } else if (result) {
-    body = <QuizResultView quiz={quiz} result={result} rank={rank} />
+    body = <QuizResultView quiz={quiz} result={result} rank={rank} friends={friends} fresh={fresh} />
   } else {
     const q = quiz.questions[index]
     const ids = quiz.questions.map(x => x.question_id)

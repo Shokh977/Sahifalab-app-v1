@@ -1,19 +1,24 @@
-import React from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView } from 'react-native'
+/**
+ * 5 Savol result: the share ticket (kept as is) with its reveal moment, the
+ * share actions, then when the next round opens, the quiz streak, friends'
+ * scores and the link to the full ranking.
+ */
+import React, { useEffect, useState } from 'react'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Copy, Share2 } from 'lucide-react-native'
-import { useTheme } from '../../hooks/useTheme'
+import { CalendarClock, Copy, Flame, Share2 } from 'lucide-react-native'
 import { useAuthStore } from '../../stores/authStore'
-import { typography, spacing, radius } from '../../lib/constants'
-import type { DailyQuizToday } from '../../lib/api'
+import type { DailyQuizResults, DailyQuizToday } from '../../lib/api'
+import { useShareTicket } from '../../hooks/useShareTicket'
+import { useTheme } from '../../src/design/ThemeProvider'
+import { layout, space } from '../../src/design/spacing'
+import { type as typeScale } from '../../src/design/typography'
+import { haptics } from '../../src/lib/haptics'
+import { Badge, Button, Card, ListRow } from '../../src/components/ui'
+import { opensAt } from '../../src/features/quiz/quizPlay'
+import { uzText } from '../../src/features/today/today'
 import { ResultTicket, type AnswerMark, type ResultTicketProps } from './ResultTicket'
 import { ShareCaptureHost } from './ShareCaptureHost'
-import { useShareTicket } from '../../hooks/useShareTicket'
-
-const GREEN = '#2FA84F'
-const GREEN_TINT = '#E8F7EC'
-const GREEN_TINT_DARK = 'rgba(55,180,87,0.18)'
-const ORANGE = '#D9832B'
 
 function statusTitleFor(score: number, total: number): string {
   if (score === total) return 'Mukammal!'
@@ -22,22 +27,28 @@ function statusTitleFor(score: number, total: number): string {
   return 'Ertaga qaytamiz'
 }
 
+/** Haptic on a strong round (4–5 of 5), as part of the reveal. */
+const SUCCESS_FROM = 4
+
+export type QuizFriend = NonNullable<DailyQuizResults['friends']>[number]
+
 export function QuizResultView({
-  quiz, result, rank,
+  quiz, result, rank, friends, fresh,
 }: {
   quiz: DailyQuizToday
   result: { correct_count: number; tanga_awarded: number; per_question_correct: boolean[]; elapsed_ms?: number; quiz_streak_days: number }
   rank: number | null
+  friends?: QuizFriend[]
+  /** Just submitted (not reopened later): play the reveal moment. */
+  fresh?: boolean
 }) {
-  const { c, theme } = useTheme()
+  const { colors } = useTheme()
   const router = useRouter()
   const user = useAuthStore(s => s.user)
+  // When this round's window closes = when tomorrow's opens (local time).
+  const [opens] = useState(() => opensAt(quiz.seconds_remaining, Date.now()))
 
   const total = result.per_question_correct.length || 5
-  // per_question_correct is always populated by both score_and_submit()
-  // return paths (fresh submit and the idempotent replay) — the fallback
-  // below only matters if that ever isn't true, and marks every square
-  // "skipped" rather than guessing right/wrong.
   const answers: AnswerMark[] = result.per_question_correct.length > 0
     ? result.per_question_correct.map((ok): AnswerMark => (ok ? 'correct' : 'wrong'))
     : Array.from({ length: total }, (): AnswerMark => 'skipped')
@@ -56,93 +67,93 @@ export function QuizResultView({
 
   const { hostRef, capturing, copied, share, copyLink } = useShareTicket(ticketProps)
 
-  const gold = result.correct_count === total
+  useEffect(() => {
+    if (fresh && result.correct_count >= SUCCESS_FROM) haptics.success()
+  }, [fresh, result.correct_count])
+
+  const others = (friends ?? []).filter(f => !f.is_me)
 
   return (
-    <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-      <View style={s.statusBlock}>
-        <View style={[s.badge, { backgroundColor: gold ? '#F0A32B22' : (theme === 'dark' ? GREEN_TINT_DARK : GREEN_TINT) }]}>
-          <Text style={[s.badgeText, { color: gold ? '#F0A32B' : GREEN, fontFamily: typography.fontFamily.bold }]}>
-            TUR YAKUNLANDI
-          </Text>
-        </View>
-        <Text style={[s.statusTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.extrabold }]}>
+    <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <View style={styles.status}>
+        <Badge kind="status" status={result.correct_count === total ? 'success' : 'accent'} label="Tur yakunlandi" />
+        <Text style={[typeScale.title1, styles.center, { color: colors.text }]}>
           {statusTitleFor(result.correct_count, total)}
         </Text>
-        <Text style={[s.statusSub, { color: c.textMuted }]}>
-          To'liq javoblar va tushuntirishlar tayyor
+        <Text style={[typeScale.callout, styles.center, { color: colors.textMuted }]}>
+          Toʻliq javoblar va tushuntirishlar tayyor
         </Text>
       </View>
 
-      <View style={s.ticketWrap}>
-        <ResultTicket {...ticketProps} />
-      </View>
+      <ResultTicket {...ticketProps} reveal={fresh} />
       <ShareCaptureHost hostRef={hostRef} ticketProps={ticketProps} />
 
-      <View style={s.actionsRow}>
-        <Pressable
-          onPress={copyLink} disabled={capturing}
-          accessibilityRole="button" accessibilityHint="Natija havolasini nusxalaydi"
-          style={[s.actionBtn, s.actionSecondary, { backgroundColor: c.bgSecondary, borderColor: c.border, opacity: capturing ? 0.5 : 1 }]}
-        >
-          <Copy size={15} color={c.textPrimary} />
-          <Text style={[s.actionText, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-            {copied ? 'Nusxalandi' : 'Nusxalash'}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={share} disabled={capturing}
-          accessibilityRole="button" accessibilityHint="Natija rasmini ulashadi"
-          style={[s.actionBtn, s.actionPrimary, { backgroundColor: ORANGE, opacity: capturing ? 0.7 : 1 }]}
-        >
-          {capturing
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <>
-                <Share2 size={15} color="#fff" />
-                <Text style={[s.actionText, { color: '#fff', fontFamily: typography.fontFamily.bold }]}>Ulashish</Text>
-              </>}
-        </Pressable>
+      <View style={styles.actions}>
+        <Button
+          label={copied ? 'Nusxalandi' : 'Nusxalash'}
+          variant="secondary"
+          icon={Copy}
+          onPress={copyLink}
+          disabled={capturing}
+          style={styles.flex}
+          accessibilityLabel="Natija havolasini nusxalash"
+        />
+        <Button
+          label="Ulashish"
+          icon={Share2}
+          onPress={share}
+          loading={capturing}
+          style={styles.flexWide}
+          accessibilityLabel="Natija rasmini ulashish"
+        />
       </View>
 
-      <Pressable
+      <Card style={styles.rows}>
+        <ListRow
+          title={`Ertaga yangi 5 savol · ${opens} da ochiladi`}
+          leading={{ kind: 'icon', icon: CalendarClock }}
+        />
+        <ListRow
+          title="5 Savol seriyasi"
+          leading={{ kind: 'icon', icon: Flame }}
+          trailing={{ kind: 'value', value: `${result.quiz_streak_days} kun` }}
+        />
+      </Card>
+
+      {others.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[typeScale.overline, { color: colors.textMuted }]}>Doʻstlar</Text>
+          <Card style={styles.rows}>
+            {(friends ?? []).map(f => (
+              <ListRow
+                key={f.user_id}
+                title={f.is_me ? 'Siz' : uzText(f.first_name || f.username || 'Foydalanuvchi')}
+                subtitle={`#${f.rank}`}
+                leading={{ kind: 'avatar', name: f.first_name || f.username || '?', uri: f.photo_url }}
+                trailing={{ kind: 'value', value: `${f.correct_count}/5` }}
+              />
+            ))}
+          </Card>
+        </View>
+      )}
+
+      <Button
+        label="Toʻliq reyting va javoblar"
+        variant="ghost"
+        fullWidth
         onPress={() => router.push({ pathname: '/(screens)/daily-quiz-results', params: { quizId: String(quiz.id) } } as any)}
-        accessibilityRole="button"
-        style={s.tertiaryLink}
-      >
-        <Text style={[s.tertiaryText, { color: c.textMuted, fontFamily: typography.fontFamily.semibold }]}>
-          Natijalarni ko'rish →
-        </Text>
-      </Pressable>
+      />
     </ScrollView>
   )
 }
 
-const s = StyleSheet.create({
-  scroll: { padding: spacing.lg, paddingTop: 20, alignItems: 'center' },
-
-  statusBlock: { alignItems: 'center', gap: 8 },
-  badge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: radius.full },
-  badgeText: { fontSize: 10, letterSpacing: 0.8 },
-  statusTitle: { fontSize: 22, letterSpacing: -0.4 },
-  statusSub: { fontSize: 12, lineHeight: 18, textAlign: 'center', maxWidth: 290, fontWeight: '500' },
-
-  ticketWrap: { width: '100%', marginTop: 20 },
-
-  actionsRow: { flexDirection: 'row', gap: 8, width: '100%', marginTop: spacing.lg },
-  actionBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    borderRadius: 16, paddingVertical: 14, minHeight: 48,
-  },
-  actionSecondary: { flex: 1, borderWidth: 1 },
-  actionPrimary: {
-    flex: 1.3,
-    shadowColor: '#D9832B', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.32, shadowRadius: 16, elevation: 4,
-  },
-  actionText: { fontSize: 13 },
-
-  tertiaryLink: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-    marginTop: spacing.lg, paddingVertical: 12, minHeight: 48,
-  },
-  tertiaryText: { fontSize: 12 },
+const styles = StyleSheet.create({
+  scroll: { paddingHorizontal: layout.gutter, paddingTop: space.lg, paddingBottom: space.xxl, gap: space.lg },
+  status: { alignItems: 'center', gap: space.xs },
+  center: { textAlign: 'center' },
+  actions: { flexDirection: 'row', gap: space.xs },
+  flex: { flex: 1, alignSelf: 'auto' },
+  flexWide: { flex: 1.3, alignSelf: 'auto' },
+  rows: { paddingVertical: space.xxs },
+  section: { gap: space.xs },
 })
