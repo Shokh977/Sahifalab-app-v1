@@ -1,10 +1,12 @@
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
-  auth, courses, enrollments, lessons as lessonsApi, leaderboard, focusStats, flashcards as flashcardsApi, streaks,
+  auth, courses, enrollments, lessons as lessonsApi, leaderboard, focusStats, flashcards as flashcardsApi, streaks, dailyQuiz,
   type MeResponse, type Course, type LeaderboardEntry, type FocusStats, type StreakState,
+  type DailyQuizStatus, type StreakCalendarDay,
 } from '../lib/api'
 import { useAuthStore } from './authStore'
+import { pickTopDueDeck } from '../src/features/today/today'
 
 const CACHE_KEY = 'sahifalab_dashboard_cache'
 const CACHE_TTL = 300_000 // 5 min
@@ -40,6 +42,29 @@ export interface DashboardData {
   windowClosesAt?:          string | null
   streakCanFreeze?:         boolean   // unconditional can_freeze, for StreakAtRiskModal
   streakCanBuyFreeze?:      boolean   // unconditional can_freeze_if_purchased && !can_freeze
+  // Bugun (Phase 2). Optional: caches written before these existed lack them.
+  quiz?:          DailyQuizStatus | null
+  quizFetchedAt?: number                 // seconds_remaining is relative to this
+  weekCalendar?:  StreakCalendarDay[]    // last 7 days from /api/streaks/detail
+  topDueDeck?:    { id: number; due: number } | null
+  hasDecks?:      boolean
+}
+
+/** Quiz status + decks, refreshed on every Home focus (cheap, not TTL-gated). */
+type TodayExtras = Pick<DashboardData, 'quiz' | 'quizFetchedAt' | 'topDueDeck' | 'hasDecks'>
+
+async function fetchTodayExtras(): Promise<Partial<TodayExtras>> {
+  const [quizRes, decksRes] = await Promise.allSettled([dailyQuiz.status(), flashcardsApi.listDecks()])
+  const out: Partial<TodayExtras> = {}
+  if (quizRes.status === 'fulfilled') {
+    out.quiz = quizRes.value.quiz
+    out.quizFetchedAt = Date.now()
+  }
+  if (decksRes.status === 'fulfilled' && Array.isArray(decksRes.value)) {
+    out.topDueDeck = pickTopDueDeck(decksRes.value)
+    out.hasDecks = decksRes.value.length > 0
+  }
+  return out
 }
 
 interface DashboardState {
@@ -57,6 +82,7 @@ interface DashboardState {
 
   fetch:                 () => Promise<void>
   refresh:               () => Promise<void>
+  refreshToday:          () => Promise<void>
   patchFocusStats:       (patch: Partial<FocusStats>) => void
   markStreakLostSeen:    () => void
   bumpAtRiskModalShown:  () => void
@@ -103,6 +129,10 @@ async function saveCache(data: DashboardData) {
   try { await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
 }
 
+// refreshToday() runs on every Home focus; this keeps tab-hopping cheap.
+const TODAY_REFRESH_MS = 30_000
+let lastTodayRefresh = 0
+
 const INTERESTS_KEY = 'sahifalab_user_interests'
 const EXPERIENCE_KEY = 'sahifalab_user_experience'
 
@@ -114,7 +144,9 @@ async function fetchAll(): Promise<DashboardData> {
   ])
   const savedInterests: number[] = savedInterestsRaw ? JSON.parse(savedInterestsRaw) : []
 
-  const [meRes, enrollRes, coursesRes, leaderRes, statsRes, flashRes, streakRes] = await Promise.allSettled([
+  // Quiz status and decks (Bugun) load alongside; their failures stay inside fetchTodayExtras.
+  lastTodayRefresh = Date.now()
+  const [settled, extras] = await Promise.all([Promise.allSettled([
     auth.me(),
     enrollments.mine(),
     // Fetch more courses so we have a real pool to personalize from
@@ -123,7 +155,8 @@ async function fetchAll(): Promise<DashboardData> {
     focusStats.get(),
     flashcardsApi.getStats(),
     streaks.detail(),
-  ])
+  ]), fetchTodayExtras()])
+  const [meRes, enrollRes, coursesRes, leaderRes, statsRes, flashRes, streakRes] = settled
 
   const user       = meRes.status       === 'fulfilled' ? meRes.value              : null
   const enrolled   = enrollRes.status   === 'fulfilled' ? enrollRes.value           : []
@@ -216,6 +249,8 @@ async function fetchAll(): Promise<DashboardData> {
     windowClosesAt,
     streakCanFreeze,
     streakCanBuyFreeze,
+    weekCalendar:           streakDetail?.calendar?.slice(-7) ?? [],
+    ...extras,
   }
 }
 
@@ -269,6 +304,18 @@ export const useDashboardStore = create<DashboardState>((set, get) => {
     } finally {
       set({ loading: false })
     }
+  },
+
+  refreshToday: async () => {
+    const now = Date.now()
+    if (now - lastTodayRefresh < TODAY_REFRESH_MS) return
+    lastTodayRefresh = now
+    const extras = await fetchTodayExtras()
+    const data = get().data
+    if (!data || Object.keys(extras).length === 0) return
+    const updated = { ...data, ...extras }
+    set({ data: updated })
+    saveCache(updated)
   },
 
   refresh: async () => {
