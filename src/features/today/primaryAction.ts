@@ -15,7 +15,7 @@ export interface TodayState {
   /** Local hour 0–23. */
   hour: number
   /** null when today's quiz status isn't known (or there is no quiz). */
-  quiz: { state: 'not_started' | 'in_progress' | 'submitted'; theme: string | null } | null
+  quiz: { state: 'not_started' | 'in_progress' | 'submitted'; theme: string | null; answered?: number } | null
   dueCards: number
   course: { id: number; title: string } | null
 }
@@ -29,6 +29,11 @@ export interface PrimaryAction {
   tone: 'default' | 'warning' | 'success'
   /** Focus: minutes still needed for the goal (the timer preset). */
   minutesLeft?: number
+}
+
+/** "Davom etish · 3/5" — a 5 Savol round left part-way. */
+export function resumeLabel(answered: number, total = 5): string {
+  return `Davom etish · ${Math.min(answered, total)}/${total}`
 }
 
 /** From this hour an unmet goal puts the streak at risk. */
@@ -59,9 +64,10 @@ export function getPrimaryAction(s: TodayState): PrimaryAction {
   }
 
   if (s.quiz && s.quiz.state !== 'submitted') {
+    const answered = s.quiz.state === 'in_progress' ? s.quiz.answered ?? 0 : 0
     return {
       target: 'quiz',
-      label: '5 Savolni oʻynash',
+      label: answered > 0 ? resumeLabel(answered) : '5 Savolni oʻynash',
       caption: s.quiz.theme ? `Bugungi mavzu: ${uzText(s.quiz.theme)}` : 'Bugungi 5 savol',
       tone: 'default',
     }

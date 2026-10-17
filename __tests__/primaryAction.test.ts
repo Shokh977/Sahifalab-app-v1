@@ -58,9 +58,15 @@ describe('getPrimaryAction — goal met', () => {
     })
   })
 
-  it('also resumes an in-progress quiz', () => {
+  it('also opens an in-progress quiz with nothing answered yet', () => {
     expect(getPrimaryAction({ ...met, quiz: { state: 'in_progress', theme: null } })).toMatchObject({
-      target: 'quiz', caption: 'Bugungi 5 savol',
+      target: 'quiz', label: '5 Savolni oʻynash', caption: 'Bugungi 5 savol',
+    })
+  })
+
+  it('resumes a round left part-way: "Davom etish · 3/5"', () => {
+    expect(getPrimaryAction({ ...met, quiz: { state: 'in_progress', theme: 'Tarix', answered: 3 } })).toMatchObject({
+      target: 'quiz', label: 'Davom etish · 3/5', caption: 'Bugungi mavzu: Tarix',
     })
   })
 
