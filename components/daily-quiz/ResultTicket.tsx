@@ -51,8 +51,8 @@ function fmtDate(iso: string): string {
 
 function variantFor(score: number, total: number) {
   if (score === total) return { headline: `${score}/${total} — benuqson`, accent: GREEN, gold: true }
-  if (score >= 3) return { headline: `${score} to'g'ri javob`, accent: ORANGE, gold: false }
-  if (score >= 1) return { headline: `${score} to'g'ri javob`, accent: ORANGE, gold: false }
+  if (score >= 3) return { headline: `${score} toʻgʻri javob`, accent: ORANGE, gold: false }
+  if (score >= 1) return { headline: `${score} toʻgʻri javob`, accent: ORANGE, gold: false }
   return { headline: "Birinchi urinish", accent: MUTED, gold: false }
 }
 
@@ -154,7 +154,7 @@ export function ResultTicket({
   ]
 
   const a11yLabel =
-    `5 savol, tur ${round}, ${score} dan ${total} to'g'ri, seriya ${streak}` +
+    `5 savol, tur ${round}, ${score} dan ${total} toʻgʻri, seriya ${streak}` +
     (rank != null ? `, reyting ${rank}` : '')
 
   return (
@@ -211,7 +211,7 @@ export function ResultTicket({
       <View style={styles.footer}>
         <View>
           <Text maxFontSizeMultiplier={1.2} style={[styles.footerTitle, { fontFamily: typography.fontFamily.bold }]}>
-            Sen ham sinab ko'r
+            Sen ham sinab koʻr
           </Text>
           <Text maxFontSizeMultiplier={1.2} style={styles.footerDomain}>sahifalab.uz</Text>
         </View>
