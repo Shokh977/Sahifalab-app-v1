@@ -143,7 +143,7 @@ export function TodayHero({
         </View>
       </View>
 
-      <WeekStrip days={weekCalendar} />
+      <WeekStrip days={weekCalendar} todayDone={goalMet} />
 
       <View style={styles.focus}>
         <View style={styles.focusRow}>

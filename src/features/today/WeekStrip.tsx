@@ -16,7 +16,7 @@ const STATUS_LABEL: Record<StreakCalendarDay['status'], string> = {
   studied: 'bajarilgan', frozen: 'muzlatilgan', missed: 'oʻtkazib yuborilgan', future: 'kelmagan',
 }
 
-/** The last 7 local dates, oldest first — used when the calendar hasn't loaded. */
+/** The last 7 local dates, oldest first. */
 function lastSevenDays(now: Date): StreakCalendarDay[] {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(now)
@@ -25,17 +25,30 @@ function lastSevenDays(now: Date): StreakCalendarDay[] {
   })
 }
 
-export function WeekStrip({ days }: { days: readonly StreakCalendarDay[] | undefined }) {
+export function WeekStrip({ days, todayDone }: {
+  days: readonly StreakCalendarDay[] | undefined
+  /** Goal met today: show today as done even if the cached calendar lags. */
+  todayDone?: boolean
+}) {
   const { colors } = useTheme()
   const now = new Date()
   const today = localDateKey(now)
-  const week = days && days.length > 0 ? days.slice(-7) : lastSevenDays(now)
+  // Always the last 7 local dates ending today, even when a cached calendar
+  // is a day old; dates it doesn't cover read as missed (or neutral if there
+  // is no calendar at all).
+  const byDate = new Map((days ?? []).map(d => [d.date, d.status] as const))
+  const fallback: StreakCalendarDay['status'] = byDate.size > 0 ? 'missed' : 'future'
+  const week = lastSevenDays(now).map(d => ({
+    date: d.date,
+    status: byDate.get(d.date) ?? (d.date === today ? 'future' : fallback),
+  }))
   const icon = weekDotSize / 2
 
   return (
     <View style={styles.row}>
-      {week.map(day => {
-        const isToday = day.date === today
+      {week.map(raw => {
+        const isToday = raw.date === today
+        const day = isToday && todayDone ? { ...raw, status: 'studied' as const } : raw
         const { short, long } = weekdayOf(day.date)
         const bg = day.status === 'studied' ? colors.success
           : day.status === 'frozen' ? colors.freeze
