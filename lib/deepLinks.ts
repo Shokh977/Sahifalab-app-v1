@@ -27,6 +27,13 @@ export function parseDeepLink(url: string): string | null {
     courses:       '/(tabs)/courses',
     notifications: '/(tabs)/notifications',
     profile:       '/(tabs)/profile',
+    // Redesign tab names (Phase 4a): Bugun · Fokus · Kurslar · Kartalar · Bellashuv
+    bugun:         '/(tabs)',
+    fokus:         '/(tabs)/study',
+    kurslar:       '/(tabs)/courses',
+    kartalar:      '/(tabs)/flashcards',
+    bellashuv:     '/(tabs)/musobaqalar',
+    musobaqalar:   '/(tabs)/musobaqalar',
   }
   // Bare tab links only: "courses/7" and "courses/7/lesson/9" used to stop
   // here and open the Kurslar tab instead of the course (bug found by the
@@ -34,6 +41,12 @@ export function parseDeepLink(url: string): string | null {
   if (seg0 in tabRoutes && !seg1) return tabRoutes[seg0]
 
   if (seg0 === 'leaderboard')                              return '/(screens)/leaderboard'
+  // Competition detail: sahifalab://challenge/{slug} (also bellashuv/{slug})
+  if ((seg0 === 'challenge' || seg0 === 'bellashuv') && seg1) return `/(screens)/challenge/${seg1}`
+  // Books left the app (Phase 4a): these routes open sahifalab.uz instead.
+  if ((seg0 === 'books' || seg0 === 'kitoblar') && !seg1)  return '/(screens)/books'
+  if ((seg0 === 'book' || seg0 === 'kitoblar') && seg1)    return `/(screens)/book/${seg1}`
+  if (seg0 === 'read' && seg1)                             return `/(screens)/book-reader/${seg1}`
   if (seg0 === 'course'          && seg1)                  return `/(screens)/course/${seg1}`
   // sahifalab://courses/{id}/lesson/{lessonId}
   if (seg0 === 'courses' && seg1 && seg2 === 'lesson' && seg3)

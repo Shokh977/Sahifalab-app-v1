@@ -30,6 +30,29 @@ const OLD_LINKS: [string, string][] = [
   ['sahifalab://daily-quiz', '/(screens)/daily-quiz'],
 ]
 
+// New names (redesign Phase 4a). Books open sahifalab.uz via their routes.
+const NEW_LINKS: [string, string][] = [
+  ['sahifalab://bugun', '/(tabs)'],
+  ['sahifalab://fokus', '/(tabs)/study'],
+  ['sahifalab://kurslar', '/(tabs)/courses'],
+  ['sahifalab://kartalar', '/(tabs)/flashcards'],
+  ['sahifalab://bellashuv', '/(tabs)/musobaqalar'],
+  ['sahifalab://musobaqalar', '/(tabs)/musobaqalar'],
+  ['sahifalab://challenge/haftalik-sprint', '/(screens)/challenge/haftalik-sprint'],
+  ['sahifalab://bellashuv/haftalik-sprint', '/(screens)/challenge/haftalik-sprint'],
+  ['sahifalab://books', '/(screens)/books'],
+  ['sahifalab://kitoblar', '/(screens)/books'],
+  ['sahifalab://book/12', '/(screens)/book/12'],
+  ['sahifalab://kitoblar/12', '/(screens)/book/12'],
+  ['sahifalab://read/12', '/(screens)/book-reader/12'],
+]
+
+describe('deep links: redesign names', () => {
+  it.each(NEW_LINKS)('%s → %s', (url, route) => {
+    expect(parseDeepLink(url)).toBe(route)
+  })
+})
+
 describe('deep links: every old link keeps its destination', () => {
   it.each(OLD_LINKS)('%s → %s', (url, route) => {
     expect(parseDeepLink(url)).toBe(route)
