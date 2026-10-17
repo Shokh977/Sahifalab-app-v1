@@ -20,10 +20,10 @@ function usePulse() {
   const t = useSharedValue(1)
   useEffect(() => {
     if (reduceMotion) return
-    t.value = withRepeat(withTiming(DIM, { duration: shimmer.duration / 2, easing: easing.standard }), -1, true)
+    t.set(withRepeat(withTiming(DIM, { duration: shimmer.duration / 2, easing: easing.standard }), -1, true))
     return () => cancelAnimation(t)
   }, [reduceMotion, t])
-  return useAnimatedStyle(() => ({ opacity: t.value }))
+  return useAnimatedStyle(() => ({ opacity: t.get() }))
 }
 
 export interface SkeletonBlockProps {

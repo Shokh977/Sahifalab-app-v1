@@ -55,3 +55,12 @@ export const avatarSize = { sm: 32, md: 40, lg: 56, xl: 80 } as const
 
 /** Leading tile in ListRow (icon tile / thumbnail). */
 export const tileSize = 40
+
+/** ProgressBar / ProgressRing stroke. */
+export const progressThickness = { thin: 4, thick: 8 } as const
+
+/** TextArea minimum height. */
+export const textAreaMinHeight = 112
+
+/** Leaderboard rank column: fits "#999" in one line with tabular figures. */
+export const rankColumnWidth = 44

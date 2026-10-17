@@ -22,3 +22,9 @@ export const stagger = { step: 30, maxItems: 5 }
 
 /** Skeleton shimmer cycle (the only idle loop besides the running timer). */
 export const shimmer = { duration: 1200 }
+
+/** Toast stays this long before it leaves. */
+export const toast = { hold: 3000 }
+
+/** Sheet drag: close past this fraction of its height or this fling speed (px/s). */
+export const sheetDrag = { dismissFraction: 0.3, dismissVelocity: 800 }

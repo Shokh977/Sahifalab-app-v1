@@ -12,6 +12,8 @@ import { useTheme } from '../../hooks/useTheme'
 import { useAuthStore } from '../../stores/authStore'
 import { leaderboard, type LeaderboardEntry, type LeaderboardPeriod } from '../../lib/api'
 import { typography, spacing, radius, getLevelTier } from '../../lib/constants'
+import { rankColumnWidth } from '../../src/design/spacing'
+import { tabular } from '../../src/design/typography'
 import { InfoModal } from '../../components/ui/InfoModal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -168,7 +170,7 @@ function RankRow({
     >
       {/* Rank */}
       <View style={styles.rankNumWrap}>
-        <Text style={[styles.rankNum, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+        <Text numberOfLines={1} style={[styles.rankNum, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
           #{entry.rank ?? '?'}
         </Text>
       </View>
@@ -526,8 +528,8 @@ const styles = StyleSheet.create({
     paddingVertical:   12,
     paddingHorizontal: 8,
   },
-  rankNumWrap: { width: 28, alignItems: 'flex-end' },
-  rankNum:     { fontSize: 13 },
+  rankNumWrap: { width: rankColumnWidth, alignItems: 'flex-end' },
+  rankNum:     { fontSize: 13, ...tabular },
   rankName:    { flex: 1, fontSize: 15 },
   rankStats:   { alignItems: 'flex-end', gap: 1 },
   rankXP:      { fontSize: 14 },

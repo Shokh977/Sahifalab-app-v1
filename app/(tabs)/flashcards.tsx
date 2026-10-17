@@ -25,11 +25,11 @@ import { PublicSetsTab } from '../../components/flashcards/PublicSetsTab'
 import type { FlashcardDeck } from '../../lib/types'
 import { typography, spacing, radius } from '../../lib/constants'
 import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
+import { deckColors } from '../../src/design/tokens'
 
-const PRESET_COLORS = [
-  '#F5A623', '#FF6B6B', '#4DA6FF', '#34C759', '#AF52DE',
-  '#FF9F0A', '#30D158', '#FF375F', '#64D2FF', '#FFD60A',
-]
+// Eight distinct deck colours (the old list had two oranges and two greens).
+// Decks saved with an older colour keep it.
+const PRESET_COLORS: readonly string[] = deckColors
 
 type MainTab = 'mine' | 'public'
 

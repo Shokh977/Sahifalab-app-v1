@@ -24,11 +24,11 @@ import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 import { PublishSheet } from '../../../components/flashcards/PublishSheet'
 import { RatingSheet } from '../../../components/flashcards/RatingSheet'
 import { shareFlashcardDeck } from '../../../lib/share'
+import { deckColors } from '../../../src/design/tokens'
 
-const PRESET_COLORS = [
-  '#F5A623', '#FF6B6B', '#4DA6FF', '#34C759', '#AF52DE',
-  '#FF9F0A', '#30D158', '#FF375F', '#64D2FF', '#FFD60A',
-]
+// Eight distinct deck colours (the old list had two oranges and two greens).
+// Decks saved with an older colour keep it.
+const PRESET_COLORS: readonly string[] = deckColors
 
 // ── Add / Edit Card sheet ─────────────────────────────────────────────────────
 

@@ -32,6 +32,7 @@ import { track } from '../../../lib/analytics'
 const { width: SW } = Dimensions.get('window')
 const CARD_W = SW - 32
 const FLIP_DURATION = 300
+const CARD_PERSPECTIVE = 1000   // without it Android ignores backfaceVisibility
 const SWIPE_THRESHOLD = SW * 0.35
 
 // ── Adaptive font size by text length ────────────────────────────────────────
@@ -209,6 +210,9 @@ export default function FlashcardStudyScreen() {
   const [totalXP,      setTotalXP]      = useState(0)
   const [loading,      setLoading]      = useState(true)
   const [flipped,      setFlipped]      = useState(false)
+  // The back face mounts only on the card's first flip, so it can never
+  // show before the front (it did at 0/10 on some devices).
+  const [backMounted,  setBackMounted]  = useState(false)
   const [showConfirm,  setShowConfirm]  = useState(false)
   const [done,         setDone]         = useState(false)
   const [masteryBefore, setMasteryBefore] = useState(0)
@@ -243,12 +247,12 @@ export default function FlashcardStudyScreen() {
 
   const frontStyle = useAnimatedStyle(() => ({
     opacity:   interpolate(rotate.value, [0, 90, 180], [1, 0, 0]),
-    transform: [{ rotateY: `${rotate.value}deg` }],
+    transform: [{ perspective: CARD_PERSPECTIVE }, { rotateY: `${rotate.value}deg` }],
   }))
 
   const backStyle = useAnimatedStyle(() => ({
     opacity:   interpolate(rotate.value, [0, 90, 180], [0, 0, 1]),
-    transform: [{ rotateY: `${rotate.value - 180}deg` }],
+    transform: [{ perspective: CARD_PERSPECTIVE }, { rotateY: `${rotate.value - 180}deg` }],
   }))
 
   const slideStyle = useAnimatedStyle(() => ({ transform: [{ translateX: slideX.value }] }))
@@ -270,6 +274,10 @@ export default function FlashcardStudyScreen() {
         if (session.cards.length === 0) {
           setDone(true)
         } else {
+          // Every session starts on the front.
+          rotate.set(0)
+          setFlipped(false)
+          setBackMounted(false)
           initialQueueRef.current = session.cards.length
           setQueue(session.cards)
           track('review_session_start', { deck_id: deckId, cards: session.cards.length, practice: practice === '1' }, deckId)
@@ -307,6 +315,7 @@ export default function FlashcardStudyScreen() {
       return
     }
     setShowHint(false)
+    setBackMounted(true)
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     rotate.value = withTiming(180, { duration: FLIP_DURATION, easing: Easing.inOut(Easing.quad) }, () => {
       runOnJS(setFlipped)(true)
@@ -318,6 +327,7 @@ export default function FlashcardStudyScreen() {
     setQueue(nextQueue)
     setCardIndex(0)
     setFlipped(false)
+    setBackMounted(false)
     rotate.value = 0
     slideX.value = SW
     slideX.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.quad) })
@@ -542,7 +552,8 @@ export default function FlashcardStudyScreen() {
                 )}
               </Animated.View>
 
-              {/* Back face */}
+              {/* Back face — mounted from the first flip on */}
+              {backMounted && (
               <Animated.View style={[StyleSheet.absoluteFill, styles.cardFace, backStyle]}>
                 <Text style={[styles.cardSideLabel, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
                   ORQA TOMON
@@ -556,6 +567,7 @@ export default function FlashcardStudyScreen() {
                   </Text>
                 </ScrollView>
               </Animated.View>
+              )}
             </View>
           </GestureDetector>
         </Animated.View>

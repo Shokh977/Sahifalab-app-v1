@@ -32,6 +32,8 @@ import type { ProfileData } from '../../../lib/types'
 import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 import { RoleBadge } from '../../../components/ui/RoleBadge'
 import { track, trackOnce } from '../../../lib/analytics'
+import { getCoursePreview } from '../../../lib/coursePreview'
+import { CourseDetailSkeleton } from '../../../components/courses/CourseDetailSkeleton'
 
 // Set when this device requested a payment code for the course; a later load
 // that finds the course enrolled is the admin's approval (purchase_approved).
@@ -1013,13 +1015,35 @@ export default function CourseDetailScreen() {
   }, [courseId])
 
   // ── Load ───────────────────────────────────────────────────────────────────
+  // Wave 3: teacher profile, their other courses, certificate. Never blocks
+  // the first paint; started early when the cached list row has teacher_id.
+  const loadExtras = useCallback((teacherId: number) => {
+    Promise.all([
+      profile.getPublic(teacherId).catch(() => null),
+      coursesApi.list({ teacher_id: teacherId, limit: 4 }).catch(() => null),
+      lessonsApi.getMyCertificates().catch(() => [] as any[]),
+      profile.getTeacherProfile(teacherId).catch(() => null),
+    ]).then(([teacherData, tcRes, certs, teacherExtraData]) => {
+      setTeacher(teacherData)
+      if (teacherExtraData) setTeacherExtra(teacherExtraData)
+      if (tcRes) setTeacherCourses(tcRes.courses.filter((c: Course) => c.id !== courseId).slice(0, 3))
+      const cert = (certs as any[]).find((c: any) => c.course_id === courseId) ?? null
+      setCertificate(cert)
+    }).catch(() => {})
+  }, [courseId])
+
   const load = useCallback(async () => {
     setLoading(true)
+    const previewTeacher = getCoursePreview(courseId)?.teacher_id
+    if (previewTeacher) loadExtras(previewTeacher)
     try {
-      const [courseData, ls, rv] = await Promise.all([
+      // Waves 1 and 2 together: enrollment and progress don't need the course row.
+      const [courseData, ls, rv, enrollmentNow] = await Promise.all([
         coursesApi.get(courseId),
         lessonsApi.listByCourse(courseId),
         coursesApi.getReviews(courseId),
+        checkEnrollment(courseId).catch(() => undefined),
+        loadProgress(courseId).catch(() => {}),
       ])
       setCourse(courseData)
       setLessons(ls)
@@ -1028,7 +1052,6 @@ export default function CourseDetailScreen() {
       // never blocks the screen and never surfaces an error to the student.
       coursesApi.recordView(courseId).catch(() => {})
       track('course_view', { courseId, is_paid: courseData.is_paid }, courseId)
-      const [enrollmentNow] = await Promise.all([checkEnrollment(courseId), loadProgress(courseId)])
       if (enrollmentNow?.enrolled) {
         AsyncStorage.getItem(pendingPurchaseKey(courseId)).then(pending => {
           if (!pending) return
@@ -1044,28 +1067,18 @@ export default function CourseDetailScreen() {
         }).catch(() => {})
       }
 
-      const progSet = progressCache[courseId] ?? new Set<number>()
+      const progSet = useCourseStore.getState().progressCache[courseId] ?? new Set<number>()
       const startL  = startLessonId ? ls.find(l => l.id === Number(startLessonId)) : null
       const first   = startL ?? ls.find(l => !progSet.has(l.id) && l.lesson_type !== 'material' && l.lesson_type !== 'quiz') ?? ls.find(l => l.lesson_type !== 'material' && l.lesson_type !== 'quiz') ?? null
       setCurrentLesson(first)
 
-      const [teacherData, tcRes, certs, teacherExtraData] = await Promise.all([
-        profile.getPublic(courseData.teacher_id).catch(() => null),
-        coursesApi.list({ teacher_id: courseData.teacher_id, limit: 4 }).catch(() => null),
-        lessonsApi.getMyCertificates().catch(() => [] as any[]),
-        profile.getTeacherProfile(courseData.teacher_id).catch(() => null),
-      ])
-      setTeacher(teacherData)
-      if (teacherExtraData) setTeacherExtra(teacherExtraData)
-      if (tcRes) setTeacherCourses(tcRes.courses.filter((c: Course) => c.id !== courseId).slice(0, 3))
-      const cert = (certs as any[]).find((c: any) => c.course_id === courseId) ?? null
-      setCertificate(cert)
+      if (courseData.teacher_id !== previewTeacher) loadExtras(courseData.teacher_id)
     } catch (e: any) {
       Alert.alert('Xatolik', e?.message ?? 'Kurs yuklanmadi')
     } finally {
       setLoading(false)
     }
-  }, [courseId])
+  }, [courseId, loadExtras])
 
   useEffect(() => { load() }, [load])
 
@@ -1314,16 +1327,9 @@ export default function CourseDetailScreen() {
   }
 
   // ── Loading / error states ─────────────────────────────────────────────────
-  if (loading) return (
-    <SafeAreaView style={[styles.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
-      <View style={[styles.navBar, { borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.navBack}>
-          <ChevronLeft size={22} color={c.textPrimary} />
-        </Pressable>
-      </View>
-      <View style={styles.center}><ActivityIndicator color={c.brand} size="large" /></View>
-    </SafeAreaView>
-  )
+  // Header, cover and title paint at once from the cached list row; the rest
+  // is skeleton until waves 1–2 return (Phase 0 finding, inventory.md).
+  if (loading) return <CourseDetailSkeleton preview={getCoursePreview(courseId)} onBack={() => router.back()} />
 
   if (!course) return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>

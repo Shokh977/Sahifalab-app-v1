@@ -32,7 +32,7 @@ export function Pressable({ style, haptic, noFeedback, baseOpacity = 1, onPressI
 
   const animated = useAnimatedStyle(() => {
     if (noFeedback) return { opacity: baseOpacity }
-    const p = progress.value
+    const p = progress.get()
     return {
       opacity: baseOpacity * (1 - (1 - press.opacity) * p),
       transform: reduceMotion ? [] : [{ scale: 1 - (1 - press.scale) * p }],
@@ -46,11 +46,11 @@ export function Pressable({ style, haptic, noFeedback, baseOpacity = 1, onPressI
       accessibilityRole={rest.accessibilityRole ?? 'button'}
       accessibilityState={{ disabled: !!disabled, ...rest.accessibilityState }}
       onPressIn={(e: GestureResponderEvent) => {
-        progress.value = withTiming(1, { duration: durations.fast, easing: easing.standard })
+        progress.set(withTiming(1, { duration: durations.fast, easing: easing.standard }))
         onPressIn?.(e)
       }}
       onPressOut={(e: GestureResponderEvent) => {
-        progress.value = withSpring(0, springs.ui)
+        progress.set(withSpring(0, springs.ui))
         onPressOut?.(e)
       }}
       onPress={(e: GestureResponderEvent) => {
