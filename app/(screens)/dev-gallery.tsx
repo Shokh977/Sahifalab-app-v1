@@ -12,7 +12,7 @@ import { type as typeScale } from '../../src/design/typography'
 import type { Scheme } from '../../src/design/tokens'
 import {
   Avatar, Badge, Button, Card, Chip, CoinPill, Countdown, IconButton, EmptyState, Input, ListRow, ProgressBar, ProgressRing,
-  ScreenHeader, SegmentedControl, Sheet, SkeletonBlock, SkeletonLine, SkeletonRow, StatTile, TextArea, Toast,
+  ScreenHeader, SegmentedControl, Sheet, Stepper, SkeletonBlock, SkeletonLine, SkeletonRow, StatTile, TextArea, Toast,
   ToastHost, showToast,
 } from '../../src/components/ui'
 
@@ -34,6 +34,7 @@ function Column() {
   const [chip, setChip] = useState(0)
   const [filters, setFilters] = useState<number[]>([1])
   const [seg, setSeg] = useState(0)
+  const [steps, setSteps] = useState(2)
   const [progress, setProgress] = useState(0.35)
   const [sheet, setSheet] = useState(false)
   const [text, setText] = useState('')
@@ -119,6 +120,7 @@ function Column() {
             <IconButton icon={Bell} accessibilityLabel="Bildirishnomalar" onPress={noop} />
             <IconButton icon={Bell} accessibilityLabel="Bildirishnomalar" dot onPress={noop} />
             <IconButton icon={Search} accessibilityLabel="Qidirish" disabled />
+            <IconButton icon={Star} accessibilityLabel="Faol" active onPress={noop} />
             <CoinPill amount={340} onPress={noop} />
             <CoinPill amount={12_480} />
           </View>
@@ -156,6 +158,13 @@ function Column() {
         <Section title="SegmentedControl">
           <SegmentedControl segments={['Hafta', 'Oy', 'Hammasi']} index={seg} onChange={setSeg} />
           <SegmentedControl segments={['Kartalar', 'Statistika']} index={seg % 2} onChange={setSeg} />
+        </Section>
+
+        <Section title="Stepper">
+          <View style={styles.wrapCenter}>
+            <Stepper value={steps} onChange={setSteps} min={1} max={4} suffix="×" accessibilityLabel="Sessiyalar soni" />
+            <Stepper value={1} onChange={noop} disabled accessibilityLabel="Oʻchiq" />
+          </View>
         </Section>
 
         <Section title="Progress">
