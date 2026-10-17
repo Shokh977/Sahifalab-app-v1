@@ -7,39 +7,25 @@ import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import type { LeaderboardEntry } from '../../../lib/api'
 import { useTheme } from '../../design/ThemeProvider'
-import { radius, rankColumnWidth, space } from '../../design/spacing'
+import { space } from '../../design/spacing'
 import { tabular, type as typeScale } from '../../design/typography'
-import { Avatar, Button, Card } from '../../components/ui'
-import { rankGap, uzText } from '../today/today'
-import { hoursLabel, medalTone } from './bellashuv'
+import { Button, Card } from '../../components/ui'
+import { rankGap } from '../today/today'
+import { hoursLabel } from './bellashuv'
+import { RankRow } from './RankRow'
 
 const TOP = 5
 
 function Row({ e, mine }: { e: LeaderboardEntry; mine?: boolean }) {
-  const { colors } = useTheme()
-  const tone = medalTone(e.rank)
-  const name = uzText(e.first_name || e.username || 'Foydalanuvchi')
   return (
-    <View
-      accessible
-      accessibilityLabel={`${e.rank}-oʻrin, ${name}, ${e.score} XP`}
-      style={[styles.row, mine && { backgroundColor: colors.accentSoft }]}
-    >
-      <Text
-        numberOfLines={1}
-        style={[typeScale.headline, tabular, styles.rank, { color: tone ? colors[tone] : colors.textMuted }]}
-      >
-        #{e.rank}
-      </Text>
-      <Avatar name={e.first_name || e.username || '?'} size="sm" />
-      <View style={styles.text}>
-        <Text style={[typeScale.headline, { color: colors.text }]} numberOfLines={1}>{mine ? 'Siz' : name}</Text>
-        <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>
-          Lv.{e.level} · {hoursLabel(e.minutes)}
-        </Text>
-      </View>
-      <Text style={[typeScale.callout, tabular, { color: colors.text }]}>{e.score} XP</Text>
-    </View>
+    <RankRow
+      rank={e.rank}
+      name={e.first_name || e.username || ''}
+      photoUrl={e.photo_url}
+      subtitle={`Lv.${e.level} · ${hoursLabel(e.minutes)}`}
+      value={`${e.score} XP`}
+      mine={mine}
+    />
   )
 }
 
@@ -86,16 +72,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center' },
   flex: { flex: 1 },
   card: { paddingVertical: space.xs, paddingHorizontal: space.xs },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingVertical: space.xs,
-    paddingHorizontal: space.xs,
-    borderRadius: radius.md,
-  },
-  rank: { width: rankColumnWidth },
-  text: { flex: 1, gap: 2 },
   pinned: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: space.xs, paddingTop: space.xs },
   gapLine: { paddingHorizontal: space.xs, paddingBottom: space.xs },
 })

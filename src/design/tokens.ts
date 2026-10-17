@@ -98,6 +98,16 @@ export const deckColors = [
   '#E0A93B', // amber
 ] as const
 
+/**
+ * Text and icons laid over photos (cover headers) sit on imageScrim — a
+ * bottom-up dark gradient — so white stays readable on any image.
+ * Same in both themes: the photo, not the theme, sets the background.
+ */
+export const onImage = '#FFFFFF'
+export const imageScrim = ['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)'] as const
+/** Small chip behind controls over a photo (back button). */
+export const imageChip = 'rgba(0,0,0,0.38)'
+
 /** Opacity for states that dim rather than recolour. */
 export const stateOpacity = { disabled: 0.4, done: 0.55 } as const
 
