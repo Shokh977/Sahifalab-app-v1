@@ -3,14 +3,14 @@ import {
   View, Text, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native'
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withSpring,
-  withRepeat, withSequence,
+  useSharedValue, useAnimatedStyle, withSpring,
 } from 'react-native-reanimated'
 import {
-  CloudRain, Coffee, Leaf, Flame, Waves, Wind, Moon,
+  CloudRain, Coffee, Flame, Waves, Wind, Moon,
   Music, VolumeX, Volume1, Volume2, Trees,
 } from 'lucide-react-native'
 
+import { create } from 'zustand'
 import { ambientSounds, type AmbientSound } from '../../lib/api'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, radius } from '../../lib/constants'
@@ -24,6 +24,21 @@ const AV_AVAILABLE = AudioModule !== null
 // Only one player lives at a time. `_stopCurrent` is async so the native
 // audio session can settle before we allocate a new player — this is what
 // prevents the freeze after 2-3 rapid switches.
+
+/**
+ * What is playing, outside any component: the player UI now lives in a
+ * Sheet that unmounts on close, while the sound keeps playing (redesign
+ * Phase 3b). The Fokus screen reads this for its "Fon ovozi" button.
+ */
+export const useAmbientNow = create<{ activeId: number | null; name: string | null; volume: number }>(() => ({
+  activeId: null, name: null, volume: 0.4,
+}))
+
+/** Stop whatever ambient sound is playing (e.g. from outside the sheet). */
+export async function stopAmbient() {
+  useAmbientNow.setState({ activeId: null, name: null })
+  await _stopCurrent()
+}
 
 let _player:    any  = null
 let _audioReady      = false
@@ -91,11 +106,13 @@ export function AmbientPlayer({ visible = true }: { visible?: boolean }) {
 
   const [sounds,    setSounds]    = useState<AmbientSound[]>([])
   const [fetching,  setFetching]  = useState(true)
-  const [activeId,  setActiveId]  = useState<number | null>(null)
+  const activeId = useAmbientNow(st => st.activeId)
+  const volume   = useAmbientNow(st => st.volume)
   const [loadingId, setLoadingId] = useState<number | null>(null)
-  const [volume,    setVolume]    = useState(0.4)
+  const setActiveId = (id: number | null, name: string | null = null) => useAmbientNow.setState({ activeId: id, name })
+  const setVolume   = (v: number) => useAmbientNow.setState({ volume: v })
 
-  const volumeRef  = useRef(0.4)
+  const volumeRef  = useRef(volume)
   const mountedRef = useRef(true)
 
   const isPlaying = activeId !== null && loadingId === null
@@ -111,13 +128,11 @@ export function AmbientPlayer({ visible = true }: { visible?: boolean }) {
     if (_player) { try { _player.volume = volume } catch {} }
   }, [volume])
 
+  // The sound outlives this UI (it sits in a Sheet), so unmounting no
+  // longer stops playback — stopAmbient() / the "Jim" chip do.
   useEffect(() => {
     mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      // fire-and-forget; component is gone so we just need native cleanup
-      _stopCurrent()
-    }
+    return () => { mountedRef.current = false }
   }, [])
 
   // ── Select a sound ─────────────────────────────────────────────────────────
@@ -132,7 +147,7 @@ export function AmbientPlayer({ visible = true }: { visible?: boolean }) {
     }
 
     _switching = true
-    setActiveId(s.id)
+    setActiveId(s.id, s.name)
     setLoadingId(s.id)
 
     let ok = false
@@ -143,12 +158,8 @@ export function AmbientPlayer({ visible = true }: { visible?: boolean }) {
       _switching = false
     }
 
-    if (!mountedRef.current) {
-      if (ok) await _stopCurrent()
-      return
-    }
-    setLoadingId(null)
     if (!ok) setActiveId(null)
+    if (mountedRef.current) setLoadingId(null)
   }
 
   const handleOff = async () => {
@@ -215,22 +226,9 @@ export function AmbientPlayer({ visible = true }: { visible?: boolean }) {
 
 // ── Animated playing dot ───────────────────────────────────────────────────────
 
+// Static: the spec allows no looping animation on idle screens.
 function PlayingDot({ color }: { color: string }) {
-  const opacity = useSharedValue(1)
-
-  useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.2, { duration: 650 }),
-        withTiming(1,   { duration: 650 }),
-      ),
-      -1,
-    )
-  }, [])
-
-  const style = useAnimatedStyle(() => ({ opacity: opacity.value }))
-
-  return <Animated.View style={[styles.dot, { backgroundColor: color }, style]} />
+  return <View style={[styles.dot, { backgroundColor: color }]} />
 }
 
 // ── Sound chip ─────────────────────────────────────────────────────────────────
