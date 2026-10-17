@@ -31,3 +31,6 @@ export const sheetDrag = { dismissFraction: 0.3, dismissVelocity: 800 }
 
 /** Streak tick (section 5 signature moment): flame peak, tree pop delay. */
 export const streakTick = { flamePeak: 1.35, treePeak: 1.08, treeDelay: 380 }
+
+/** Wrong answer: ±6 px, twice, in 240 ms (section 5). */
+export const shake = { distance: 6, duration: 240 }

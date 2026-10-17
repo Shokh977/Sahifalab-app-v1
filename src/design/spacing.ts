@@ -67,3 +67,6 @@ export const rankColumnWidth = 44
 
 /** Bugun week strip day circle. */
 export const weekDotSize = 28
+
+/** 5 Savol answer button minimum height (spec Phase 3). */
+export const answerMinHeight = 58
