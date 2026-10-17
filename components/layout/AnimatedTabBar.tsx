@@ -50,9 +50,14 @@ export function AnimatedTabBar({ state, navigation }: BottomTabBarProps) {
   const pillX = (i: number) => i * tabWidth + (tabWidth - tabBar.pillWidth) / 2
   const x = useSharedValue(pillX(pillIndex))
 
+  // Spring only when the tab changes; a width change (first layout,
+  // rotation, split screen) just moves the pill into place.
+  const prevIndex = useRef(pillIndex)
   useEffect(() => {
     const to = pillX(pillIndex)
-    x.set(reduceMotion ? to : withSpring(to, springs.nav))
+    const moved = prevIndex.current !== pillIndex
+    prevIndex.current = pillIndex
+    x.set(moved && !reduceMotion ? withSpring(to, springs.nav) : to)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pillIndex, tabWidth, reduceMotion])
 
