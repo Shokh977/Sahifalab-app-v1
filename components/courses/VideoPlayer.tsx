@@ -281,15 +281,29 @@ function YouTubeWebPlayer({
 }
 
 // ── Bunny / other embed WebView player ────────────────────────────────────────
-function EmbedWebPlayer({
-  embedUrl, initialPosition, onComplete, onPositionUpdate, onDurationChange,
-}: {
+type EmbedWebPlayerProps = {
   embedUrl:           string
   initialPosition?:   number
   onComplete?:        () => void
   onPositionUpdate?:  (seconds: number) => void
   onDurationChange?:  (seconds: number) => void
-}) {
+}
+
+// The YouTube branch lives in this wrapper, not inside BunnyEmbedPlayer:
+// returning early there skipped that component's later useCallback, so a
+// mounted player switching between a YouTube and a non-YouTube lesson broke
+// the rules of hooks ("Rendered more hooks than during the previous render").
+function EmbedWebPlayer(props: EmbedWebPlayerProps) {
+  // YouTube → dedicated HTML-iframe player (no direct-URI loading)
+  if (isYouTubeUrl(props.embedUrl)) {
+    return <YouTubeWebPlayer embedUrl={props.embedUrl} onComplete={props.onComplete} />
+  }
+  return <BunnyEmbedPlayer {...props} />
+}
+
+function BunnyEmbedPlayer({
+  embedUrl, initialPosition, onComplete, onPositionUpdate, onDurationChange,
+}: EmbedWebPlayerProps) {
   const lastReportedRef     = useRef(0)
   const onCompleteRef       = useRef(onComplete)
   const onPositionUpdateRef = useRef(onPositionUpdate)
@@ -297,11 +311,6 @@ function EmbedWebPlayer({
   onCompleteRef.current       = onComplete
   onPositionUpdateRef.current = onPositionUpdate
   onDurationChangeRef.current = onDurationChange
-
-  // YouTube → dedicated HTML-iframe player (no direct-URI loading)
-  if (isYouTubeUrl(embedUrl)) {
-    return <YouTubeWebPlayer embedUrl={embedUrl} onComplete={onComplete} />
-  }
 
   const sep = embedUrl.includes('?') ? '&' : '?'
   const src = `${embedUrl}${sep}autoplay=true&responsive=true&preload=true`
