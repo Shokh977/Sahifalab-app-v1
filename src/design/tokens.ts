@@ -27,6 +27,9 @@ export const palette = {
     dangerText: '#F07175',
     freeze: '#4C9EEB',         // streak freeze only
     coin: '#F2C14E',           // coin icon and coin amounts only
+    medalGold: '#E9B949',      // ranks 1–3 in rankings only
+    medalSilver: '#B9BEC7',
+    medalBronze: '#D99260',
     scrim: 'rgba(0,0,0,0.5)',
   },
   light: {
@@ -48,6 +51,9 @@ export const palette = {
     dangerText: '#C62F35',
     freeze: '#256FB7',         // spec #2775C2: 4.12 on surfaceRaised
     coin: '#8C6612',           // spec #C9921A: 2.39 on surfaceRaised
+    medalGold: '#866210',
+    medalSilver: '#5C6470',
+    medalBronze: '#995222',
     scrim: 'rgba(0,0,0,0.4)',
   },
 } as const
@@ -96,5 +102,8 @@ export const deckColors = [
 export const stateOpacity = { disabled: 0.4, done: 0.55 } as const
 
 /** Text tokens the contrast test checks; textFaint is decoration-only. */
-export const textTokens = ['text', 'textMuted', 'accentText', 'successText', 'dangerText', 'freeze', 'coin'] as const
+export const textTokens = [
+  'text', 'textMuted', 'accentText', 'successText', 'dangerText', 'freeze', 'coin',
+  'medalGold', 'medalSilver', 'medalBronze',
+] as const
 export const backgroundTokens = ['bg', 'surface', 'surfaceRaised', 'tabBar'] as const
