@@ -26,7 +26,8 @@ export function BugunSection() {
 
   useEffect(() => {
     let cancelled = false
-    dailyQuiz.today().then(res => {
+    // status(), not today(): opening Home must not start the round.
+    dailyQuiz.status().then(res => {
       if (!cancelled) setSecondsRemaining(res.quiz?.seconds_remaining ?? null)
     }).catch(() => {})
     return () => { cancelled = true }

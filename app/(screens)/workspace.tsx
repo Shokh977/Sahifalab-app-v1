@@ -173,22 +173,25 @@ function FocusTab() {
     mode, secondsLeft, isRunning, sessionCount,
     start, pause, reset, tick, switchMode, onSessionComplete,
   } = useTimerStore(useShallow(s => ({
-    mode:              s.mode,
+    // This unlinked screen predates the timerStore rewrite (mode/isRunning/
+    // switchMode no longer exist); mapped onto the current API. Slated for
+    // removal with the planner (redesign Phase 8).
+    mode:              s.phase as 'focus' | 'shortBreak' | 'longBreak' | 'break',
     secondsLeft:       s.secondsLeft,
-    isRunning:         s.isRunning,
+    isRunning:         s.status === 'active',
     sessionCount:      s.sessionCount,
     start:             s.start,
     pause:             s.pause,
     reset:             s.reset,
     tick:              s.tick,
-    switchMode:        s.switchMode,
+    switchMode:        (m: string) => (m === 'focus' ? s.completeBreak() : s.startBreak()),
     onSessionComplete: s.onSessionComplete,
   })))
 
   const [showXP, setShowXP] = useState(false)
   const [lastXP, setLastXP] = useState(0)
   const xpAnim   = useRef(new Animated.Value(0)).current
-  const interval = useRef<ReturnType<typeof setInterval>>()
+  const interval = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   useEffect(() => {
     if (isRunning) {

@@ -34,6 +34,7 @@ import { AnnouncementModal } from '../components/ui/AnnouncementModal'
 import { useAnnouncementStore } from '../stores/announcementStore'
 import { useRewardStore } from '../stores/rewardStore'
 import { RewardModal } from '../components/rewards/RewardModal'
+import { track, trackOnce } from '../lib/analytics'
 
 const APP_INTRO_KEY = 'sahifalab_app_intro_v1'
 
@@ -136,6 +137,18 @@ const eb = StyleSheet.create({
 })
 
 const PUSH_TOKEN_KEY = 'sahifalab_push_token'
+
+// "course_granted" is the notification the admin approval sends once a
+// payment is confirmed (backend admin.py). Its Expo push data today carries
+// only {screen, course_id}, not the type, so this only fires if the payload
+// ever gains `type`; the notification list and course detail cover it now.
+// Once per course across all three sources (shared trackOnce key).
+function trackCourseGranted(data: any) {
+  if (data?.type !== 'course_granted' && data?.notif_type !== 'course_granted') return
+  const courseId = Number(data?.course_id ?? data?.meta?.course_id)
+  if (!courseId) return
+  trackOnce(`purchase_approved_${courseId}`, 'purchase_approved', { course_id: courseId, via: 'push' }, courseId)
+}
 
 
 SplashScreen.preventAutoHideAsync()
@@ -250,6 +263,7 @@ export default function RootLayout() {
       (notification: any) => {
         const content = notification?.request?.content ?? {}
         const data    = content.data ?? {}
+        trackCourseGranted(data)
         // Show in-app toast with the notification content
         showToast({
           id:         Date.now(),
@@ -274,6 +288,7 @@ export default function RootLayout() {
     responseListenerRef.current = Notifications.addNotificationResponseReceivedListener(
       (response: any) => {
         const data = response?.notification?.request?.content?.data ?? {}
+        trackCourseGranted(data)
         // Resolve route from data
         const routeMap: Record<string, string> = {
           study_timer:      '/(tabs)/study',
@@ -372,6 +387,7 @@ export default function RootLayout() {
   // ── After auth: register push token, unread count, streak reminder ──────────
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
+      track('app_open', { cold: true })
       // Prefetch dashboard data immediately so home tab renders with data already loaded
       useDashboardStore.getState().fetch()
       useStreakStagesStore.getState().fetchStages()
@@ -391,6 +407,7 @@ export default function RootLayout() {
       // Reward check on foreground too (spec Part 5's 3 trigger points).
       const sub = AppState.addEventListener('change', state => {
         if (state === 'active') {
+          track('app_open', { cold: false })
           registerTimezone()
           useRewardStore.getState().check()
         }

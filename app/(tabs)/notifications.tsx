@@ -15,6 +15,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { notifs, type NotifItem } from '../../lib/api'
 import { typography, spacing } from '../../lib/constants'
+import { trackOnce } from '../../lib/analytics'
 
 // ── Notification dictionary ───────────────────────────────────────────────────
 
@@ -273,6 +274,20 @@ function filterForTab(items: NotifItem[], tabKey: string): NotifItem[] {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// purchase_approved (analytics): a recent course_granted row is the admin's
+// payment approval. Recent only, so approvals from before this event
+// existed don't fire now; deduped per course with the other two sources
+// (course detail, push) via trackOnce's shared key.
+const APPROVAL_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
+function trackRecentCourseGrants(items: NotifItem[]) {
+  for (const it of items) {
+    const courseId = Number(it.meta?.course_id)
+    if (it.type !== 'course_granted' || !courseId) continue
+    if (Date.now() - new Date(it.created_at).getTime() > APPROVAL_WINDOW_MS) continue
+    trackOnce(`purchase_approved_${courseId}`, 'purchase_approved', { course_id: courseId, via: 'notification' }, courseId)
+  }
+}
+
 const PAGE_SIZE = 20
 
 function relativeTime(iso: string): string {
@@ -386,6 +401,7 @@ export default function NotificationsTab() {
     try {
       const res = await notifs.list(PAGE_SIZE, cursorRef.current)
       const newItems = res.notifications ?? []
+      trackRecentCourseGrants(newItems)
       setItems(prev => isRefresh ? newItems : [...prev, ...newItems])
       cursorRef.current = res.next_cursor ?? undefined
       setHasMore(res.next_cursor != null)

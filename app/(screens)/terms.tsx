@@ -38,6 +38,7 @@ interface Section {
   emoji:   string
   title:   string
   content: string[]           // paragraphs
+  content2?: string[]         // paragraphs rendered after the bullets
   bullets?: string[]          // bullet list items
   subBullets?: Record<number, string[]>  // index → sub-bullets
 }

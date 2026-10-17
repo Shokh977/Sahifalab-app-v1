@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import React, { useEffect, useRef, useState } from 'react'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, AppState } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft, Clock } from 'lucide-react-native'
@@ -9,6 +10,12 @@ import { useRewardStore } from '../../stores/rewardStore'
 import { dailyQuiz, type DailyQuizToday } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
 import { QuizResultView } from '../../components/daily-quiz/QuizResultView'
+import { track } from '../../lib/analytics'
+
+// Foreground-only play time per round, persisted so leaving the screen and
+// coming back keeps what was already played. Its presence also marks a round
+// this device already started (→ quiz_resume rather than quiz_start).
+const activeKey = (quizId: number) => `sahifalab_quiz_active_ms_${quizId}`
 
 function fmtCountdown(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -34,6 +41,54 @@ export default function DailyQuizScreen() {
     per_question_correct: boolean[]; elapsed_ms?: number; quiz_streak_days: number
   } | null>(null)
   const [rank, setRank] = useState<number | null>(null)
+
+  // ── Foreground-only timing (redesign Phase 0) ───────────────────────────────
+  // The server's elapsed_ms runs from delivery to submit, background included;
+  // this counts only time with the quiz on screen and the app in the
+  // foreground. Refs + timestamps only: nothing re-renders while it runs.
+  const activeMsRef    = useRef(0)
+  const activeSinceRef = useRef<number | null>(null)
+  const timingQuizRef  = useRef<number | null>(null)
+
+  function pauseTiming() {
+    if (activeSinceRef.current != null) {
+      activeMsRef.current += Date.now() - activeSinceRef.current
+      activeSinceRef.current = null
+    }
+    const qid = timingQuizRef.current
+    if (qid != null) AsyncStorage.setItem(activeKey(qid), String(Math.round(activeMsRef.current))).catch(() => {})
+  }
+
+  function resumeTiming() {
+    if (timingQuizRef.current != null && activeSinceRef.current == null && AppState.currentState === 'active') {
+      activeSinceRef.current = Date.now()
+    }
+  }
+
+  async function beginTiming(q: DailyQuizToday) {
+    const stored = await AsyncStorage.getItem(activeKey(q.id)).catch(() => null)
+    activeMsRef.current   = stored ? Number(stored) || 0 : 0
+    timingQuizRef.current = q.id
+    track(stored != null ? 'quiz_resume' : 'quiz_start', { quiz_id: q.id, quiz_number: q.quiz_number }, q.id)
+    if (stored == null) AsyncStorage.setItem(activeKey(q.id), '0').catch(() => {})
+    resumeTiming()
+  }
+
+  /** Freezes the count for submit. The stored value stays until the submit
+   *  succeeds, so a failed submit + retry still resumes from it. */
+  function stopTiming(): number {
+    pauseTiming()
+    timingQuizRef.current = null
+    return activeMsRef.current
+  }
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') resumeTiming()
+      else pauseTiming()
+    })
+    return () => { sub.remove(); pauseTiming() }
+  }, [])
 
   // The result ticket's "REYTING" cell is the caller's rank among TODAY'S
   // quiz solvers (correct_count desc, elapsed_ms asc) — an earlier version
@@ -67,6 +122,8 @@ export default function DailyQuizScreen() {
           quiz_streak_days: res.quiz.quiz_streak_days ?? 0,
         })
         fetchRank(res.quiz.id)
+      } else if (res.quiz) {
+        beginTiming(res.quiz)
       }
     } catch (e: any) {
       setError(e?.message ?? "Yuklab bo'lmadi")
@@ -82,7 +139,14 @@ export default function DailyQuizScreen() {
     setSubmitting(true)
     try {
       const payload = quiz.questions.map(q => ({ question_id: q.question_id, selected_index: finalAnswers[q.question_id] }))
-      const res = await dailyQuiz.submit(quiz.id, payload)
+      const activeMs = stopTiming()
+      const res = await dailyQuiz.submit(quiz.id, payload, activeMs)
+      // Correctness is only known once the server scores the round, so the
+      // per-answer events are sent here, one per question, in order.
+      res.per_question_correct.forEach((correct, index) =>
+        track('quiz_answer', { quiz_id: quiz.id, index, correct }, quiz.id))
+      track('quiz_complete', { quiz_id: quiz.id, score: res.correct_count, active_ms: Math.round(activeMs) }, quiz.id)
+      AsyncStorage.removeItem(activeKey(quiz.id)).catch(() => {})
       setResult({
         correct_count: res.correct_count, tanga_awarded: res.tanga_awarded,
         per_question_correct: res.per_question_correct, elapsed_ms: res.elapsed_ms,

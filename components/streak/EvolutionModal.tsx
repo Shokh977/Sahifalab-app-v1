@@ -172,7 +172,7 @@ export function EvolutionModal({ visible, toStage, bonusXp = 0, bonusTanga = 0, 
     if (onShare) { onShare(); return }
     shareTreeEvolution({
       stageName:  stageMeta.name,
-      streakDays: stageMeta.days,
+      streakDays: stageMeta.streakDays,
     })
   }
 

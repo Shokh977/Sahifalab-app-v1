@@ -4,6 +4,7 @@ import { flashcards as flashcardsApi } from '../lib/api'
 import type {
   PublicDeckItem, PublicDeckDetail, DeckCategory, DeckSort, DeckReportReason, FlashcardDeck,
 } from '../lib/types'
+import { track } from '../lib/analytics'
 
 const RATE_QUEUE_KEY    = 'sahifalab_deck_rate_queue'
 const REPORT_QUEUE_KEY  = 'sahifalab_deck_report_queue'
@@ -148,7 +149,12 @@ export const usePublicDecksStore = create<PublicDecksState>((set, get) => ({
   // Cloning needs a server-side copy — it cannot be queued offline. The UI
   // should check connectivity (useOnline()) and disable the clone button with
   // "Internet aloqasi kerak" instead of calling this while offline.
-  cloneDeck: (id) => flashcardsApi.cloneDeck(id),
+  cloneDeck: async (id) => {
+    const deck = await flashcardsApi.cloneDeck(id)
+    // A repeat tap returns the existing copy (already_cloned) — not a new copy.
+    if (!deck.already_cloned) track('deck_copy', { size: deck.card_count, source_deck_id: id }, deck.id)
+    return deck
+  },
 
   rateDeck: async (id, rating, comment) => {
     try {

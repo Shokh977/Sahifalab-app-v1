@@ -315,6 +315,10 @@ function TimerScreen() {
         phase:          store.phase,
         currentSession: store.currentSession,
         totalSessions:  store.totalSessions,
+        // focus-timer.tsx restores from this same key and reads it; it was
+        // missing here (undefined there). Inverse of focus-timer.tsx's
+        // currentSession = phase === 'focus' ? completed + 1 : completed.
+        completedSessions: store.phase === 'focus' ? store.currentSession - 1 : store.currentSession,
       })
       scheduleTimerEndNotification(store._targetEnd, store.phase)
     } else if (status === 'paused') {

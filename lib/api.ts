@@ -1906,6 +1906,17 @@ export interface DailyQuizToday {
   quiz_streak_days?:      number
 }
 
+/** GET /api/quiz/today/status — read-only, for display surfaces (Home).
+ *  Unlike today(), calling it never starts the round or its server clock. */
+export interface DailyQuizStatus {
+  id:                number
+  quiz_number:       number
+  theme:             string
+  state:             'not_started' | 'in_progress' | 'submitted'
+  correct_count:     number | null
+  seconds_remaining: number
+}
+
 export interface DailyQuizSubmitResult {
   already_submitted:    boolean
   correct_count:        number
@@ -1957,13 +1968,19 @@ export interface DailyQuizResults {
 }
 
 export const dailyQuiz = {
+  /** Starts the round (server clock) — call only from the play screen. */
   today: () =>
     request<{ quiz: DailyQuizToday | null }>('/api/quiz/today', { auth: true }),
 
-  submit: (quizId: number, answers: { question_id: number; selected_index: number }[]) =>
+  /** Read-only state for Home cards; never starts the round. */
+  status: () =>
+    request<{ quiz: DailyQuizStatus | null }>('/api/quiz/today/status', { auth: true }),
+
+  /** activeMs: foreground-only play time (metric only; ranking stays server-timed). */
+  submit: (quizId: number, answers: { question_id: number; selected_index: number }[], activeMs?: number) =>
     request<DailyQuizSubmitResult>('/api/quiz/submit', {
       method: 'POST',
-      body: JSON.stringify({ quiz_id: quizId, answers }),
+      body: JSON.stringify({ quiz_id: quizId, answers, ...(activeMs != null ? { active_ms: Math.round(activeMs) } : {}) }),
       auth: true,
     }),
 
