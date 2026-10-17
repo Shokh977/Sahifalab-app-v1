@@ -51,7 +51,7 @@ export interface DashboardData {
 }
 
 /** Quiz status + decks, refreshed on every Home focus (cheap, not TTL-gated). */
-type TodayExtras = Pick<DashboardData, 'quiz' | 'quizFetchedAt' | 'topDueDeck' | 'hasDecks'>
+type TodayExtras = Pick<DashboardData, 'quiz' | 'quizFetchedAt' | 'topDueDeck' | 'hasDecks' | 'flashcardDueCount'>
 
 async function fetchTodayExtras(): Promise<Partial<TodayExtras>> {
   const [quizRes, decksRes] = await Promise.allSettled([dailyQuiz.status(), flashcardsApi.listDecks()])
@@ -63,6 +63,8 @@ async function fetchTodayExtras(): Promise<Partial<TodayExtras>> {
   if (decksRes.status === 'fulfilled' && Array.isArray(decksRes.value)) {
     out.topDueDeck = pickTopDueDeck(decksRes.value)
     out.hasDecks = decksRes.value.length > 0
+    // Kartalar due count for Bugun's plan, fresh after every study session.
+    out.flashcardDueCount = decksRes.value.reduce((n, d) => n + (d.due_count ?? 0), 0)
   }
   return out
 }
