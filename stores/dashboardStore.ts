@@ -82,7 +82,7 @@ interface DashboardState {
 
   fetch:                 () => Promise<void>
   refresh:               () => Promise<void>
-  refreshToday:          () => Promise<void>
+  refreshToday:          (opts?: { force?: boolean }) => Promise<void>
   /** Local update after a 5 Savol answer/submit, so Home is right on return. */
   patchQuiz:             (patch: Partial<DailyQuizStatus>) => void
   patchFocusStats:       (patch: Partial<FocusStats>) => void
@@ -308,9 +308,9 @@ export const useDashboardStore = create<DashboardState>((set, get) => {
     }
   },
 
-  refreshToday: async () => {
+  refreshToday: async (opts) => {
     const now = Date.now()
-    if (now - lastTodayRefresh < TODAY_REFRESH_MS) return
+    if (!opts?.force && now - lastTodayRefresh < TODAY_REFRESH_MS) return
     lastTodayRefresh = now
     const extras = await fetchTodayExtras()
     const data = get().data

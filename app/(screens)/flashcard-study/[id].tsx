@@ -14,7 +14,6 @@ import Animated, {
   runOnJS, Easing, interpolate,
 } from 'react-native-reanimated'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
-import * as Haptics from 'expo-haptics'
 import { X, ArrowLeft } from 'phosphor-react-native'
 
 import { useTheme } from '../../../hooks/useTheme'
@@ -28,10 +27,15 @@ import { EvolutionModal } from '../../../components/streak/EvolutionModal'
 import type { StageNumber } from '../../../lib/treeTheme'
 import { ChallengeCompletionModal, type CompletedChallenge } from '../../../components/study/ChallengeCompletionModal'
 import { track } from '../../../lib/analytics'
+import { useDashboardStore } from '../../../stores/dashboardStore'
+import { durations, easing } from '../../../src/design/motion'
+import { haptics } from '../../../src/lib/haptics'
+import { GradeButtons, GradePlaceholder } from '../../../src/features/cards/GradeButtons'
+import { SessionSummary } from '../../../src/features/cards/SessionSummary'
+import { sessionSummary, type ReviewOutcome } from '../../../src/features/cards/cards'
 
 const { width: SW } = Dimensions.get('window')
 const CARD_W = SW - 32
-const FLIP_DURATION = 300
 const CARD_PERSPECTIVE = 1000   // without it Android ignores backfaceVisibility
 const SWIPE_THRESHOLD = SW * 0.35
 
@@ -83,112 +87,6 @@ function XPFloat({ xp, color }: { xp: number; color: string }) {
   )
 }
 
-// ── Session complete screen ───────────────────────────────────────────────────
-
-interface CompleteProps {
-  deck:          FlashcardDeck
-  totalReviewed: number
-  correctCount:  number
-  sessionSec:    number
-  xpEarned:      number
-  masteryBefore: number
-  masteryAfter:  number
-  onHome:        () => void
-  onOther:       () => void
-}
-
-function SessionComplete(props: CompleteProps) {
-  const { deck, totalReviewed, correctCount, sessionSec, xpEarned, masteryBefore, masteryAfter, onHome, onOther } = props
-  const { c }  = useTheme()
-  const insets = useSafeAreaInsets()
-
-  const accuracy   = totalReviewed > 0 ? Math.round((correctCount / totalReviewed) * 100) : 0
-  const mins       = Math.floor(sessionSec / 60)
-  const secs       = sessionSec % 60
-  const timeStr    = mins > 0 ? `${mins} daqiqa ${secs} soniya` : `${secs} soniya`
-
-  const xpScale = useSharedValue(0.5)
-  const xpOpacity = useSharedValue(0)
-
-  useEffect(() => {
-    xpScale.value   = withSpring(1, { damping: 10, stiffness: 150 })
-    xpOpacity.value = withTiming(1, { duration: 400 })
-  }, [])
-
-  const xpStyle = useAnimatedStyle(() => ({
-    opacity:   xpOpacity.value,
-    transform: [{ scale: xpScale.value }],
-  }))
-
-  return (
-    <View style={[styles.completeWrap, { backgroundColor: c.bgPrimary, paddingTop: insets.top, paddingBottom: insets.bottom + spacing.lg }]}>
-      <ScrollView contentContainerStyle={styles.completeContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.completeCelebration}>🎉</Text>
-        <Text style={[styles.completeTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-          Ajoyib! To'plam yakunlandi
-        </Text>
-
-        {/* Stats card */}
-        <View style={[styles.completeStats, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-          <CompleteRow label="Ko'rilgan kartalar" value={`${totalReviewed} ta`} c={c} />
-          <CompleteRow label="To'g'ri javoblar"   value={`${accuracy}%`}        c={c} accent={c.success} />
-          <CompleteRow label="Sarflangan vaqt"    value={timeStr}               c={c} />
-        </View>
-
-        {/* XP earned */}
-        <Animated.View style={[styles.xpEarnedWrap, xpStyle]}>
-          <Text style={[styles.xpEarned, { color: c.accentPrimary, fontFamily: typography.fontFamily.bold }]}>
-            +{xpEarned} XP
-          </Text>
-        </Animated.View>
-
-        {/* Mastery update */}
-        {deck.card_count > 0 && (
-          <View style={{ gap: 6, width: '100%' }}>
-            <View style={[styles.masteryHeader]}>
-              <Text style={[styles.masteryLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                To'plam: {Math.round(masteryAfter * 100)}% o'rganildi
-              </Text>
-            </View>
-            <View style={[styles.masteryTrack, { backgroundColor: c.bgTertiary }]}>
-              <View style={[styles.masteryFillBefore, { backgroundColor: c.success + '60', width: `${Math.round(masteryBefore * 100)}%` as any }]} />
-              <View style={[styles.masteryFillAfter,  { backgroundColor: c.success, width: `${Math.round(masteryAfter * 100)}%` as any }]} />
-            </View>
-          </View>
-        )}
-
-        {/* Buttons */}
-        <Pressable
-          onPress={onHome}
-          style={({ pressed }) => [styles.completeBtn, { backgroundColor: c.accentPrimary, opacity: pressed ? 0.85 : 1 }]}
-        >
-          <Text style={[styles.completeBtnText, { color: c.textInverse, fontFamily: typography.fontFamily.semibold }]}>
-            Bosh sahifaga
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={onOther}
-          style={({ pressed }) => [styles.completeOutlineBtn, { borderColor: c.border, opacity: pressed ? 0.7 : 1 }]}
-        >
-          <Text style={[styles.completeOutlineBtnText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
-            Boshqa to'plam
-          </Text>
-        </Pressable>
-      </ScrollView>
-    </View>
-  )
-}
-
-function CompleteRow({ label, value, c, accent }: { label: string; value: string; c: any; accent?: string }) {
-  return (
-    <View style={styles.completeRow}>
-      <Text style={[styles.completeRowLabel, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>{label}</Text>
-      <Text style={[styles.completeRowValue, { color: accent ?? c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>{value}</Text>
-    </View>
-  )
-}
-
 // ── Main study screen ─────────────────────────────────────────────────────────
 
 export default function FlashcardStudyScreen() {
@@ -215,6 +113,9 @@ export default function FlashcardStudyScreen() {
   const [backMounted,  setBackMounted]  = useState(false)
   const [showConfirm,  setShowConfirm]  = useState(false)
   const [done,         setDone]         = useState(false)
+  // Last grade + server next_review per card, for the summary's "Ertaga".
+  const [outcomes,     setOutcomes]     = useState<Record<number, ReviewOutcome>>({})
+  const [pendingReviews, setPendingReviews] = useState(0)
   const [masteryBefore, setMasteryBefore] = useState(0)
   const [masteryAfter,  setMasteryAfter]  = useState(0)
   // Reaching a tree stage is the same event streak-detail.tsx celebrates with
@@ -310,14 +211,14 @@ export default function FlashcardStudyScreen() {
   const flipCard = useCallback(() => {
     if (flipped) {
       // Flip back to front
-      rotate.value = withTiming(0, { duration: FLIP_DURATION, easing: Easing.inOut(Easing.quad) })
+      rotate.value = withTiming(0, { duration: durations.slow, easing: easing.standard })
       setFlipped(false)
       return
     }
     setShowHint(false)
     setBackMounted(true)
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    rotate.value = withTiming(180, { duration: FLIP_DURATION, easing: Easing.inOut(Easing.quad) }, () => {
+    haptics.light()
+    rotate.value = withTiming(180, { duration: durations.slow, easing: easing.standard }, () => {
       runOnJS(setFlipped)(true)
     })
   }, [flipped])
@@ -356,8 +257,11 @@ export default function FlashcardStudyScreen() {
     })
 
     // Fire review in background (don't block UI)
-    flashcardsApi.reviewCard(currentCard.id, { rating, time_spent_ms: timeMs })
+    const reviewedId = currentCard.id
+    setPendingReviews(n => n + 1)
+    flashcardsApi.reviewCard(reviewedId, { rating, time_spent_ms: timeMs })
       .then(result => {
+        setOutcomes(prev => ({ ...prev, [reviewedId]: { rating, nextReview: result.next_review } }))
         // Deck mastery bonus (50 XP) — fires once when 100% of cards are mastered
         if (result.deck_bonus_xp > 0) {
           const floatId = ++xpFloatIdRef.current
@@ -370,6 +274,7 @@ export default function FlashcardStudyScreen() {
         }
       })
       .catch(() => {})
+      .finally(() => setPendingReviews(n => n - 1))
 
     // Build next queue
     const remaining = queue.slice(cardIndex + 1)
@@ -396,6 +301,8 @@ export default function FlashcardStudyScreen() {
       }).then(result => {
         patchUser({ streak_days: result.streak_days })
         fetchDecks()
+        // Bugun's plan and primary action read the new due count right away.
+        useDashboardStore.getState().refreshToday({ force: true })
         if (result.challenges_completed?.length > 0) {
           const ch = result.challenges_completed[0]
           pendingChallengeRef.current = { slug: ch.slug, title: ch.title, reward_xp: ch.reward_xp, badge_key: ch.badge_key }
@@ -452,12 +359,13 @@ export default function FlashcardStudyScreen() {
   if (!loading && done && deck) {
     return (
       <>
-        <SessionComplete
-          deck={deck}
-          totalReviewed={reviewed}
-          correctCount={correctCount}
-          sessionSec={sessionSecRef.current}
-          xpEarned={totalXP}
+        <SessionSummary
+          deckTitle={deck.title}
+          reviewed={reviewed}
+          correct={correctCount}
+          seconds={sessionSec}
+          xp={totalXP}
+          tomorrow={pendingReviews > 0 ? null : sessionSummary(Object.values(outcomes), Date.now()).tomorrow}
           masteryBefore={masteryBefore}
           masteryAfter={masteryAfter}
           onHome={() => router.push('/(tabs)' as any)}
@@ -578,33 +486,9 @@ export default function FlashcardStudyScreen() {
 
       {/* ── Rating buttons (shown only after flip) ─────────────────────────── */}
       <View style={[styles.ratingArea, { paddingBottom: insets.bottom + spacing.lg }]}>
-        {flipped ? (
-          <View style={styles.ratingRow}>
-            <RatingBtn
-              label="Bilmayman"
-              icon="✗"
-              bg={c.errorMuted}
-              textColor={c.error}
-              onPress={() => submitRating(1)}
-            />
-            <RatingBtn
-              label="Qiyin"
-              icon="~"
-              bg={c.warningMuted}
-              textColor={c.warning}
-              onPress={() => submitRating(2)}
-            />
-            <RatingBtn
-              label="Bilaman"
-              icon="✓"
-              bg={c.successMuted}
-              textColor={c.success}
-              onPress={() => submitRating(3)}
-            />
-          </View>
-        ) : (
-          <View style={styles.ratingPlaceholder} />
-        )}
+        {flipped
+          ? <GradeButtons onGrade={submitRating} />
+          : <GradePlaceholder />}
       </View>
 
       {/* ── Close confirm ──────────────────────────────────────────────────── */}
@@ -638,35 +522,6 @@ export default function FlashcardStudyScreen() {
         </View>
       </Modal>
     </View>
-  )
-}
-
-// ── Rating button ─────────────────────────────────────────────────────────────
-
-function RatingBtn({ label, icon, bg, textColor, onPress }: {
-  label: string; icon: string; bg: string; textColor: string; onPress: () => void
-}) {
-  const { c }   = useTheme()
-  const scale   = useSharedValue(1)
-  const btnStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
-
-  const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    scale.value = withSpring(0.94, { damping: 8, stiffness: 400 }, () => {
-      scale.value = withSpring(1, { damping: 12, stiffness: 200 })
-    })
-    onPress()
-  }
-
-  return (
-    <Animated.View style={[styles.ratingBtnWrap, btnStyle]}>
-      <Pressable onPress={handlePress} style={[styles.ratingBtn, { backgroundColor: bg }]}>
-        <Text style={[styles.ratingIcon, { color: textColor }]}>{icon}</Text>
-        <Text style={[styles.ratingLabel, { color: textColor, fontFamily: typography.fontFamily.semibold }]}>
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
   )
 }
 
