@@ -956,7 +956,7 @@ export const flashcards = {
   getDeck: (id: number) =>
     request<FlashcardDeck>(`/api/flashcards/decks/${id}`, { auth: true }),
 
-  updateDeck: (id: number, body: { title?: string; description?: string; color?: string; icon?: string }) =>
+  updateDeck: (id: number, body: { title?: string; description?: string; color?: string; icon?: string; new_per_day?: number }) =>
     request<FlashcardDeck>(`/api/flashcards/decks/${id}`, {
       method: 'PATCH', body: JSON.stringify(body), auth: true,
     }),
@@ -1022,9 +1022,11 @@ export const flashcards = {
   getPublicDeck: (id: number) =>
     request<PublicDeckDetail>(`/api/flashcards/public/${id}`, { auth: true }),
 
-  cloneDeck: (id: number) =>
+  /** newPerDay: daily new-card limit chosen when copying a big deck (migration 104). */
+  cloneDeck: (id: number, newPerDay?: number) =>
     request<FlashcardDeck & { already_cloned: boolean }>(`/api/flashcards/public/${id}/clone`, {
       method: 'POST', auth: true,
+      ...(newPerDay != null ? { body: JSON.stringify({ new_per_day: newPerDay }) } : {}),
     }),
 
   rateDeck: (id: number, body: { rating: number; comment?: string }) =>

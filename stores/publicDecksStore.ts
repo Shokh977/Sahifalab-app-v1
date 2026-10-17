@@ -40,7 +40,7 @@ interface PublicDecksState {
   fetchPublicDecks: (page?: number) => Promise<void>
   fetchFeatured:    () => Promise<void>
   fetchDeckPreview: (id: number) => Promise<void>
-  cloneDeck:        (id: number) => Promise<FlashcardDeck & { already_cloned: boolean }>
+  cloneDeck:        (id: number, newPerDay?: number) => Promise<FlashcardDeck & { already_cloned: boolean }>
   rateDeck:         (id: number, rating: number, comment?: string) => Promise<void>
   reportDeck:       (id: number, reason: DeckReportReason, details?: string) => Promise<void>
   publishDeck:      (id: number, isAnonymous: boolean, category: string) => Promise<FlashcardDeck>
@@ -149,10 +149,12 @@ export const usePublicDecksStore = create<PublicDecksState>((set, get) => ({
   // Cloning needs a server-side copy — it cannot be queued offline. The UI
   // should check connectivity (useOnline()) and disable the clone button with
   // "Internet aloqasi kerak" instead of calling this while offline.
-  cloneDeck: async (id) => {
-    const deck = await flashcardsApi.cloneDeck(id)
+  cloneDeck: async (id, newPerDay) => {
+    const deck = await flashcardsApi.cloneDeck(id, newPerDay)
     // A repeat tap returns the existing copy (already_cloned) — not a new copy.
-    if (!deck.already_cloned) track('deck_copy', { size: deck.card_count, source_deck_id: id }, deck.id)
+    if (!deck.already_cloned) {
+      track('deck_copy', { size: deck.card_count, source_deck_id: id, ...(newPerDay != null ? { new_per_day: newPerDay } : {}) }, deck.id)
+    }
     return deck
   },
 

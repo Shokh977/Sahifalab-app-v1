@@ -166,6 +166,8 @@ export interface FlashcardDeck {
   is_public:      boolean
   course_id:      number | null
   due_count:      number
+  /** Daily new-card limit (migration 104); null/undefined = 10 per session. */
+  new_per_day?:   number | null
   created_at:     string | null
   updated_at:     string | null
   // Public deck library (step-14-public-flashcard-decks)
@@ -276,6 +278,9 @@ export interface StudySession {
   total:     number
   due_count: number
   new_count: number
+  /** Newer backends: the deck's daily limit and what's left of it today. */
+  new_per_day?:    number | null
+  new_left_today?: number | null
 }
 
 export interface ReviewResult {
