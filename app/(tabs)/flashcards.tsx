@@ -13,19 +13,22 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { Plus, Check, X, MagnifyingGlass } from 'phosphor-react-native'
+import { Check, X } from 'phosphor-react-native'
 
 import { useTheme } from '../../hooks/useTheme'
 import { useFlashcardStore } from '../../stores/flashcardStore'
 import { flashcards as flashcardsApi } from '../../lib/api'
-import { kartalarColorsFor } from '../../components/flashcards/subjectTheme'
-import { SegmentedTabs } from '../../components/flashcards/SegmentedTabs'
 import { MyDecksTab } from '../../components/flashcards/MyDecksTab'
 import { PublicSetsTab } from '../../components/flashcards/PublicSetsTab'
 import type { FlashcardDeck } from '../../lib/types'
 import { typography, spacing, radius } from '../../lib/constants'
 import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
 import { deckColors } from '../../src/design/tokens'
+import { useTheme as useDesignTheme } from '../../src/design/ThemeProvider'
+import { layout, space } from '../../src/design/spacing'
+import { type as typeScale } from '../../src/design/typography'
+import { IconButton, SegmentedControl } from '../../src/components/ui'
+import { Plus as PlusIcon, Search } from 'lucide-react-native'
 
 // Eight distinct deck colours (the old list had two oranges and two greens).
 // Decks saved with an older colour keep it.
@@ -204,8 +207,7 @@ function DeckSheet({ visible, editing, onClose, onSaved }: DeckSheetProps) {
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function FlashcardsScreen() {
-  const { theme } = useTheme()
-  const kc = kartalarColorsFor(theme)
+  const { colors } = useDesignTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
 
@@ -226,35 +228,20 @@ export default function FlashcardsScreen() {
   }, [editingDeck, updateDeck, addDeck, fetchStats])
 
   return (
-    <View style={[styles.root, { backgroundColor: kc.screenBg, paddingTop: insets.top }]}>
-      {/* Header */}
+    <View style={[styles.root, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
       <View style={styles.topBar}>
-        <Text style={[styles.topTitle, { color: kc.textPrimary, fontFamily: typography.fontFamily.extrabold }]}>
-          Kartalar
-        </Text>
-        <View style={styles.topRight}>
-          <Pressable onPress={() => setActiveTab('public')} hitSlop={10} accessibilityLabel="Qidirish">
-            <MagnifyingGlass size={21} color={kc.textMuted} />
-          </Pressable>
-          <Pressable onPress={openCreate} hitSlop={10} accessibilityLabel="Yangi to'plam">
-            <Plus size={23} color={kc.accent} weight="bold" />
-          </Pressable>
-          <View style={[styles.avatarRing, { borderColor: kc.accent }]}>
-            <ProfileAvatarButton size={26} />
-          </View>
-        </View>
+        <Text style={[typeScale.title1, styles.flex, { color: colors.text }]} accessibilityRole="header">Kartalar</Text>
+        <IconButton icon={Search} accessibilityLabel="Ommaviy toʻplamlarda qidirish" onPress={() => setActiveTab('public')} />
+        <IconButton icon={PlusIcon} accessibilityLabel="Yangi toʻplam" onPress={openCreate} />
+        <ProfileAvatarButton size={26} />
       </View>
 
-      <View style={styles.segmentWrap}>
-        <SegmentedTabs
-          options={[
-            { key: 'mine' as const,   label: 'Mening kartalarim' },
-            { key: 'public' as const, label: "Ommaviy to'plamlar" },
-          ]}
-          active={activeTab}
-          onChange={setActiveTab}
-        />
-      </View>
+      <SegmentedControl
+        segments={['Mening kartalarim', 'Ommaviy toʻplamlar']}
+        index={activeTab === 'mine' ? 0 : 1}
+        onChange={i => setActiveTab(i === 0 ? 'mine' : 'public')}
+        style={styles.segments}
+      />
 
       {activeTab === 'mine' ? (
         <MyDecksTab
@@ -263,6 +250,7 @@ export default function FlashcardsScreen() {
           onEditDeck={openEdit}
           onBrowsePublic={() => setActiveTab('public')}
           onStartReview={id => router.push(`/(screens)/flashcard-study/${id}` as any)}
+          onOpenAi={() => router.push('/(screens)/ai-flashcard-generate' as any)}
         />
       ) : (
         <PublicSetsTab />
@@ -284,24 +272,14 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
 
   topBar: {
-    height:            52,
     flexDirection:     'row',
     alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingHorizontal: spacing.screenMargin,
+    paddingLeft:       layout.gutter,
+    paddingRight:      space.md,
+    paddingVertical:   space.xxs,
   },
-  topTitle: { fontSize: 21, letterSpacing: -0.4 },
-  topRight: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  avatarRing: {
-    width: 29, height: 29, borderRadius: 14.5,
-    borderWidth: 1.5, alignItems: 'center', justifyContent: 'center',
-  },
-
-  segmentWrap: {
-    marginHorizontal: spacing.screenMargin,
-    marginTop:        spacing.sm,
-    marginBottom:     spacing.sm,
-  },
+  flex:     { flex: 1 },
+  segments: { marginHorizontal: layout.gutter, marginTop: space.xs, marginBottom: space.xs },
 
   // Sheet (create/edit deck) — unchanged
   backdrop: {
