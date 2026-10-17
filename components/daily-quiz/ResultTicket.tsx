@@ -119,9 +119,7 @@ function QuestionStrip({ answers }: { answers: AnswerMark[] }) {
 export function ResultTicket({
   round, score, total, answers, streak, rank, level, date, referralCode: _referralCode, scale = 1, hideStats = false,
 }: ResultTicketProps) {
-  // referralCode is accepted (and will be used once a QR library is added
-  // — see the footer's placeholder box below) but not rendered as text
-  // anywhere in the ticket itself.
+  // referralCode is accepted (kept for a future QR code) but not rendered.
   const { theme } = useTheme()
   const reduceMotion = useReduceMotion()
   const variant = variantFor(score, total)
@@ -198,10 +196,6 @@ export function ResultTicket({
           </Text>
           <Text maxFontSizeMultiplier={1.2} style={styles.footerDomain}>sahifalab.uz</Text>
         </View>
-        {/* No QR library in this project yet (the brief said not to add
-            libraries beyond the capture one) — always the placeholder box,
-            which is exactly the spec's own documented fallback behaviour. */}
-        <View style={styles.qrPlaceholder} />
       </View>
     </View>
   )
@@ -248,8 +242,4 @@ const styles = StyleSheet.create({
   },
   footerTitle: { color: WORDMARK, fontSize: 11 },
   footerDomain: { color: MUTED, fontSize: 10, fontWeight: '600', marginTop: 2 },
-  qrPlaceholder: {
-    width: 38, height: 38, borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-  },
 })
