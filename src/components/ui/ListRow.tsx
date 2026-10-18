@@ -16,7 +16,8 @@ import { Pressable } from './Pressable'
 import { SkeletonRow } from './Skeleton'
 
 export type ListRowLeading =
-  | { kind: 'icon'; icon: LucideIcon }
+  /** color: an identity colour (e.g. a deck's) for the icon on a neutral tile. */
+  | { kind: 'icon'; icon: LucideIcon; color?: string }
   | { kind: 'avatar'; name: string; uri?: string | null }
   | { kind: 'thumbnail'; uri: string }
 
@@ -32,20 +33,22 @@ export interface ListRowProps {
   leading?: ListRowLeading
   trailing?: ListRowTrailing
   onPress?: () => void
+  /** Secondary actions (opens a sheet, typically). */
+  onLongPress?: () => void
   /** Completed item: dimmed, with a check in place of the trailing slot. */
   done?: boolean
   loading?: boolean
   style?: StyleProp<ViewStyle>
 }
 
-export function ListRow({ title, subtitle, leading, trailing, onPress, done, loading, style }: ListRowProps) {
+export function ListRow({ title, subtitle, leading, trailing, onPress, onLongPress, done, loading, style }: ListRowProps) {
   const { colors } = useTheme()
   if (loading) return <SkeletonRow style={[styles.row, style]} />
 
   const lead = leading && (
     leading.kind === 'icon' ? (
-      <View style={[styles.tile, { backgroundColor: colors.accentSoft }]}>
-        <leading.icon size={iconSize.sm} color={colors.accentText} strokeWidth={iconStroke} />
+      <View style={[styles.tile, { backgroundColor: leading.color ? colors.surfaceRaised : colors.accentSoft }]}>
+        <leading.icon size={iconSize.sm} color={leading.color ?? colors.accentText} strokeWidth={iconStroke} />
       </View>
     ) : leading.kind === 'avatar' ? (
       <Avatar name={leading.name} uri={leading.uri} size="md" />
@@ -78,6 +81,7 @@ export function ListRow({ title, subtitle, leading, trailing, onPress, done, loa
     return (
       <Pressable
         onPress={onPress}
+        onLongPress={onLongPress}
         baseOpacity={opacity}
         accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
         accessibilityState={{ checked: done }}

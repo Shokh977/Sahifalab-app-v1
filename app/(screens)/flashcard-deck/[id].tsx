@@ -25,6 +25,10 @@ import { PublishSheet } from '../../../components/flashcards/PublishSheet'
 import { RatingSheet } from '../../../components/flashcards/RatingSheet'
 import { shareFlashcardDeck } from '../../../lib/share'
 import { deckColors } from '../../../src/design/tokens'
+import { space } from '../../../src/design/spacing'
+import { Card, ListRow } from '../../../src/components/ui'
+import { DailyNewSheet } from '../../../src/features/cards/DailyNewSheet'
+import { CalendarDays } from 'lucide-react-native'
 
 // Eight distinct deck colours (the old list had two oranges and two greens).
 // Decks saved with an older colour keep it.
@@ -423,6 +427,9 @@ export default function DeckDetailScreen() {
   const [loadingCards, setLoadingCards] = useState(false)
   const [menuOpen,  setMenuOpen]  = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  // Daily new-card limit (Phase 6): shown under the hero, editable.
+  const [dailyOpen,   setDailyOpen]   = useState(false)
+  const [dailySaving, setDailySaving] = useState(false)
   const [editCard,  setEditCard]  = useState<Flashcard | null>(null)
   const [deckEditOpen,     setDeckEditOpen]     = useState(false)
   const [publishSheetOpen, setPublishSheetOpen] = useState(false)
@@ -650,6 +657,19 @@ export default function DeckDetailScreen() {
           )}
         </View>
 
+        {/* Daily new-card limit */}
+        {deck.card_count > 0 && (
+          <Card style={{ paddingVertical: space.xxs }}>
+            <ListRow
+              title={deck.new_per_day ? `Kuniga ${deck.new_per_day} ta yangi karta` : 'Yangi kartalar: har sessiyada 10 ta'}
+              subtitle="Oʻzgartirish"
+              leading={{ kind: 'icon', icon: CalendarDays }}
+              trailing={{ kind: 'chevron' }}
+              onPress={() => setDailyOpen(true)}
+            />
+          </Card>
+        )}
+
         {/* Mastery progress */}
         {deck.card_count > 0 && (
           <View style={{ gap: 8 }}>
@@ -789,6 +809,28 @@ export default function DeckDetailScreen() {
         onCancel={() => setConfirm(s => ({ ...s, visible: false }))}
       />
 
+      <DailyNewSheet
+        visible={dailyOpen}
+        cardCount={deck.card_count}
+        initial={deck.new_per_day ?? null}
+        confirmLabel="Saqlash"
+        loading={dailySaving}
+        onClose={() => setDailyOpen(false)}
+        onConfirm={async n => {
+          setDailySaving(true)
+          try {
+            const updated = await flashcardsApi.updateDeck(deck.id, { new_per_day: n })
+            const merged = { ...deck, ...updated, new_per_day: updated.new_per_day ?? n }
+            setDeck(merged)
+            updateDeck(merged)
+            setDailyOpen(false)
+          } catch (e: any) {
+            Alert.alert('Xatolik', e?.message ?? 'Saqlanmadi')
+          } finally {
+            setDailySaving(false)
+          }
+        }}
+      />
       <PublishSheet
         visible={publishSheetOpen}
         deck={deck}
