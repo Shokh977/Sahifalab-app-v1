@@ -1,28 +1,24 @@
 /**
  * Bellashuv: the one competition card.
- * Live → title, the team bar (team competitions) or progress, your
- * contribution and time left. Next → "KEYINGI BELLASHUV", title, a
+ * Live → title, the team bar (team competitions) or the distance to the
+ * top 10 (Phase 7.5 A3; hidden when there's no data — never an empty bar),
+ * your contribution and time left. Next → "KEYINGI BELLASHUV", title, a
  * Countdown, one line of rules and "Eslatma qoʻyish".
  */
 import React, { useEffect, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Bell, BellRing } from 'lucide-react-native'
-import type { Challenge } from '../../../lib/api'
+import { challenges as challengesApi } from '../../../lib/api'
 import { challengeGoalText, fmtMetricGoal } from '../../../lib/challenges'
 import { TeamHeadToHeadBar } from '../../../components/study/TeamHeadToHeadBar'
 import { useTheme } from '../../design/ThemeProvider'
 import { space } from '../../design/spacing'
-import { type as typeScale } from '../../design/typography'
+import { tabular, type as typeScale } from '../../design/typography'
 import { Button, Card, Countdown, ProgressBar, showToast } from '../../components/ui'
 import { uzText } from '../today/today'
 import { timeLeft, type MainCompetition } from './bellashuv'
 import { hasReminder, setReminder } from './competitionReminder'
-
-function progressOf(c: Challenge): number | null {
-  if (c.challenge_type === 'consistency' && c.required_days) return c.qualifying_days / c.required_days
-  if (c.target_value) return c.progress_value / c.target_value
-  return null
-}
+import { TOP_N, topTenGap, type TopTen } from './topTen'
 
 export function CompetitionCard({ main, now, onOpen }: { main: NonNullable<MainCompetition>; now: number; onOpen: () => void }) {
   const { colors, deckColors } = useTheme()
@@ -36,8 +32,20 @@ export function CompetitionCard({ main, now, onOpen }: { main: NonNullable<MainC
     return () => { alive = false }
   }, [main.kind, c.id])
 
+  // Distance to the top 10, for a live individual competition you've joined.
+  const wantsTopTen = main.kind === 'live' && c.joined && c.challenge_type !== 'team'
+  const [topTen, setTopTen] = useState<{ id: string; value: TopTen | null } | null>(null)
+  useEffect(() => {
+    if (!wantsTopTen) return
+    let alive = true
+    challengesApi.leaderboard(c.id, TOP_N)
+      .then(r => { if (alive) setTopTen({ id: c.id, value: topTenGap(r.caller, r.leaderboard) }) })
+      .catch(() => { if (alive) setTopTen({ id: c.id, value: null }) })
+    return () => { alive = false }
+  }, [wantsTopTen, c.id])
+  const gap = wantsTopTen && topTen?.id === c.id ? topTen.value : null
+
   if (main.kind === 'live') {
-    const progress = progressOf(c)
     return (
       <Card variant="pressable" onPress={onOpen} accessibilityLabel={`Faol bellashuv: ${c.title}`}>
         <View style={styles.gap}>
@@ -49,8 +57,17 @@ export function CompetitionCard({ main, now, onOpen }: { main: NonNullable<MainC
               teamBName={c.team_b_name ?? 'Guruh B'} teamBColor={c.team_b_color ?? deckColors[4]} teamBTotal={c.team_b_total}
               fmtValue={v => fmtMetricGoal(v, c.metric)}
             />
-          ) : progress != null ? (
-            <ProgressBar value={progress} thickness="thick" accessibilityLabel="Bellashuvdagi taraqqiyot" />
+          ) : gap ? (
+            <View style={styles.gapBlock}>
+              <Text style={[typeScale.callout, tabular, { color: gap.kind === 'in' ? colors.successText : colors.text }]}>
+                {gap.kind === 'in' ? `Top 10 dasiz · #${gap.rank}` : `Top 10 gacha ${fmtMetricGoal(gap.left, c.metric)} qoldi`}
+              </Text>
+              <ProgressBar
+                value={gap.kind === 'in' ? 1 : gap.progress}
+                thickness="thick"
+                accessibilityLabel={gap.kind === 'in' ? 'Top 10 ichida' : 'Top 10 gacha'}
+              />
+            </View>
           ) : null}
           <View style={styles.row}>
             <Text style={[typeScale.callout, styles.flex, { color: colors.text }]}>
@@ -101,6 +118,7 @@ export function CompetitionCard({ main, now, onOpen }: { main: NonNullable<MainC
 
 const styles = StyleSheet.create({
   gap: { gap: space.sm },
+  gapBlock: { gap: space.xs },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   flex: { flex: 1 },
   grow: { flex: 1, alignSelf: 'auto' },
