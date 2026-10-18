@@ -2,7 +2,8 @@
  * getPrimaryAction — the one button on Bugun (spec section 7, Phase 2).
  * Pure: every branch is covered in __tests__/primaryAction.test.ts.
  */
-import { reviewMinutes, uzText } from './today'
+import { uzText } from './today'
+import { estMinutes } from '../flashcards/queueMath'
 
 export type PrimaryTarget = 'focus' | 'quiz' | 'review' | 'course' | 'none'
 
@@ -77,7 +78,7 @@ export function getPrimaryAction(s: TodayState): PrimaryAction {
     return {
       target: 'review',
       label: `Kartalarni takrorlash · ${s.dueCards} ta`,
-      caption: `Taxminan ${reviewMinutes(s.dueCards)} daqiqa`,
+      caption: `Taxminan ${estMinutes(s.dueCards)} daqiqa`,
       tone: 'default',
     }
   }

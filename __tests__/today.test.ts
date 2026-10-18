@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import {
-  buildPlanRows, greeting, isMonday, localDateKey, pickCurrentCourse, pickTopDueDeck, quizClosesIn,
-  rankGap, reviewMinutes, uzText, weekdayOf,
+  buildPlanRows, greeting, isMonday, localDateKey, pickCurrentCourse, quizClosesIn,
+  rankGap, uzText, weekdayOf,
 } from '../src/features/today/today'
 
 describe('uzText', () => {
@@ -19,11 +19,6 @@ describe('greeting', () => {
 })
 
 describe('small helpers', () => {
-  it('reviewMinutes', () => {
-    expect(reviewMinutes(1)).toBe(1)
-    expect(reviewMinutes(15)).toBe(2)
-    expect(reviewMinutes(30)).toBe(4)
-  })
   it('quizClosesIn', () => {
     expect(quizClosesIn(3 * 3600 + 25 * 60 + 9)).toBe('Yopilishiga 3 s 25 d')
     expect(quizClosesIn(0)).toBe('Yopildi')
@@ -84,9 +79,5 @@ describe('pickers', () => {
   it('pickCurrentCourse takes the unfinished course with most progress', () => {
     expect(pickCurrentCourse([{ id: 1, progress: 1 }, { id: 2, progress: 0.3 }, { id: 3, progress: 0.6 }])).toEqual({ id: 3, progress: 0.6 })
     expect(pickCurrentCourse([{ id: 1, progress: 1 }])).toBeNull()
-  })
-  it('pickTopDueDeck takes the deck with most due cards', () => {
-    expect(pickTopDueDeck([{ id: 1, due_count: 2 }, { id: 2, due_count: 9 }, { id: 3, due_count: 0 }])).toEqual({ id: 2, due: 9 })
-    expect(pickTopDueDeck([{ id: 1, due_count: 0 }])).toBeNull()
   })
 })

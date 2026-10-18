@@ -33,6 +33,7 @@ import { haptics } from '../../../src/lib/haptics'
 import { GradeButtons, GradePlaceholder } from '../../../src/features/cards/GradeButtons'
 import { SessionSummary } from '../../../src/features/cards/SessionSummary'
 import { sessionSummary, type ReviewOutcome } from '../../../src/features/cards/cards'
+import { allowedReviewsFor, trimSession } from '../../../src/features/flashcards/queue'
 
 const { width: SW } = Dimensions.get('window')
 const CARD_W = SW - 32
@@ -172,16 +173,20 @@ export default function FlashcardStudyScreen() {
         setMasteryBefore(before)
         setMasteryAfter(before)
 
-        if (session.cards.length === 0) {
+        // Normal sessions stop at today's review cap for this deck (Phase 7.5 A1).
+        const cards = practice === '1'
+          ? session.cards
+          : trimSession(session.cards, allowedReviewsFor(useAuthStore.getState().user?.telegram_id, deckId))
+        if (cards.length === 0) {
           setDone(true)
         } else {
           // Every session starts on the front.
           rotate.set(0)
           setFlipped(false)
           setBackMounted(false)
-          initialQueueRef.current = session.cards.length
-          setQueue(session.cards)
-          track('review_session_start', { deck_id: deckId, cards: session.cards.length, practice: practice === '1' }, deckId)
+          initialQueueRef.current = cards.length
+          setQueue(cards)
+          track('review_session_start', { deck_id: deckId, cards: cards.length, practice: practice === '1' }, deckId)
         }
       } catch (e: any) {
         if (sessionTimerRef.current) {

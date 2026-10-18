@@ -17,6 +17,7 @@ import {
 import { useTheme } from '../../../hooks/useTheme'
 import { flashcards as flashcardsApi } from '../../../lib/api'
 import { useFlashcardStore } from '../../../stores/flashcardStore'
+import { todayReviewQueue, useTodayReviewQueue } from '../../../src/features/flashcards/queue'
 import { usePublicDecksStore } from '../../../stores/publicDecksStore'
 import type { FlashcardDeck, Flashcard } from '../../../lib/types'
 import { typography, spacing, radius } from '../../../lib/constants'
@@ -420,6 +421,7 @@ export default function DeckDetailScreen() {
   const router   = useRouter()
 
   const { updateDeck, removeDeck } = useFlashcardStore()
+  const queue = useTodayReviewQueue()
 
   const [deck,         setDeck]         = useState<FlashcardDeck | null>(null)
   const [cards,        setCards]        = useState<Flashcard[]>([])
@@ -550,9 +552,9 @@ export default function DeckDetailScreen() {
     ? (loadingCards ? deck.mastered_count : reviewedCount) / deck.card_count
     : 0
 
-  // Use the server-side due_count so the hero section renders immediately
-  // without waiting for all card rows to load.
-  const studyableCount = deck.due_count
+  // Today's queue for this deck (Phase 7.5 A1) — the count Bugun and
+  // Kartalar show; renders at once, before the card rows load.
+  const studyableCount = queue.perDeck[deck.id]?.total ?? todayReviewQueue([deck]).total
   const hasDue = studyableCount > 0
 
   return (

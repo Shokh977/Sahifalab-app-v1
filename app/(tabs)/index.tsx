@@ -146,7 +146,7 @@ export default function HomeTab() {
     freezeCount: data.focusStats.freeze_count ?? 0,
     hour: new Date(now).getHours(),
     quiz: quiz ? { state: quiz.state, theme: quiz.theme || null, answered: quiz.answered_count ?? 0 } : null,
-    dueCards: topDeck?.due ?? 0,
+    dueCards: data.hasDecks ? data.flashcardDueCount : 0,
     course: currentCourse,
   })
 

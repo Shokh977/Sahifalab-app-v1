@@ -12,8 +12,10 @@ import { type as typeScale } from '../../design/typography'
 import { Button, Card } from '../../components/ui'
 import { heroCopy } from './cards'
 
-export function CardsHero({ due, mastered, total, onStart, onAdd }: {
+export function CardsHero({ due, capped, mastered, total, onStart, onAdd }: {
   due: number
+  /** Today's review cap bit: "Bugun 150 ta · qolganlari ertaga". */
+  capped?: boolean
   mastered: number
   total: number
   onStart: () => void
@@ -26,7 +28,7 @@ export function CardsHero({ due, mastered, total, onStart, onAdd }: {
         <Text style={[typeScale.overline, { color: colors.textMuted }]}>Bugungi takrorlash</Text>
         {due > 0 ? (
           <>
-            <Text style={[typeScale.title2, { color: colors.text }]}>{heroCopy(due)}</Text>
+            <Text style={[typeScale.title2, { color: colors.text }]}>{heroCopy(due, capped)}</Text>
             <Text style={[typeScale.callout, { color: colors.textMuted }]}>
               {mastered} / {total} karta oʻrganildi
             </Text>

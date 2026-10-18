@@ -2,11 +2,14 @@
  * Pure helpers for Kartalar and the study screen (redesign Phase 6) —
  * tested in __tests__/cards.test.ts.
  */
-import { reviewMinutes } from '../today/today'
+import { estMinutes } from '../flashcards/queueMath'
 
-/** "18 ta karta bugun · ~3 daqiqa" */
-export function heroCopy(due: number): string {
-  return `${due} ta karta bugun · ~${reviewMinutes(due)} daqiqa`
+/**
+ * "18 ta karta bugun · ~3 daqiqa"; when today's 150-review cap bit:
+ * "Bugun 150 ta · qolganlari ertaga".
+ */
+export function heroCopy(due: number, capped = false): string {
+  return capped ? `Bugun ${due} ta · qolganlari ertaga` : `${due} ta karta bugun · ~${estMinutes(due)} daqiqa`
 }
 
 /** Copying a deck bigger than this asks how many new cards per day. */
