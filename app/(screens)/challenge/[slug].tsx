@@ -278,6 +278,7 @@ export default function ChallengeDetailScreen() {
             subtitle={item.completed_at ? 'Yakunladi' : undefined}
             value={fmtMetricGoal(item.progress_value, data.metric)}
             mine={item.user_id === myId}
+            userId={item.user_id}
             style={styles.listRow}
           />
         )}
@@ -300,6 +301,7 @@ export default function ChallengeDetailScreen() {
               subtitle={data.status === 'active' ? 'Sizning oʻrningiz' : undefined}
               value={fmtMetricGoal(data.progress_value, data.metric)}
               mine
+              userId={myId}
             />
           )}
           {showAction && (

@@ -129,7 +129,7 @@ export function QuizResultView({
                 key={f.user_id}
                 title={f.is_me ? 'Siz' : uzText(f.first_name || f.username || 'Foydalanuvchi')}
                 subtitle={`#${f.rank}`}
-                leading={{ kind: 'avatar', name: f.first_name || f.username || '?', uri: f.photo_url }}
+                leading={{ kind: 'avatar', name: f.first_name || f.username || '?', uri: f.photo_url, id: f.user_id }}
                 trailing={{ kind: 'value', value: `${f.correct_count}/5` }}
               />
             ))}

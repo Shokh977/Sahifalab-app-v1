@@ -138,7 +138,7 @@ export function CourseMarketing(p: CourseMarketingProps) {
             <ListRow
               title={teacherName}
               subtitle={p.teacher?.headline ?? 'Oʻqituvchi'}
-              leading={{ kind: 'avatar', name: teacherName, uri: p.teacher?.photo_url ?? course.teacher?.photo_url }}
+              leading={{ kind: 'avatar', name: teacherName, uri: p.teacher?.photo_url ?? course.teacher?.photo_url, id: teacherId }}
               trailing={{ kind: 'chevron' }}
               onPress={() => p.onOpenTeacher(teacherId)}
             />
@@ -221,7 +221,7 @@ export function CourseMarketing(p: CourseMarketingProps) {
               {p.reviews.slice(0, REVIEWS_SHOWN).map(rv => (
                 <Card key={rv.id} style={styles.gapXs}>
                   <View style={styles.reviewHead}>
-                    <Avatar name={rv.profiles.first_name} uri={rv.profiles.photo_url} size="sm" />
+                    <Avatar name={rv.profiles.first_name} id={rv.student_id} uri={rv.profiles.photo_url} size="sm" />
                     <Text style={[typeScale.headline, styles.flex, { color: colors.text }]} numberOfLines={1}>{rv.profiles.first_name}</Text>
                     <Text style={[typeScale.callout, tabular, { color: colors.accentText }]}>★ {rv.rating}</Text>
                   </View>

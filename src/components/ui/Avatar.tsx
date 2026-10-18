@@ -1,19 +1,25 @@
 /**
  * Avatar — photo (expo-image, memory+disk cache) with an initials fallback,
- * optional level ring and level number.
+ * optional level ring and level number. Initials (whenever the photo is
+ * missing or fails): two letters, round(size × 0.38) extra bold, white on
+ * the user's colour from avatarColor(id) (Phase 7.5 A5).
  */
 import React, { useState } from 'react'
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
 import { useTheme } from '../../design/ThemeProvider'
 import { avatarSize, radius, space } from '../../design/spacing'
-import { tabular, type as typeScale } from '../../design/typography'
+import { initialsFont, tabular, type as typeScale } from '../../design/typography'
+import { onAvatar } from '../../design/tokens'
+import { avatarColor } from './avatarColor'
 import { initials } from './initials'
 
 export type AvatarSize = keyof typeof avatarSize
 
 export interface AvatarProps {
   name: string
+  /** The user's id: picks their initials colour (falls back to the name). */
+  id?: number | string | null
   uri?: string | null
   size?: AvatarSize
   /** Draws the accent ring and a small level number. */
@@ -21,13 +27,9 @@ export interface AvatarProps {
   style?: StyleProp<ViewStyle>
 }
 
-const INITIALS_TYPE = {
-  sm: typeScale.callout, md: typeScale.headline, lg: typeScale.title2, xl: typeScale.title1,
-} as const
-
 const RING = 2
 
-export function Avatar({ name, uri, size = 'md', level, style }: AvatarProps) {
+export function Avatar({ name, id, uri, size = 'md', level, style }: AvatarProps) {
   const { colors } = useTheme()
   const [failed, setFailed] = useState(false)
   const d = avatarSize[size]
@@ -45,7 +47,7 @@ export function Avatar({ name, uri, size = 'md', level, style }: AvatarProps) {
         style,
       ]}
     >
-      <View style={{ width: inner, height: inner, borderRadius: radius.full, overflow: 'hidden', backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: inner, height: inner, borderRadius: radius.full, overflow: 'hidden', backgroundColor: showImage ? colors.surfaceRaised : avatarColor(id ?? name), alignItems: 'center', justifyContent: 'center' }}>
         {showImage ? (
           <Image
             source={{ uri }}
@@ -56,7 +58,7 @@ export function Avatar({ name, uri, size = 'md', level, style }: AvatarProps) {
             onError={() => setFailed(true)}
           />
         ) : (
-          <Text style={[INITIALS_TYPE[size], { color: colors.textMuted }]} numberOfLines={1}>{initials(name)}</Text>
+          <Text style={[initialsFont(inner), { color: onAvatar }]} numberOfLines={1} allowFontScaling={false}>{initials(name)}</Text>
         )}
       </View>
       {ringed && size !== 'sm' && (

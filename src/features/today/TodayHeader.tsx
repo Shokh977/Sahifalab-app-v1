@@ -52,7 +52,7 @@ export function TodayHeader({ offline, now }: { offline: boolean; now: number })
           accessibilityLabel="Profil"
           style={styles.avatarTarget}
         >
-          <Avatar name={user?.first_name ?? '?'} uri={user?.photo_url} size="md" level={user?.level} />
+          <Avatar name={user?.first_name ?? '?'} id={user?.telegram_id} uri={user?.photo_url} size="md" level={user?.level} />
         </Pressable>
       </View>
 

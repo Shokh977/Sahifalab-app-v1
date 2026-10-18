@@ -18,7 +18,7 @@ import { SkeletonRow } from './Skeleton'
 export type ListRowLeading =
   /** color: an identity colour (e.g. a deck's) for the icon on a neutral tile. */
   | { kind: 'icon'; icon: LucideIcon; color?: string }
-  | { kind: 'avatar'; name: string; uri?: string | null }
+  | { kind: 'avatar'; name: string; uri?: string | null; id?: number | string | null }
   | { kind: 'thumbnail'; uri: string }
 
 export type ListRowTrailing =
@@ -54,7 +54,7 @@ export function ListRow({ title, subtitle, leading, trailing, onPress, onLongPre
         <leading.icon size={iconSize.sm} color={leading.color ?? colors.accentText} strokeWidth={iconStroke} />
       </View>
     ) : leading.kind === 'avatar' ? (
-      <Avatar name={leading.name} uri={leading.uri} size="md" />
+      <Avatar name={leading.name} uri={leading.uri} id={leading.id} size="md" />
     ) : (
       <Image source={{ uri: leading.uri }} style={[styles.tile, { backgroundColor: colors.surfaceRaised }]} contentFit="cover" cachePolicy="memory-disk" />
     )
