@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, ScrollView, FlatList, Pressable,
+  View, Text, StyleSheet, ScrollView, Pressable,
   Image, ActivityIndicator, Alert, Linking, Animated,
-  TextInput, Dimensions, Modal, Clipboard, KeyboardAvoidingView, Platform,
+  TextInput, Dimensions, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -10,12 +10,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  BookOpen, Play, Pause, Star, Users, Clock, Globe, Calendar,
-  CheckCircle, Heart, Award, Folder, Infinity as InfinityIcon,
-  Smartphone, FileText, Share2, Download, Lock, Pencil, Copy, X,
-  MessageCircle, WifiOff, AlertCircle, HardDrive,
+  BookOpen, Play, Pause, Star, Clock, CheckCircle, Award, Folder, Infinity as InfinityIcon,
+  Smartphone, FileText, Share2, Download, Pencil, X,
+  WifiOff, AlertCircle, HardDrive,
 } from 'lucide-react-native'
-import { MotiView } from 'moti'
 import * as FileSystem from 'expo-file-system/legacy'
 import { VideoPlayer } from '../../../components/courses/VideoPlayer'
 import { useTheme } from '../../../hooks/useTheme'
@@ -24,32 +22,26 @@ import { useAuthStore } from '../../../stores/authStore'
 import { useCourseStore } from '../../../stores/courseStore'
 import { useDownloadStore, estimateSizeMb, type DownloadQuality, type DownloadStatus } from '../../../stores/downloadStore'
 import { courses as coursesApi, lessons as lessonsApi, profile, enrollments as enrollmentsApi } from '../../../lib/api'
-import type { PendingEnrollmentStatus, EnrollmentCodeResponse } from '../../../lib/api'
 import { typography, spacing, radius, WEB_URL } from '../../../lib/constants'
 import { shareCertificate } from '../../../lib/share'
 import type { Course, Lesson, CourseReview, CourseCertificate } from '../../../lib/api'
 import type { ProfileData } from '../../../lib/types'
 import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 import { RoleBadge } from '../../../components/ui/RoleBadge'
-import { track, trackOnce } from '../../../lib/analytics'
+import { track } from '../../../lib/analytics'
 import { getCoursePreview } from '../../../lib/coursePreview'
 import { CourseDetailSkeleton } from '../../../components/courses/CourseDetailSkeleton'
-
-// Set when this device requested a payment code for the course; a later load
-// that finds the course enrolled is the admin's approval (purchase_approved).
-const pendingPurchaseKey = (courseId: number) => `sahifalab_pending_purchase_${courseId}`
+import { CourseMarketing } from '../../../src/features/courses/CourseMarketing'
+import { PurchaseSheet } from '../../../src/features/courses/PurchaseSheet'
+import { isPreviewable } from '../../../src/features/courses/courses'
+import { settlePurchase, usePendingStore } from '../../../src/features/courses/purchase'
+import { showToast } from '../../../src/components/ui'
 
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-const LEVEL_LABEL: Record<string, string> = {
-  beginner: "Boshlang'ich", intermediate: "O'rta", advanced: 'Murakkab',
-}
-const LANG_LABEL: Record<string, string> = {
-  uz: "O'zbek", ru: 'Rus', en: 'Ingliz', other: 'Boshqa',
-}
 const WISHLIST_KEY = 'wishlist_course_ids'
 const SCREEN_W = Dimensions.get('window').width
 
@@ -66,14 +58,6 @@ function buildSections(ls: Lesson[]): Section[] {
     title, lessons: items,
     minutes: items.reduce((s, i) => s + (i.duration_minutes ?? 0), 0),
   }))
-}
-
-// Free ("preview") video lessons can be watched before enrolling. The lessons
-// list never carries video URLs, so this checks type only — the URL is fetched
-// from GET /lessons/{id} when the preview starts.
-const NON_VIDEO_TYPES = new Set(['material', 'quiz', 'live', 'text', 'reading'])
-function isPreviewable(l: Lesson) {
-  return l.is_free && !NON_VIDEO_TYPES.has(l.lesson_type)
 }
 
 function isYouTubeUrl(url: string) {
@@ -970,19 +954,9 @@ export default function CourseDetailScreen() {
   const [loading,        setLoading]        = useState(true)
   const [enrolling,      setEnrolling]      = useState(false)
   const [showPaySheet,   setShowPaySheet]   = useState(false)
-  const [paySheetMounted, setPaySheetMounted] = useState(false)
-  const payBackdropAnim = useRef(new Animated.Value(0)).current
-  const paySlideAnim    = useRef(new Animated.Value(500)).current
-  const [payCode,        setPayCode]        = useState<EnrollmentCodeResponse | null>(null)
-  const [payCodeLoading, setPayCodeLoading] = useState(false)
-  const [payCodeError,   setPayCodeError]   = useState<string | null>(null)
-  const [pendingStatus,  setPendingStatus]  = useState<PendingEnrollmentStatus | null>(null)
-  const [codeCopied,     setCodeCopied]     = useState(false)
+  const pending = usePendingStore(s => s.byCourse[courseId])
   const [confirm, setConfirm] = useState<{ visible: boolean; title: string; message?: string; onConfirm: () => void }>({ visible: false, title: '', onConfirm: () => {} })
   const [wishlisted,     setWishlisted]     = useState(false)
-  const [descExpanded,   setDescExpanded]   = useState(false)
-  const [showAllSections,setShowAllSections]= useState(false)
-  const [showStickyBar,  setShowStickyBar]  = useState(false)
   const [activeTab,      setActiveTab]      = useState<'lessons' | 'info'>('lessons')
   const [currentLesson,  setCurrentLesson]  = useState<Lesson | null>(null)
   const [videoUri,       setVideoUri]       = useState<string | null>(null)
@@ -992,8 +966,6 @@ export default function CourseDetailScreen() {
   const [videoWatchRatio, setVideoWatchRatio] = useState(0)
   const [previewing,     setPreviewing]     = useState(false)
 
-  const priceY          = useRef(0)
-  const mktScrollRef    = useRef<ScrollView>(null)
   const tabScrollRef    = useRef<ScrollView>(null)
   const videoDurationRef = useRef(0)
   const advancedFromRef  = useRef<number | null>(null)
@@ -1053,17 +1025,16 @@ export default function CourseDetailScreen() {
       coursesApi.recordView(courseId).catch(() => {})
       track('course_view', { courseId, is_paid: courseData.is_paid }, courseId)
       if (enrollmentNow?.enrolled) {
-        AsyncStorage.getItem(pendingPurchaseKey(courseId)).then(pending => {
-          if (!pending) return
-          AsyncStorage.removeItem(pendingPurchaseKey(courseId)).catch(() => {})
-          trackOnce(`purchase_approved_${courseId}`, 'purchase_approved', { course_id: courseId, via: 'course_detail' }, courseId)
-        }).catch(() => {})
-      }
-
-      // Check for pending payment if the course is paid and user is not enrolled
-      if (courseData.is_paid) {
+        settlePurchase(courseId, 'course_detail')
+      } else if (courseData.is_paid) {
+        // An open payment request turns "Sotib olish" into "Holatni koʻrish".
         enrollmentsApi.pendingStatus(courseId).then(s => {
-          if (s.has_pending) setPendingStatus(s)
+          const store = usePendingStore.getState()
+          if (s.has_pending && s.reference_code && s.status && s.expires_at) {
+            store.put({ course_id: courseId, reference_code: s.reference_code, status: s.status, expires_at: s.expires_at })
+          } else {
+            store.clear(courseId)
+          }
         }).catch(() => {})
       }
 
@@ -1156,57 +1127,20 @@ export default function CourseDetailScreen() {
   }
 
   // ── Enroll / buy ───────────────────────────────────────────────────────────
-  async function handleEnroll() {
+  // Paid: the purchase sheet (no code until "Telegram orqali davom etish"),
+  // or the status screen while a request is open. Free: enrol right here.
+  async function handlePrimary() {
     if (!course) return
-    if (course.is_paid) {
+    if (course.is_paid && course.price > 0) {
+      if (pending) { router.push(`/(screens)/purchase/${courseId}` as any); return }
       track('purchase_sheet_open', { course_id: courseId, price: course.price }, courseId)
       setShowPaySheet(true)
-      fetchPayCode()
       return
     }
     setEnrolling(true)
     try { await enroll(courseId) }
-    catch (e: any) { Alert.alert('Xatolik', e?.message ?? "Ro'yxatdan o'tishda xatolik") }
+    catch (e: any) { showToast('error', e?.message ?? 'Kursga yozilib boʻlmadi') }
     finally { setEnrolling(false) }
-  }
-
-  // Same flow as the website's PaymentModal: get a PAY-XXXX-YYYY code, which
-  // the student sends to the pay bot. Errors stay in the sheet with a retry.
-  async function fetchPayCode() {
-    setPayCodeLoading(true)
-    setPayCodeError(null)
-    try {
-      const res = await enrollmentsApi.requestCode(courseId)
-      AsyncStorage.setItem(pendingPurchaseKey(courseId), res.reference_code).catch(() => {})
-      setPayCode(res)
-      setPendingStatus({ has_pending: true, reference_code: res.reference_code, status: res.status, expires_at: res.expires_at })
-    } catch (e: any) {
-      setPayCodeError(e?.message ?? "Kod olinmadi. Qayta urinib ko'ring.")
-    } finally {
-      setPayCodeLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (showPaySheet) {
-      setPaySheetMounted(true)
-      Animated.parallel([
-        Animated.timing(payBackdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(paySlideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
-      ]).start()
-    } else {
-      Animated.parallel([
-        Animated.timing(payBackdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-        Animated.timing(paySlideAnim,    { toValue: 500, duration: 200, useNativeDriver: true }),
-      ]).start(() => { setPaySheetMounted(false); paySlideAnim.setValue(500) })
-    }
-  }, [showPaySheet])
-
-  function handleCopyCode() {
-    if (!payCode) return
-    Clipboard.setString(payCode.reference_code)
-    setCodeCopied(true)
-    setTimeout(() => setCodeCopied(false), 2000)
   }
 
   // ── Reset watch state when lesson changes ─────────────────────────────────
@@ -1309,7 +1243,6 @@ export default function CourseDetailScreen() {
   function playPreview(lesson: Lesson) {
     setCurrentLesson(lesson)
     setPreviewing(true)
-    mktScrollRef.current?.scrollTo({ y: 0, animated: true })
   }
 
   function goPrev() {
@@ -1346,12 +1279,29 @@ export default function CourseDetailScreen() {
   )
 
   const sections        = buildSections(lessons)
-  const totalMins       = course.total_duration_minutes ?? 0
-  const firstFreeLesson = lessons.find(isPreviewable)
-  const hasDiscount     = !!(course.original_price && course.original_price > course.price)
-  const completedCount  = progress.size
-  const ratingCount     = course.ratings_count ?? reviews.length
-  const hasMaterials    = lessons.some(l => l.material_url)
+
+  // Download sheets: used by the enrolled view (offline downloads).
+  const sheets = (
+    <>
+      <ConfirmModal
+        visible={confirm.visible}
+        emoji="🗑️"
+        title={confirm.title}
+        message={confirm.message}
+        confirmText="O'chirish"
+        danger
+        onConfirm={confirm.onConfirm}
+        onCancel={() => setConfirm(s => ({ ...s, visible: false }))}
+      />
+      <DownloadAllSheet
+        visible={showDownloadAllSheet}
+        course={course}
+        lessons={lessons}
+        onClose={() => setShowDownloadAllSheet(false)}
+        c={c}
+      />
+    </>
+  )
 
   // ── ENROLLED VIEW ──────────────────────────────────────────────────────────
   if (canAccess) {
@@ -1502,651 +1452,73 @@ export default function CourseDetailScreen() {
             />
           </View>
         </ScrollView>
+        {sheets}
       </SafeAreaView>
     )
   }
 
   // ── MARKETING VIEW (not enrolled) ──────────────────────────────────────────
-  const visibleSections = showAllSections ? sections : sections.slice(0, 3)
-  const priceText  = course.is_paid ? `${course.price.toLocaleString()} so'm` : 'Bepul'
-  const enrollLabel = course.is_paid ? 'Kursga yozilish' : "Kursga yozilmoq"
-
-  return (
-    <SafeAreaView style={[styles.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
-      <View style={[styles.navBar, { borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.navBack}>
-          <ChevronLeft size={22} color={c.textPrimary} />
-        </Pressable>
-        <Text numberOfLines={1} style={[styles.navTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-          {course.title}
-        </Text>
-        <View style={{ width: 36 }} />
-      </View>
-
-      <ScrollView
-        ref={mktScrollRef}
-        showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={e => setShowStickyBar(e.nativeEvent.contentOffset.y > priceY.current + 20)}
-        contentContainerStyle={{ paddingBottom: 32 }}
-      >
-        {/* Hero — becomes the player while a free preview lesson is playing */}
-        {previewing && currentLesson && isPreviewable(currentLesson) ? (
-          <View>
-            <View style={styles.playerWrap}>
-              {(videoUri || embedUrl) ? (
-                <VideoPlayer
-                  key={`${currentLesson.id}`}
-                  uri={videoUri}
-                  embedUrl={embedUrl}
-                  onPlayingChange={setIsVideoPlaying}
-                />
-              ) : videoLoading ? (
-                <View style={styles.playerCenter}>
-                  <ActivityIndicator color="#fff" size="large" />
-                  <Text style={styles.playerStatusText}>Video yuklanmoqda...</Text>
-                </View>
-              ) : (
-                <View style={styles.playerCenter}>
-                  <BookOpen size={40} color="rgba(255,255,255,0.4)" />
-                  <Text style={styles.playerStatusText}>Video mavjud emas</Text>
-                </View>
-              )}
-            </View>
-            <View style={[styles.lessonTitleBar, { backgroundColor: c.bgSecondary, borderBottomColor: c.border }]}>
-              <View style={styles.navArrow}>
-                <Play size={16} color={c.brand} />
-              </View>
-              <Text numberOfLines={1} style={[styles.lessonTitleText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                {currentLesson.title}
-              </Text>
-              <Pressable onPress={() => setPreviewing(false)} hitSlop={8} style={styles.navArrow}>
-                <X size={18} color={c.textMuted} />
-              </Pressable>
-            </View>
+  const previewPlayer = previewing && currentLesson && isPreviewable(currentLesson) ? (
+    <View>
+      <View style={styles.playerWrap}>
+        {(videoUri || embedUrl) ? (
+          <VideoPlayer key={`${currentLesson.id}`} uri={videoUri} embedUrl={embedUrl} onPlayingChange={setIsVideoPlaying} />
+        ) : videoLoading ? (
+          <View style={styles.playerCenter}>
+            <ActivityIndicator color="#fff" size="large" />
+            <Text style={styles.playerStatusText}>Video yuklanmoqda...</Text>
           </View>
         ) : (
-        <Pressable onPress={() => firstFreeLesson && playPreview(firstFreeLesson)} disabled={!firstFreeLesson}>
-          {course.thumbnail_url
-            ? <Image source={{ uri: course.thumbnail_url }} style={styles.cover} resizeMode="cover" />
-            : <View style={[styles.cover, { backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }]}>
-                <BookOpen size={56} color={c.brand} />
-              </View>
-          }
-          {firstFreeLesson && (
-            <View style={styles.playOverlay}>
-              <View style={[styles.playBtn, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
-                <Play size={26} color="#fff" fill="#fff" />
-              </View>
-              <Text style={styles.previewLabel}>Bepul ko'rish</Text>
-            </View>
-          )}
-        </Pressable>
+          <View style={styles.playerCenter}>
+            <BookOpen size={40} color="rgba(255,255,255,0.4)" />
+            <Text style={styles.playerStatusText}>Video mavjud emas</Text>
+          </View>
         )}
-
-        <View style={styles.mktBody}>
-          {course.categories && (
-            <View style={[styles.catBadge, { backgroundColor: c.brandSubtle }]}>
-              <Text style={[styles.catBadgeText, { color: c.brand, fontFamily: typography.fontFamily.medium }]}>
-                {course.categories.name}
-              </Text>
-            </View>
-          )}
-
-          <Text style={[styles.mktTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-            {course.title}
-          </Text>
-
-          {course.description ? (
-            <View>
-              <Text numberOfLines={descExpanded ? undefined : 2}
-                style={[styles.mktDesc, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                {course.description}
-              </Text>
-              {course.description.length > 100 && (
-                <Pressable onPress={() => setDescExpanded(v => !v)}>
-                  <Text style={[styles.moreBtn, { color: c.brand, fontFamily: typography.fontFamily.semibold }]}>
-                    {descExpanded ? 'Kamroq' : "Ko'proq"}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          ) : null}
-
-          {(course.rating ?? 0) > 0 && (
-            <View style={styles.ratingRow}>
-              <Text style={[styles.ratingNum, { color: '#f59e0b', fontFamily: typography.fontFamily.bold }]}>
-                {course.rating!.toFixed(1)}
-              </Text>
-              <Stars rating={course.rating!} size={14} />
-              {ratingCount > 0 && (
-                <Text style={[styles.ratingCount, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                  ({ratingCount} ta reyting)
-                </Text>
-              )}
-              <Text style={{ color: c.textMuted }}>•</Text>
-              <Users size={13} color={c.textMuted} />
-              <Text style={[styles.ratingCount, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                {course.enrolled_count.toLocaleString()} o'quvchi
-              </Text>
-            </View>
-          )}
-
-          <Pressable
-            onPress={() => teacher && router.push(`/(screens)/profile/${teacher.telegram_id}` as any)}
-            style={styles.teacherRow}
-          >
-            {teacher?.photo_url
-              ? <Image source={{ uri: teacher.photo_url }} style={styles.teacherAvatar} />
-              : <View style={[styles.teacherAvatar, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
-                  <Text style={{ color: c.textMuted, fontSize: 13 }}>{(teacher?.first_name ?? 'T')[0].toUpperCase()}</Text>
-                </View>
-            }
-            <Text style={[styles.teacherBy, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-              Yaratuvchi:{' '}
-              <Text style={{ color: c.brand, fontFamily: typography.fontFamily.semibold }} numberOfLines={1}>
-                {teacher?.first_name ?? `Teacher #${course.teacher_id}`}
-              </Text>
-            </Text>
-          </Pressable>
-
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Calendar size={12} color={c.textMuted} />
-              <Text style={[styles.metaText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                {fmtDate(course.updated_at ?? course.created_at)}
-              </Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Globe size={12} color={c.textMuted} />
-              <Text style={[styles.metaText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                {LANG_LABEL[course.language] ?? course.language}
-              </Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Text style={[styles.metaText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                {LEVEL_LABEL[course.level] ?? course.level}
-              </Text>
-            </View>
-          </View>
-
-          {/* Price section */}
-          <View
-            style={[styles.priceSection, { borderColor: c.border }]}
-            onLayout={e => { priceY.current = e.nativeEvent.layout.y }}
-          >
-            {course.is_paid && (
-              <View style={styles.priceRow}>
-                <Text style={[styles.price, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-                  {course.price.toLocaleString()} so'm
-                </Text>
-                {hasDiscount && (
-                  <>
-                    <Text style={[styles.oldPrice, { color: c.textMuted }]}>
-                      {course.original_price!.toLocaleString()} so'm
-                    </Text>
-                    <View style={[styles.discountBadge, { backgroundColor: '#dc2626' }]}>
-                      <Text style={styles.discountText}>
-                        {Math.round((1 - course.price / course.original_price!) * 100)}% chegirma
-                      </Text>
-                    </View>
-                  </>
-                )}
-              </View>
-            )}
-            <Pressable
-              onPress={handleEnroll}
-              disabled={enrolling}
-              style={[styles.enrollBtn, { backgroundColor: c.brand, marginTop: course.is_paid ? spacing.sm : 0 }]}
-            >
-              {enrolling
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={[styles.enrollBtnText, { fontFamily: typography.fontFamily.bold }]}>{enrollLabel}</Text>
-              }
-            </Pressable>
-            <Pressable
-              onPress={toggleWishlist}
-              style={[styles.wishlistBtn, { borderColor: wishlisted ? c.brand : c.borderStrong }]}
-            >
-              <Heart size={15} color={wishlisted ? c.brand : c.textSecondary} fill={wishlisted ? c.brand : 'transparent'} />
-              <Text style={[styles.wishlistText, { color: wishlisted ? c.brand : c.textSecondary, fontFamily: typography.fontFamily.semibold }]}>
-                {wishlisted ? 'Sevimlilardan olib tashlash' : "Sevimlilarga qo'shish"}
-              </Text>
-            </Pressable>
-
-            {/* Pending payment status badge */}
-            {pendingStatus?.has_pending && (
-              <View style={[styles.pendingBadge, { backgroundColor: c.warningMuted }]}>
-                <Text style={[styles.pendingBadgeText, { color: c.warning, fontFamily: typography.fontFamily.medium }]}>
-                  {pendingStatus.status === 'paid'
-                    ? `✓ Screenshot qabul qilindi. Tasdiqlash kutilmoqda... (${pendingStatus.reference_code})`
-                    : `⏳ To'lov tekshirilmoqda... (${pendingStatus.reference_code})`}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* What you'll learn */}
-          {course.what_you_learn && course.what_you_learn.length > 0 && (
-            <View style={[styles.mktSection, { borderColor: c.border }]}>
-              <Text style={[styles.mktSectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>Nima o'rganasiz?</Text>
-              {course.what_you_learn.map((item, i) => (
-                <View key={i} style={styles.bulletRow}>
-                  <CheckCircle size={13} color={c.brand} style={{ marginTop: 2, flexShrink: 0 }} />
-                  <Text style={[styles.bulletText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>{item}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Curriculum */}
-          {sections.length > 0 && (
-            <View style={[styles.mktSection, { borderColor: c.border }]}>
-              <Text style={[styles.mktSectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>Kurs mazmuni</Text>
-              <Text style={[styles.currMeta, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-                {sections.length} bo'lim • {lessons.length} dars • {fmtDurationLong(totalMins)}
-              </Text>
-              <View style={{ marginHorizontal: -spacing.base }}>
-                {visibleSections.map((sec, i) => (
-                  <MktSectionPreview
-                    key={i}
-                    section={sec}
-                    defaultOpen={i === 0 || sec.lessons.some(isPreviewable)}
-                    playingId={previewing ? currentLesson?.id ?? null : null}
-                    onPreview={playPreview}
-                    c={c}
-                  />
-                ))}
-              </View>
-              {sections.length > 3 && (
-                <Pressable onPress={() => setShowAllSections(v => !v)} style={[styles.showMoreBtn, { borderColor: c.borderStrong }]}>
-                  <Text style={[styles.showMoreText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                    {showAllSections ? "Kamroq ko'rsatish" : `${sections.length - 3} ta bo'limni ko'rish`}
-                  </Text>
-                  {showAllSections ? <ChevronUp size={15} color={c.textPrimary} /> : <ChevronDown size={15} color={c.textPrimary} />}
-                </Pressable>
-              )}
-            </View>
-          )}
-
-          {/* Includes */}
-          <View style={[styles.mktSection, { borderColor: c.border }]}>
-            <Text style={[styles.mktSectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>Bu kursga nima kiradi?</Text>
-            {totalMins > 0 && <IncludeRow icon={<Clock size={14} color={c.brand} />} label={`${fmtDurationLong(totalMins)} video`} c={c} />}
-            {hasMaterials && <IncludeRow icon={<Folder size={14} color={c.brand} />} label="Qo'llab-quvvatlash fayllari" c={c} />}
-            <IncludeRow icon={<InfinityIcon size={14} color={c.brand} />} label="Umrbod kirish huquqi" c={c} />
-            <IncludeRow icon={<Smartphone size={14} color={c.brand} />} label="Mobil, kompyuter va TV orqali kirish" c={c} />
-            <IncludeRow icon={<Award size={14} color={c.brand} />} label="Tugallash sertifikati" c={c} />
-          </View>
-
-          {/* Requirements */}
-          {course.requirements && course.requirements.length > 0 && (
-            <View style={[styles.mktSection, { borderColor: c.border }]}>
-              <Text style={[styles.mktSectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>Talablar</Text>
-              {course.requirements.map((r, i) => (
-                <View key={i} style={styles.bulletRow}>
-                  <Text style={{ color: c.textMuted }}>•</Text>
-                  <Text style={[styles.bulletText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>{r}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Teacher's other courses */}
-          {teacherCourses.length > 0 && (
-            <View style={[styles.mktSection, { borderColor: c.border }]}>
-              <Text style={[styles.mktSectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>O'qituvchining boshqa kurslari</Text>
-              {teacherCourses.map(tc => (
-                <Pressable key={tc.id} onPress={() => router.push(`/(screens)/course/${tc.id}` as any)}
-                  style={[styles.relatedCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-                  {tc.thumbnail_url
-                    ? <Image source={{ uri: tc.thumbnail_url }} style={styles.relatedThumb} resizeMode="cover" />
-                    : <View style={[styles.relatedThumb, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
-                        <BookOpen size={18} color={c.textMuted} />
-                      </View>
-                  }
-                  <View style={{ flex: 1, padding: spacing.xs }}>
-                    <Text numberOfLines={2} style={[{ color: c.textPrimary, fontSize: typography.size.sm, fontFamily: typography.fontFamily.semibold }]}>{tc.title}</Text>
-                    <Text style={[{ color: c.brand, fontSize: typography.size.sm, fontFamily: typography.fontFamily.bold, marginTop: 4 }]}>
-                      {tc.is_paid ? `${tc.price.toLocaleString()} so'm` : 'Bepul'}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {/* Teacher card */}
-          {teacher && (
-            <View style={[styles.mktSection, { borderColor: c.border }]}>
-              <Text style={[styles.mktSectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>O'qituvchi haqida</Text>
-              <Pressable onPress={() => router.push(`/(screens)/profile/${teacher.telegram_id}` as any)} style={styles.teacherRow}>
-                {teacher.photo_url
-                  ? <Image source={{ uri: teacher.photo_url }} style={[styles.teacherAvatar, { width: 48, height: 48, borderRadius: 24 }]} />
-                  : <View style={[styles.teacherAvatar, { width: 48, height: 48, borderRadius: 24, backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
-                      <Text style={{ color: c.textMuted, fontSize: 18 }}>{teacher.first_name[0].toUpperCase()}</Text>
-                    </View>
-                }
-                <View style={{ flex: 1, gap: 3 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text numberOfLines={1} style={[{ color: c.brand, fontSize: typography.size.base, fontFamily: typography.fontFamily.bold }]}>{teacher.first_name}</Text>
-                    <RoleBadge role="teacher" size={13} />
-                  </View>
-                  {teacher.headline && <Text numberOfLines={1} style={[{ color: c.textMuted, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>{teacher.headline}</Text>}
-                </View>
-              </Pressable>
-              {(teacherExtra?.specialization || (teacherExtra?.experience_years ?? 0) > 0) && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                  {teacherExtra?.specialization && (
-                    <View style={[styles.teacherChip, { backgroundColor: c.bgTertiary }]}>
-                      <Text style={[styles.teacherChipText, { color: c.textSecondary, fontFamily: typography.fontFamily.medium }]}>
-                        {teacherExtra.specialization}
-                      </Text>
-                    </View>
-                  )}
-                  {(teacherExtra?.experience_years ?? 0) > 0 && (
-                    <View style={[styles.teacherChip, { backgroundColor: 'rgba(52,199,89,0.1)' }]}>
-                      <Text style={[styles.teacherChipText, { color: '#34C759', fontFamily: typography.fontFamily.medium }]}>
-                        {teacherExtra!.experience_years} yil tajriba
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-              {teacher.bio && (
-                <Text numberOfLines={3} style={[{ color: c.textSecondary, fontSize: typography.size.sm, lineHeight: 22, fontFamily: typography.fontFamily.regular }]}>{teacher.bio}</Text>
-              )}
-              <Pressable onPress={() => router.push(`/(screens)/profile/${teacher.telegram_id}` as any)} style={styles.moreLinkRow}>
-                <Text style={[styles.moreLink, { color: c.brand, fontFamily: typography.fontFamily.semibold }]}>Profilga o'tish</Text>
-                <ChevronRight size={14} color={c.brand} />
-              </Pressable>
-            </View>
-          )}
-
-          {/* Reviews */}
-          {reviews.length > 0 && (
-            <View style={[styles.mktSection, { borderColor: c.border }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={[styles.mktSectionTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>Sharhlar</Text>
-                {(course.rating ?? 0) > 0 && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={[{ color: '#f59e0b', fontSize: 20, fontFamily: typography.fontFamily.bold }]}>{course.rating!.toFixed(1)}</Text>
-                    <Stars rating={course.rating!} size={15} />
-                  </View>
-                )}
-              </View>
-              {reviews.slice(0, 5).map(rv => (
-                <View key={rv.id} style={[styles.reviewCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
-                  <View style={styles.reviewTop}>
-                    {rv.profiles.photo_url
-                      ? <Image source={{ uri: rv.profiles.photo_url }} style={styles.reviewAvatar} />
-                      : <View style={[styles.reviewAvatar, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
-                          <Text style={{ color: c.textMuted, fontSize: 11 }}>{rv.profiles.first_name[0]?.toUpperCase()}</Text>
-                        </View>
-                    }
-                    <View style={{ flex: 1 }}>
-                      <Text numberOfLines={1} style={[{ color: c.textPrimary, fontSize: typography.size.sm, fontFamily: typography.fontFamily.semibold }]}>{rv.profiles.first_name}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                        <Stars rating={rv.rating} size={11} />
-                        <Text style={[{ color: c.textMuted, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>{fmtDate(rv.created_at)}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  {rv.review ? <Text style={[{ color: c.textSecondary, fontSize: typography.size.sm, lineHeight: 20, fontFamily: typography.fontFamily.regular }]}>{rv.review}</Text> : null}
-                </View>
-              ))}
-            </View>
-          )}
+      </View>
+      <View style={[styles.lessonTitleBar, { backgroundColor: c.bgSecondary, borderBottomColor: c.border }]}>
+        <View style={styles.navArrow}>
+          <Play size={16} color={c.brand} />
         </View>
-      </ScrollView>
+        <Text numberOfLines={1} style={[styles.lessonTitleText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+          {currentLesson.title}
+        </Text>
+        <Pressable onPress={() => setPreviewing(false)} hitSlop={8} style={styles.navArrow} accessibilityLabel="Koʻrishni yopish">
+          <X size={18} color={c.textMuted} />
+        </Pressable>
+      </View>
+    </View>
+  ) : null
 
-      {/* Sticky bottom bar */}
-      {showStickyBar && (
-        <MotiView
-          from={{ translateY: 80 }}
-          animate={{ translateY: 0 }}
-          transition={{ type: 'timing', duration: 200 }}
-          style={[styles.stickyBottom, { backgroundColor: c.bgPrimary, borderTopColor: c.border, paddingBottom: insets.bottom || spacing.sm }]}
-        >
-          <View style={styles.stickyLeft}>
-            <Text style={[styles.stickyPrice, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-              {course.is_paid ? `${course.price.toLocaleString()} so'm` : 'Bepul'}
-            </Text>
-            {hasDiscount && (
-              <Text style={[styles.stickyOld, { color: c.textMuted }]}>
-                {course.original_price!.toLocaleString()} so'm
-              </Text>
-            )}
-          </View>
-          <Pressable onPress={handleEnroll} disabled={enrolling} style={[styles.stickyBtn, { backgroundColor: c.brand }]}>
-            {enrolling
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={[styles.stickyBtnText, { fontFamily: typography.fontFamily.bold }]}>{enrollLabel}</Text>
-            }
-          </Pressable>
-        </MotiView>
-      )}
-
-      {/* Payment bottom sheet */}
-      <Modal
-        visible={paySheetMounted}
-        transparent
-        animationType="none"
-        statusBarTranslucent
-        onRequestClose={() => setShowPaySheet(false)}
-      >
-        {/* Backdrop */}
-        <Animated.View style={[styles.paySheetBackdrop, { opacity: payBackdropAnim }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowPaySheet(false)} />
-        </Animated.View>
-
-        {/* Sheet */}
-        <View style={styles.paySheetOverlay}>
-          <Animated.View style={[styles.paySheet, { backgroundColor: c.bgSecondary, paddingBottom: (insets.bottom || 0) + spacing.xl, transform: [{ translateY: paySlideAnim }] }]}>
-          <View style={[styles.paySheetHandle, { backgroundColor: c.border }]} />
-
-          {/* Header */}
-          <View style={styles.paySheetHeader}>
-            <Text style={[styles.paySheetTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
-              Kursga yozilish
-            </Text>
-            <Pressable onPress={() => setShowPaySheet(false)} hitSlop={12}>
-              <X size={20} color={c.textMuted} />
-            </Pressable>
-          </View>
-
-          {/* Course info row */}
-          <View style={[styles.paySheetCourse, { borderColor: c.border }]}>
-            {course?.thumbnail_url
-              ? <Image source={{ uri: course.thumbnail_url }} style={styles.paySheetThumb} />
-              : <View style={[styles.paySheetThumb, { backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }]}>
-                  <BookOpen size={20} color={c.brand} />
-                </View>
-            }
-            <View style={{ flex: 1 }}>
-              <Text numberOfLines={2} style={[styles.paySheetCourseName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-                {course?.title}
-              </Text>
-              <Text style={[styles.paySheetCoursePrice, { color: c.brand, fontFamily: typography.fontFamily.bold }]}>
-                {course?.price?.toLocaleString()} so'm
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.paySheetDivider, { backgroundColor: c.border }]} />
-
-          {payCodeLoading ? (
-            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-              <ActivityIndicator color={c.brand} size="large" />
-              <Text style={[{ color: c.textMuted, marginTop: 12, fontFamily: typography.fontFamily.regular, fontSize: typography.size.sm }]}>
-                Kod tayyorlanmoqda...
-              </Text>
-            </View>
-          ) : payCodeError || !payCode ? (
-            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.md }}>
-              <View style={[styles.payErrorBox, { backgroundColor: c.bgTertiary, borderColor: c.border }]}>
-                <AlertCircle size={16} color="#dc2626" />
-                <Text style={[{ flex: 1, color: c.textSecondary, fontSize: typography.size.sm, fontFamily: typography.fontFamily.regular, lineHeight: 20 }]}>
-                  {payCodeError ?? "Kod olinmadi. Qayta urinib ko'ring."}
-                </Text>
-              </View>
-              <Pressable onPress={fetchPayCode} style={[styles.paySheetPrimaryBtn, { backgroundColor: c.brand }]}>
-                <Text style={[{ color: '#fff', fontSize: typography.size.base, fontFamily: typography.fontFamily.bold }]}>
-                  Qayta urinish
-                </Text>
-              </Pressable>
-              <Pressable onPress={() => setShowPaySheet(false)} style={{ alignItems: 'center', paddingVertical: spacing.xs }}>
-                <Text style={[{ color: c.textMuted, fontSize: typography.size.sm, fontFamily: typography.fontFamily.medium }]}>Yopish</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Steps — mirror the website's PaymentModal */}
-              {[
-                {
-                  label: "Telegram bot bilan bog'laning:",
-                  extra: (
-                    <Pressable
-                      onPress={() => {
-                        track('purchase_start', { course_id: courseId }, courseId)
-                        Linking.openURL(payCode.telegram_bot_url)
-                      }}
-                      style={[styles.paySheetLink, { backgroundColor: c.brandSubtle }]}
-                    >
-                      <MessageCircle size={14} color={c.brand} />
-                      <Text style={[styles.paySheetLinkText, { color: c.brand, fontFamily: typography.fontFamily.semibold }]}>@sahifalab_pay_bot</Text>
-                    </Pressable>
-                  ),
-                },
-                {
-                  label: 'Botga quyidagi kodni yuboring:',
-                  extra: (
-                    <Pressable onPress={handleCopyCode} style={[styles.paySheetCodeRow, { backgroundColor: c.bgTertiary, borderColor: c.border }]}>
-                      <Text style={[styles.paySheetCode, { color: c.textPrimary, fontFamily: typography.fontFamily.mono }]}>
-                        {payCode.reference_code}
-                      </Text>
-                      {codeCopied
-                        ? <CheckCircle size={15} color={c.brand} />
-                        : <Copy size={15} color={c.textMuted} />
-                      }
-                    </Pressable>
-                  ),
-                },
-                {
-                  label: "Bot to'lov ko'rsatmalarini yuboradi:",
-                  sub: "Karta raqami, kurs narxi va nima yozish kerakligi",
-                },
-                {
-                  label: "To'lov qilgach, bot avtomatik ravishda kursga kirishni faollashtiradi (5–30 daqiqa ichida).",
-                },
-              ].map((step, i) => (
-                <View key={i} style={styles.paySheetStep}>
-                  <View style={[styles.paySheetStepNum, { backgroundColor: c.brandSubtle }]}>
-                    <Text style={[{ color: c.brand, fontSize: 12, fontFamily: typography.fontFamily.bold }]}>{i + 1}</Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 6 }}>
-                    <Text style={[styles.paySheetStepText, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}>
-                      {step.label}
-                    </Text>
-                    {step.sub && (
-                      <Text style={[{ color: c.textSecondary, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>
-                        {step.sub}
-                      </Text>
-                    )}
-                    {step.extra}
-                  </View>
-                </View>
-              ))}
-
-              {/* Footer */}
-              <View style={styles.paySheetFooter}>
-                <Pressable onPress={() => setShowPaySheet(false)}>
-                  <Text style={[{ color: c.textMuted, fontSize: typography.size.sm, fontFamily: typography.fontFamily.medium }]}>Yopish</Text>
-                </Pressable>
-              </View>
-            </ScrollView>
-          )}
-          </Animated.View>
-        </View>
-      </Modal>
-
-      <ConfirmModal
-        visible={confirm.visible}
-        emoji="🗑️"
-        title={confirm.title}
-        message={confirm.message}
-        confirmText="O'chirish"
-        danger
-        onConfirm={confirm.onConfirm}
-        onCancel={() => setConfirm(s => ({ ...s, visible: false }))}
+  return (
+    <>
+      <CourseMarketing
+        course={course}
+        lessons={lessons}
+        reviews={reviews}
+        teacher={teacher}
+        teacherCourses={teacherCourses}
+        pending={!!pending}
+        saved={wishlisted}
+        busy={enrolling}
+        player={previewPlayer}
+        playingId={previewPlayer ? currentLesson?.id ?? null : null}
+        onBack={() => router.back()}
+        onToggleSave={toggleWishlist}
+        onPreview={playPreview}
+        onPrimary={handlePrimary}
+        onOpenTeacher={tid => router.push(`/(screens)/profile/${tid}` as any)}
+        onOpenCourse={id => router.push(`/(screens)/course/${id}` as any)}
       />
-
-      {course && (
-        <DownloadAllSheet
-          visible={showDownloadAllSheet}
-          course={course}
-          lessons={lessons}
-          onClose={() => setShowDownloadAllSheet(false)}
-          c={c}
-        />
-      )}
-    </SafeAreaView>
-  )
-}
-
-function MktSectionPreview({ section, defaultOpen, playingId, onPreview, c }: {
-  section: Section; defaultOpen: boolean; playingId: number | null
-  onPreview: (lesson: Lesson) => void; c: any
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <View style={[styles.secHeader, styles.mktSecBlock, { borderColor: c.border, backgroundColor: c.bgSecondary }]}>
-      <Pressable onPress={() => setOpen(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-        <View style={{ flex: 1 }}>
-          <Text numberOfLines={2} style={[styles.secTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>{section.title}</Text>
-          <Text style={[styles.secMeta, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-            {section.lessons.length} dars • {fmtDuration(section.minutes)}
-          </Text>
-        </View>
-        {open ? <ChevronUp size={15} color={c.textMuted} /> : <ChevronDown size={15} color={c.textMuted} />}
-      </Pressable>
-      {open && section.lessons.map((l) => {
-        const canPreview = isPreviewable(l)
-        const playing    = playingId === l.id
-        return (
-          <Pressable
-            key={l.id}
-            onPress={canPreview ? () => onPreview(l) : undefined}
-            disabled={!canPreview}
-            style={[styles.previewLesson, { borderTopColor: c.border }]}
-          >
-            {canPreview
-              ? <Play size={13} color={c.brand} fill={playing ? c.brand : 'transparent'} />
-              : <Lock size={13} color={c.textMuted} />}
-            <Text numberOfLines={1} style={[{
-              flex: 1, fontSize: typography.size.xs,
-              color: canPreview ? c.textPrimary : c.textSecondary,
-              fontFamily: canPreview ? typography.fontFamily.semibold : typography.fontFamily.regular,
-            }]}>{l.title}</Text>
-            {canPreview && (
-              <Text style={[styles.previewTag, { color: c.brand, backgroundColor: c.brandSubtle, fontFamily: typography.fontFamily.semibold }]}>
-                {playing ? "Ko'rilmoqda" : "Ko'rish"}
-              </Text>
-            )}
-            {l.duration_minutes > 0 && <Text style={[{ color: c.textMuted, fontSize: typography.size.xs, fontFamily: typography.fontFamily.regular }]}>{fmtDuration(l.duration_minutes)}</Text>}
-          </Pressable>
-        )
-      })}
-    </View>
-  )
-}
-
-function IncludeRow({ icon, label, c }: { icon: React.ReactNode; label: string; c: any }) {
-  return (
-    <View style={styles.includeRow}>
-      {icon}
-      <Text style={[styles.includeText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>{label}</Text>
-    </View>
+      <PurchaseSheet
+        visible={showPaySheet}
+        course={course}
+        onClose={() => setShowPaySheet(false)}
+        onStarted={() => {
+          setShowPaySheet(false)
+          router.push(`/(screens)/purchase/${courseId}` as any)
+        }}
+      />
+    </>
   )
 }
 
@@ -2161,7 +1533,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   navBack:  { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  navTitle: { flex: 1, textAlign: 'center', fontSize: typography.size.sm },
   navArrow: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
 
   // Enrolled player view
@@ -2251,69 +1622,15 @@ const styles = StyleSheet.create({
   teacherChipText:{ fontSize: 11 },
 
   // Marketing view
-  cover:       { width: '100%', height: 220 },
-  playOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
-  playBtn:     { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
-  previewLabel: {
-    color: '#fff', fontSize: typography.size.sm, fontFamily: 'Onest-SemiBold',
-    textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
-  },
-  mktBody:    { padding: spacing.base, gap: spacing.base },
-  catBadge:   { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: radius.full },
-  catBadgeText:{ fontSize: typography.size.xs },
-  mktTitle:   { fontSize: 22, lineHeight: 30 },
-  mktDesc:    { fontSize: typography.size.sm, lineHeight: 22 },
   moreBtn:    { fontSize: typography.size.sm, marginTop: 4 },
 
-  ratingRow:   { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  ratingNum:   { fontSize: typography.size.base },
-  ratingCount: { fontSize: typography.size.xs },
-
-  teacherBy:   { fontSize: typography.size.sm, flex: 1 },
-  metaRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  metaItem:    { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText:    { fontSize: typography.size.xs },
-
-  priceSection: { borderWidth: 1, borderRadius: radius.md, padding: spacing.base, gap: spacing.xs },
-  priceRow:     { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  price:        { fontSize: 26 },
-  oldPrice:     { fontSize: typography.size.base, textDecorationLine: 'line-through' },
-  discountBadge:{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
-  discountText: { color: '#fff', fontSize: typography.size.xs, fontFamily: 'Onest-Bold' },
-  enrollBtn:    { paddingVertical: 14, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  enrollBtnText:{ color: '#fff', fontSize: typography.size.base },
-  wishlistBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: 12, borderRadius: radius.sm, borderWidth: 1, marginTop: spacing.xs },
-  wishlistText: { fontSize: typography.size.sm },
-
-  mktSection:      { borderTopWidth: 1, paddingTop: spacing.base, gap: spacing.sm },
-  mktSectionTitle: { fontSize: typography.size.lg },
-  currMeta:        { fontSize: typography.size.xs, marginTop: -spacing.xs },
-
-  previewLesson: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingTop: spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, marginTop: spacing.xs },
   // secHeader is a row; the marketing block stacks its header over the lesson rows
-  mktSecBlock:   { flexDirection: 'column', alignItems: 'stretch', gap: 0 },
-  previewTag:    { fontSize: 10, paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.full, overflow: 'hidden' },
-
   bulletRow:  { flexDirection: 'row', gap: spacing.xs, alignItems: 'flex-start' },
   bulletText: { flex: 1, fontSize: typography.size.sm, lineHeight: 22 },
-
-  showMoreBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.xs, paddingVertical: spacing.sm,
-    borderWidth: 1, borderRadius: radius.sm, marginTop: spacing.xs,
-  },
-  showMoreText: { fontSize: typography.size.sm },
 
   includeRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   includeText: { fontSize: typography.size.sm, flex: 1 },
 
-  relatedCard:  { flexDirection: 'row', borderRadius: radius.sm, borderWidth: 1, overflow: 'hidden' },
-  relatedThumb: { width: 90, height: 64 },
-
-  moreLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.xs },
-  moreLink:    { fontSize: typography.size.sm },
-
-  reviewCard:   { borderRadius: radius.sm, borderWidth: 1, padding: spacing.sm, gap: spacing.xs },
   reviewFlat:   { paddingVertical: spacing.sm, gap: spacing.sm },
   reviewDivider:{ height: StyleSheet.hairlineWidth, marginVertical: spacing.xs },
   reviewTop:    { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
@@ -2339,47 +1656,4 @@ const styles = StyleSheet.create({
   reviewSubmitBtn:  { paddingVertical: 12, borderRadius: radius.sm, alignItems: 'center' as const, justifyContent: 'center' as const },
   reviewSubmitText: { fontSize: typography.size.sm },
 
-  // Sticky bottom bar
-  stickyBottom: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: spacing.base, paddingTop: spacing.sm,
-    borderTopWidth: 1, gap: spacing.sm,
-  },
-  stickyLeft:    { flex: 3, flexDirection: 'column', justifyContent: 'center' },
-  stickyPrice:   { fontSize: typography.size.base },
-  stickyOld:     { fontSize: typography.size.xs, textDecorationLine: 'line-through', marginTop: 1 },
-  stickyBtn:     { flex: 7, paddingVertical: 12, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  stickyBtnText: { color: '#fff', fontSize: typography.size.sm },
-
-  // Pending badge (below enroll button when payment is awaiting)
-  pendingBadge:     { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, marginTop: spacing.xs },
-  pendingBadgeText: { fontSize: typography.size.xs, lineHeight: 18 },
-
-  // Payment bottom sheet
-  paySheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.52)' },
-  paySheetOverlay:  { flex: 1, justifyContent: 'flex-end' },
-  paySheet: {
-    borderTopLeftRadius: radius['3xl'],
-    borderTopRightRadius: radius['3xl'],
-    paddingHorizontal: spacing.base,
-    maxHeight: '85%',
-  },
-  paySheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: spacing.sm, marginBottom: spacing.base },
-  paySheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.base },
-  paySheetTitle:  { fontSize: typography.size.lg },
-  paySheetCourse: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingBottom: spacing.base, borderBottomWidth: StyleSheet.hairlineWidth },
-  paySheetThumb:  { width: 60, height: 60, borderRadius: radius.sm },
-  paySheetCourseName:  { fontSize: typography.size.sm, lineHeight: 20, marginBottom: 2 },
-  paySheetCoursePrice: { fontSize: typography.size.lg },
-  paySheetDivider:     { height: StyleSheet.hairlineWidth, marginBottom: spacing.base },
-  paySheetStep:   { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.base, alignItems: 'flex-start' },
-  paySheetStepNum:{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
-  paySheetStepText: { fontSize: typography.size.sm, lineHeight: 20 },
-  paySheetLink:   { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.sm, alignSelf: 'flex-start', marginTop: 4 },
-  paySheetLinkText: { fontSize: typography.size.sm },
-  paySheetCodeRow:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs + 2, borderRadius: radius.sm, borderWidth: 1, marginTop: 4 },
-  paySheetCode:   { fontSize: typography.size.base, letterSpacing: 1 },
-  paySheetFooter:      { gap: spacing.sm, alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.base },
-  payErrorBox:         { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.sm, borderWidth: 1 },
-  paySheetPrimaryBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.md, borderRadius: radius.lg },
 })
