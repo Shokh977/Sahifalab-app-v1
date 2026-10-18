@@ -21,12 +21,13 @@ import { TREE_STAGES, stageFromStreak, type TreeState } from '../../../lib/treeT
 import { useTheme } from '../../design/ThemeProvider'
 import { durations, easing, springs, streakTick } from '../../design/motion'
 import { iconSize, iconStroke, space } from '../../design/spacing'
-import { tabular, type as typeScale } from '../../design/typography'
+import { fonts, tabular, type as typeScale } from '../../design/typography'
 import { haptics } from '../../lib/haptics'
 import { Button, Card, Pressable, ProgressBar } from '../../components/ui'
 import type { PrimaryAction } from './primaryAction'
 import { localDateKey, uzText } from './today'
 import { WeekStrip } from './WeekStrip'
+import { focusLabel } from './focusLabel'
 
 const TICK_KEY = 'sahifalab_streak_tick_date'
 const FLAME = iconSize.md + space.xs
@@ -67,8 +68,8 @@ export function TodayHero({
 }: TodayHeroProps) {
   const { colors } = useTheme()
   const reduceMotion = useReducedMotion()
-  const goal = goalMinutes > 0 ? goalMinutes : 20
-  const goalMet = todayMinutes >= goal
+  const focus = focusLabel(todayMinutes, goalMinutes)
+  const goalMet = focus.done
   const stage = stageFromStreak(streak)
   const stageName = uzText(TREE_STAGES.find(s => s.id === stage)?.name ?? '')
   const atRisk = streakState === 'at_risk'
@@ -148,16 +149,19 @@ export function TodayHero({
       <View style={styles.focus}>
         <View style={styles.focusRow}>
           <Text style={[typeScale.callout, { color: colors.text }]}>Bugungi fokus</Text>
-          <Text style={[typeScale.callout, tabular, { color: goalMet ? colors.successText : colors.textMuted }]}>
-            {Math.max(0, todayMinutes)} / {goal} daq
+          <Text style={[typeScale.callout, tabular, { color: focus.done ? colors.successText : colors.textMuted }]}>
+            {focus.right}
           </Text>
         </View>
-        <ProgressBar
-          value={todayMinutes / goal}
-          thickness="thick"
-          color={goalMet ? colors.success : undefined}
-          accessibilityLabel="Bugungi fokus"
-        />
+        <ProgressBar value={focus.progress} thickness="thick" accessibilityLabel="Bugungi fokus" />
+        {focus.done && (
+          <View style={styles.focusRow}>
+            <Text style={[typeScale.callout, tabular, { color: colors.textMuted }]}>
+              <Text style={{ color: colors.text, fontFamily: fonts.bold }}>{focus.value}</Text> bugun
+            </Text>
+            <Text style={[typeScale.callout, tabular, { color: colors.textMuted }]}>{focus.sub}</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.action}>

@@ -52,26 +52,34 @@ describe('rankGap', () => {
 })
 
 describe('buildPlanRows', () => {
-  it('moves done rows to the bottom and counts them', () => {
+  const focus = { minutes: 5, goal: 20 }
+  it('always has Fokus first, moves done rows to the bottom and counts them all', () => {
     const { rows, done, total } = buildPlanRows({
+      focus,
       quiz: { number: 67, state: 'submitted', correct: 4, secondsLeft: 100 },
       dueCards: 12,
       course: { id: 3, title: "Ingliz tili o'rganish", progress: 0.4 },
     })
-    expect(rows.map(r => r.key)).toEqual(['cards', 'course', 'quiz'])
-    expect(rows[0]).toEqual({ key: 'cards', title: 'Kartalar', subtitle: '12 ta · ~2 daq', done: false })
-    expect(rows[1].title).toBe('Ingliz tili oʻrganish')
-    expect(rows[1].subtitle).toBe('40% bajarildi')
-    expect(rows[2].subtitle).toBe('4/5 · bajarildi')
-    expect({ done, total }).toEqual({ done: 1, total: 3 })
+    expect(rows.map(r => r.key)).toEqual(['focus', 'cards', 'course', 'quiz'])
+    expect(rows[0]).toEqual({ key: 'focus', title: 'Fokus', subtitle: '5 / 20 daq', done: false })
+    expect(rows[1]).toEqual({ key: 'cards', title: 'Kartalar', subtitle: '12 ta · ~2 daq', done: false })
+    expect(rows[2].title).toBe('Ingliz tili oʻrganish')
+    expect(rows[2].subtitle).toBe('40% bajarildi')
+    expect(rows[3].subtitle).toBe('4/5 · bajarildi')
+    expect({ done, total }).toEqual({ done: 1, total: 4 })
+  })
+  it('marks Fokus done once the goal is met', () => {
+    const r = buildPlanRows({ focus: { minutes: 180, goal: 10 }, quiz: null, dueCards: null, course: null })
+    expect(r.rows).toEqual([{ key: 'focus', title: 'Fokus', subtitle: '180 daq · maqsad bajarildi', done: true }])
+    expect({ done: r.done, total: r.total }).toEqual({ done: 1, total: 1 })
   })
   it('hides rows without data and marks 0 due as done', () => {
-    const r = buildPlanRows({ quiz: { number: 2, state: 'not_started', correct: null, secondsLeft: 3700 }, dueCards: 0, course: null })
-    expect(r.rows.map(x => [x.key, x.done])).toEqual([['quiz', false], ['cards', true]])
-    expect(r.rows[0].subtitle).toBe('Yopilishiga 1 s 1 d')
-    expect(buildPlanRows({ quiz: null, dueCards: null, course: null })).toEqual({ rows: [], done: 0, total: 0 })
-    const resumed = buildPlanRows({ quiz: { number: 2, state: 'in_progress', correct: null, secondsLeft: 600, answered: 3 }, dueCards: null, course: null })
-    expect(resumed.rows[0].subtitle).toBe('Davom etish · 3/5 · Yopilishiga 0 s 10 d')
+    const r = buildPlanRows({ focus, quiz: { number: 2, state: 'not_started', correct: null, secondsLeft: 3700 }, dueCards: 0, course: null })
+    expect(r.rows.map(x => [x.key, x.done])).toEqual([['focus', false], ['quiz', false], ['cards', true]])
+    expect(r.rows[1].subtitle).toBe('Yopilishiga 1 s 1 d')
+    expect(buildPlanRows({ focus, quiz: null, dueCards: null, course: null }).total).toBe(1)
+    const resumed = buildPlanRows({ focus, quiz: { number: 2, state: 'in_progress', correct: null, secondsLeft: 600, answered: 3 }, dueCards: null, course: null })
+    expect(resumed.rows[1].subtitle).toBe('Davom etish · 3/5 · Yopilishiga 0 s 10 d')
   })
 })
 

@@ -3,6 +3,7 @@
  * __tests__/today.test.ts.
  */
 import { estMinutes } from '../flashcards/queueMath'
+import { focusLabel } from './focusLabel'
 
 /** Ordinary Uzbek ʻ (U+02BB) in oʻ / gʻ, for server and legacy strings
  *  that still carry an ASCII apostrophe or a curly quote. */
@@ -68,13 +69,15 @@ export function rankGap(entries: readonly RankEntry[], myRank: number | null | u
 // ── Today plan ───────────────────────────────────────────────────────────────
 
 export interface PlanInput {
+  /** Always in the plan (Phase 7.5 A6). */
+  focus: { minutes: number; goal: number }
   quiz: { number: number; state: 'not_started' | 'in_progress' | 'submitted'; correct: number | null; secondsLeft: number; answered?: number } | null
   /** null = the user has no decks, so the row is hidden. */
   dueCards: number | null
   course: { id: number; title: string; progress: number } | null
 }
 
-export type PlanRowKey = 'quiz' | 'cards' | 'course'
+export type PlanRowKey = 'focus' | 'quiz' | 'cards' | 'course'
 
 export interface PlanRow {
   key: PlanRowKey
@@ -86,6 +89,14 @@ export interface PlanRow {
 /** Rows in plan order with done rows moved to the bottom, plus the count. */
 export function buildPlanRows(input: PlanInput): { rows: PlanRow[]; done: number; total: number } {
   const rows: PlanRow[] = []
+
+  const f = focusLabel(input.focus.minutes, input.focus.goal)
+  rows.push({
+    key: 'focus',
+    title: 'Fokus',
+    subtitle: f.done ? `${f.value} · maqsad bajarildi` : f.right,
+    done: f.done,
+  })
 
   if (input.quiz) {
     const q = input.quiz
