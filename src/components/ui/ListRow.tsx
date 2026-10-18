@@ -23,7 +23,8 @@ export type ListRowLeading =
 
 export type ListRowTrailing =
   | { kind: 'chevron' }
-  | { kind: 'value'; value: string }
+  /** color: a semantic text colour (e.g. successText for "Bepul"). */
+  | { kind: 'value'; value: string; color?: string }
   | { kind: 'count'; count: number }
   | { kind: 'check' }
 
@@ -60,7 +61,7 @@ export function ListRow({ title, subtitle, leading, trailing, onPress, onLongPre
   const end = done ? { kind: 'check' as const } : trailing
   const tail = end && (
     end.kind === 'chevron' ? <ChevronRight size={iconSize.sm} color={colors.textFaint} strokeWidth={iconStroke} />
-    : end.kind === 'value' ? <Text style={[typeScale.callout, tabular, { color: colors.textMuted }]} numberOfLines={1}>{end.value}</Text>
+    : end.kind === 'value' ? <Text style={[typeScale.callout, tabular, { color: end.color ?? colors.textMuted }]} numberOfLines={1}>{end.value}</Text>
     : end.kind === 'count' ? <Badge kind="count" count={end.count} style={styles.center} />
     : <Check size={iconSize.sm} color={colors.successText} strokeWidth={iconStroke} />
   )
