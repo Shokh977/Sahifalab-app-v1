@@ -5,9 +5,9 @@
  * once the catalogue has more than 8 courses; there is no carousel.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { AppState, FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { BookOpen, Search, SlidersHorizontal } from 'lucide-react-native'
 import { useTheme as useLegacyTheme } from '../../hooks/useTheme'
 import { useCourseStore, getCachedCourseList, setCachedCourseList } from '../../stores/courseStore'
@@ -28,6 +28,7 @@ import { CourseRow } from '../../src/features/courses/CourseRow'
 import { FeaturedCourse } from '../../src/features/courses/FeaturedCourse'
 import { ContinueRow } from '../../src/features/courses/ContinueRow'
 import { categoriesWithCourses, pickFeatured, showBrowseTools } from '../../src/features/courses/courses'
+import { usePendingStore } from '../../src/features/courses/purchase'
 
 const PAGE_SIZE = 30
 
@@ -105,6 +106,12 @@ export default function CoursesTab() {
   useEffect(() => { loadCategories() }, [loadCategories])
   // Bugun usually loaded it already; a no-op while its cache is fresh.
   useEffect(() => { useDashboardStore.getState().fetch() }, [])
+  // Open payment requests mark their courses "Tekshirilmoqda".
+  useFocusEffect(useCallback(() => { usePendingStore.getState().refresh() }, []))
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', st => { if (st === 'active') usePendingStore.getState().refresh() })
+    return () => sub.remove()
+  }, [])
 
   const key = makeQueryKey(sortKey, selectedCat, filters)
   // fromCache is a plain read; every write also goes through setPage.
@@ -152,6 +159,7 @@ export default function CoursesTab() {
     await load(key, listParams(sortKey, selectedCat, filters))
     setRefreshing(false)
     useDashboardStore.getState().refresh()
+    usePendingStore.getState().refresh()
   }, [key, sortKey, selectedCat, filters, load])
 
   const openCourse = useCallback((id: number) => router.push(`/(screens)/course/${id}` as any), [router])

@@ -11,7 +11,7 @@ import { iconSize, iconStroke, layout, radius, space, tileSize } from '../../des
 import { stateOpacity } from '../../design/tokens'
 import { tabular, type as typeScale } from '../../design/typography'
 import { Avatar } from './Avatar'
-import { Badge } from './Badge'
+import { Badge, type BadgeStatus } from './Badge'
 import { Pressable } from './Pressable'
 import { SkeletonRow } from './Skeleton'
 
@@ -26,6 +26,8 @@ export type ListRowTrailing =
   /** color: a semantic text colour (e.g. successText for "Bepul"). */
   | { kind: 'value'; value: string; color?: string }
   | { kind: 'count'; count: number }
+  /** A state chip (dot + label), e.g. "Tekshirilmoqda". */
+  | { kind: 'status'; label: string; status: BadgeStatus }
   | { kind: 'check' }
 
 export interface ListRowProps {
@@ -63,6 +65,7 @@ export function ListRow({ title, subtitle, leading, trailing, onPress, onLongPre
     end.kind === 'chevron' ? <ChevronRight size={iconSize.sm} color={colors.textFaint} strokeWidth={iconStroke} />
     : end.kind === 'value' ? <Text style={[typeScale.callout, tabular, { color: end.color ?? colors.textMuted }]} numberOfLines={1}>{end.value}</Text>
     : end.kind === 'count' ? <Badge kind="count" count={end.count} style={styles.center} />
+    : end.kind === 'status' ? <Badge kind="status" status={end.status} label={end.label} style={styles.center} />
     : <Check size={iconSize.sm} color={colors.successText} strokeWidth={iconStroke} />
   )
 

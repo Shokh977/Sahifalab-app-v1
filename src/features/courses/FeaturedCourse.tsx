@@ -9,13 +9,15 @@ import type { Course } from '../../../lib/api'
 import { useTheme } from '../../design/ThemeProvider'
 import { radius, space } from '../../design/spacing'
 import { tabular, type as typeScale } from '../../design/typography'
-import { Card } from '../../components/ui'
+import { Badge, Card } from '../../components/ui'
 import { uzText } from '../today/today'
 import { courseMeta, isFree, priceLabel } from './courses'
+import { PENDING_CHIP, usePendingStore } from './purchase'
 
 export function FeaturedCourse({ course, onPress }: { course: Course; onPress: () => void }) {
   const { colors } = useTheme()
   const title = uzText(course.title)
+  const pending = usePendingStore(s => course.id in s.byCourse)
   return (
     <Card variant="pressable" onPress={onPress} accessibilityLabel={`${title}, ${priceLabel(course)}`}>
       <View style={styles.body}>
@@ -30,9 +32,11 @@ export function FeaturedCourse({ course, onPress }: { course: Course; onPress: (
           <Text style={[typeScale.title2, { color: colors.text }]} numberOfLines={2}>{title}</Text>
           <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>{courseMeta(course)}</Text>
         </View>
-        <Text style={[typeScale.headline, tabular, { color: isFree(course) ? colors.successText : colors.text }]}>
-          {priceLabel(course)}
-        </Text>
+        {pending ? <Badge kind="status" status="accent" label={PENDING_CHIP} /> : (
+          <Text style={[typeScale.headline, tabular, { color: isFree(course) ? colors.successText : colors.text }]}>
+            {priceLabel(course)}
+          </Text>
+        )}
       </View>
     </Card>
   )

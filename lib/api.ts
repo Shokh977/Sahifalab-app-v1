@@ -1264,6 +1264,13 @@ export interface PendingEnrollmentStatus {
   expires_at?:     string
 }
 
+export interface PendingEnrollment {
+  course_id:      number
+  reference_code: string
+  status:         'awaiting_payment' | 'paid'
+  expires_at:     string
+}
+
 export interface EnrollmentCodeResponse {
   reference_code:  string
   telegram_bot_url: string
@@ -1303,6 +1310,10 @@ export const enrollments = {
       `/api/enrollments/pending-status?course_id=${courseId}`,
       { auth: true },
     ),
+
+  /** The caller's active payment requests, newest per course. */
+  pendingMine: () =>
+    request<PendingEnrollment[]>('/api/enrollments/pending-mine', { auth: true }),
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

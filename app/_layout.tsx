@@ -8,6 +8,8 @@ import * as NavigationBar from 'expo-navigation-bar'
 import * as SystemUI from 'expo-system-ui'
 import { registerWidgetTaskHandler } from 'react-native-android-widget'
 import { widgetTaskHandler } from '../widgets/widgetTaskHandler'
+import { useCourseStore } from '../stores/courseStore'
+import { settlePurchase } from '../src/features/courses/purchase'
 
 if (Platform.OS === 'android') {
   registerWidgetTaskHandler(widgetTaskHandler)
@@ -99,6 +101,18 @@ function trackCourseGranted(data: any) {
   const courseId = Number(data?.course_id ?? data?.meta?.course_id)
   if (!courseId) return
   trackOnce(`purchase_approved_${courseId}`, 'purchase_approved', { course_id: courseId, via: 'push' }, courseId)
+}
+
+// A course push (granted / completed) while the app is open: re-check the
+// enrolment so an open course detail or purchase status screen flips to
+// "enrolled" at once, and drop the course's pending chip.
+function refreshCourseAccess(data: any) {
+  if (data?.screen !== 'course') return
+  const courseId = Number(data?.course_id)
+  if (!courseId) return
+  useCourseStore.getState().checkEnrollment(courseId)
+    .then(e => { if (e.enrolled) settlePurchase(courseId, 'push') })
+    .catch(() => {})
 }
 
 
@@ -224,6 +238,7 @@ export default function RootLayout() {
         const content = notification?.request?.content ?? {}
         const data    = content.data ?? {}
         trackCourseGranted(data)
+        refreshCourseAccess(data)
         // Show in-app toast with the notification content
         showToast({
           id:         Date.now(),

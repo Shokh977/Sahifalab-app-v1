@@ -3,7 +3,7 @@
  * thresholds, which course to feature, which category chips to show and
  * when the catalogue is big enough for sort tabs and filters.
  */
-import type { Category, Course } from '../../../lib/api'
+import type { Category, Course, Lesson } from '../../../lib/api'
 
 /** Ratings show from this many ratings; below it the course reads "Yangi". */
 export const MIN_RATINGS = 5
@@ -99,4 +99,12 @@ export function continueCourses<T extends { progress: number; courses: Course | 
 export function progressLabel(progress: number): string {
   const pct = Math.round(Math.min(1, Math.max(0, progress)) * 100)
   return pct > 0 ? `${pct}% tugallandi` : 'Hali boshlanmagan'
+}
+
+// Free ("preview") video lessons can be watched before enrolling. The lessons
+// list carries no video URLs, so this checks the type only; the URL comes
+// from GET /lessons/{id} when the preview starts.
+const NON_VIDEO_TYPES = new Set(['material', 'quiz', 'live', 'text', 'reading'])
+export function isPreviewable(l: Pick<Lesson, 'is_free' | 'lesson_type'>): boolean {
+  return l.is_free && !NON_VIDEO_TYPES.has(l.lesson_type)
 }
