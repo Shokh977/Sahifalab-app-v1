@@ -25,6 +25,9 @@ export function isActive(p: Pick<PendingEnrollment, 'expires_at'>, now = Date.no
   return Number.isNaN(t) || t > now
 }
 
+/** The pay bot (backend PAYMENT_BOT_URL default); a code response carries the live URL. */
+export const PAY_BOT_URL = 'https://t.me/sahifalab_pay_bot'
+
 /** Chip text on cards and the detail ("Tekshirilmoqda" for any open request). */
 export const PENDING_CHIP = 'Tekshirilmoqda'
 
