@@ -1,31 +1,43 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { View, Text, StyleSheet, Pressable, FlatList, RefreshControl } from 'react-native'
+/**
+ * Kurslar (redesign Phase 7a): "Davom etish" for enrolled courses, one
+ * featured course, category chips (only categories that have courses) and
+ * "BARCHA KURSLAR" as list rows. Sort chips and the filter sheet appear only
+ * once the catalogue has more than 8 courses; there is no carousel.
+ */
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { LinearGradient } from 'expo-linear-gradient'
-import { Heart, SlidersHorizontal } from 'lucide-react-native'
-import Animated, { LinearTransition } from 'react-native-reanimated'
-import { useTheme } from '../../hooks/useTheme'
-import { useReduceMotion } from '../../hooks/useReduceMotion'
-import { useAuthStore } from '../../stores/authStore'
+import { BookOpen, Search, SlidersHorizontal } from 'lucide-react-native'
+import { useTheme as useLegacyTheme } from '../../hooks/useTheme'
 import { useCourseStore, getCachedCourseList, setCachedCourseList } from '../../stores/courseStore'
+import { useDashboardStore } from '../../stores/dashboardStore'
 import { courses as coursesApi, type Course } from '../../lib/api'
-import { typography, spacing } from '../../lib/constants'
 import { getPremiumTheme } from '../../lib/premiumTheme'
-import { coursesStrings as s } from '../../lib/coursesStrings'
 import { useWishlist } from '../../hooks/useWishlist'
-import { SearchField } from '../../components/kurslar/SearchField'
-import { FeaturedCarousel } from '../../components/kurslar/FeaturedCarousel'
-import { CategoryChips } from '../../components/kurslar/CategoryChips'
-import { SortTabs, type SortKey } from '../../components/kurslar/SortTabs'
-import { CourseCard } from '../../components/kurslar/CourseCard'
-import { CoursesSkeleton, CoursesEmptyState, CoursesErrorState } from '../../components/kurslar/States'
+import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
 import {
   FilterSheet, EMPTY_FILTERS, activeFilterCount, courseDurationBucket,
   type CourseFilters,
 } from '../../components/kurslar/FilterSheet'
+import { useTheme } from '../../src/design/ThemeProvider'
+import { layout, space } from '../../src/design/spacing'
+import { type as typeScale } from '../../src/design/typography'
+import { Card, Chip, EmptyState, IconButton, SkeletonRow, showToast } from '../../src/components/ui'
+import { CourseRow } from '../../src/features/courses/CourseRow'
+import { FeaturedCourse } from '../../src/features/courses/FeaturedCourse'
+import { ContinueRow } from '../../src/features/courses/ContinueRow'
+import { categoriesWithCourses, pickFeatured, showBrowseTools } from '../../src/features/courses/courses'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 30
+
+type SortKey = 'popular' | 'newest' | 'free' | 'top'
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'popular', label: 'Ommabop' },
+  { key: 'newest',  label: 'Yangi' },
+  { key: 'free',    label: 'Bepul' },
+  { key: 'top',     label: 'Top' },
+]
 
 function sortToParams(key: SortKey): { ordering?: string; is_paid?: boolean } {
   switch (key) {
@@ -40,6 +52,15 @@ function makeQueryKey(sort: SortKey, cat: string | null, filters: CourseFilters)
   return `v2|${sort}|${cat ?? ''}|${filters.price}|${filters.level}`
 }
 
+function listParams(sort: SortKey, cat: string | null, filters: CourseFilters) {
+  return {
+    ...sortToParams(sort),
+    ...(cat ? { category: cat } : {}),
+    ...(filters.price ? { is_paid: filters.price === 'paid' } : {}),
+    ...(filters.level ? { level: filters.level } : {}),
+  }
+}
+
 function applyClientFilters(list: Course[], sortKey: SortKey, filters: CourseFilters): Course[] {
   let out = list
   if (sortKey === 'free') out = out.filter(c => !c.is_paid)
@@ -48,369 +69,234 @@ function applyClientFilters(list: Course[], sortKey: SortKey, filters: CourseFil
   return out
 }
 
-// Featured slides — derived client-side from the first 5 thumbnailed items
-// of the default "popular, no filters" list (no separate API call).
-let _featuredCache: Course[] = []
+const BASE_KEY = makeQueryKey('popular', null, EMPTY_FILTERS)
 
-const SKELETON_MARKER = '__loading__'
+interface Page { key: string; courses: Course[]; total: number }
+
+function fromCache(key: string): Page | null {
+  const hit = getCachedCourseList(key)
+  return hit ? { key, ...hit } : null
+}
 
 export default function CoursesTab() {
-  const { theme } = useTheme()
-  const t = getPremiumTheme(theme)
+  const { colors } = useTheme()
+  const { theme } = useLegacyTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const authUser = useAuthStore(st => st.user)
-  const reduceMotion = useReduceMotion()
   const { categories, loadCategories } = useCourseStore()
-  const { ids: savedIds, toggle: toggleSaved } = useWishlist()
+  const { toggle: toggleSaved } = useWishlist()
+  const enrolled = useDashboardStore(s => s.data?.enrolled)
 
   const [selectedCat, setSelectedCat] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('popular')
   const [filters, setFilters] = useState<CourseFilters>(EMPTY_FILTERS)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
-  const [favoritesMode, setFavoritesMode] = useState(false)
 
-  const [courseList, setCourseList] = useState<Course[]>(() => getCachedCourseList(makeQueryKey('popular', null, EMPTY_FILTERS))?.courses ?? [])
-  const [total, setTotal] = useState<number>(() => getCachedCourseList(makeQueryKey('popular', null, EMPTY_FILTERS))?.total ?? 0)
-  const [loading, setLoading] = useState(() => getCachedCourseList(makeQueryKey('popular', null, EMPTY_FILTERS)) === null)
+  // The last page set fetched, tagged with its query; a cached query is read
+  // straight from the module cache, so switching chips back is instant.
+  const [page, setPage] = useState<Page | null>(() => fromCache(BASE_KEY))
+  // The unfiltered catalogue: drives the chips, the featured course and
+  // whether sort/filter tools show, so picking a chip never hides the others.
+  const [base, setBase] = useState<{ courses: Course[]; total: number }>(() => getCachedCourseList(BASE_KEY) ?? { courses: [], total: 0 })
+  const [errorKey, setErrorKey] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [loadError, setLoadError] = useState(false)
 
-  const [favoritesList, setFavoritesList] = useState<Course[]>([])
-  const [favoritesLoading, setFavoritesLoading] = useState(false)
+  useEffect(() => { loadCategories() }, [loadCategories])
+  // Bugun usually loaded it already; a no-op while its cache is fresh.
+  useEffect(() => { useDashboardStore.getState().fetch() }, [])
 
-  const [featuredSlides, setFeaturedSlides] = useState<Course[]>(_featuredCache)
+  const key = makeQueryKey(sortKey, selectedCat, filters)
+  // fromCache is a plain read; every write also goes through setPage.
+  const current = useMemo(() => (page?.key === key ? page : fromCache(key)), [page, key])
+  const courseList = useMemo(() => current?.courses ?? [], [current])
+  const total = current?.total ?? 0
+  const loadError = errorKey === key && !current
 
-  const pageRef = useRef(0)
+  const store = useCallback((k: string, res: { courses: Course[]; total: number }) => {
+    setCachedCourseList(k, res.courses, res.total)
+    setPage({ key: k, courses: res.courses, total: res.total })
+    if (k === BASE_KEY) setBase({ courses: res.courses, total: res.total })
+  }, [])
 
-  useEffect(() => { loadCategories() }, [])
+  const load = useCallback(async (k: string, params: ReturnType<typeof listParams>) => {
+    try {
+      store(k, await coursesApi.list({ ...params, limit: PAGE_SIZE, offset: 0 }))
+    } catch { setErrorKey(k) }
+  }, [store])
 
-  // Derive featured slides from the default (unfiltered, popular) list.
   useEffect(() => {
-    if (_featuredCache.length > 0 || sortKey !== 'popular' || selectedCat || activeFilterCount(filters) > 0) return
-    if (courseList.length === 0) return
-    const slides = courseList.filter(co => !!co.thumbnail_url).slice(0, 5)
-    if (slides.length > 0) { _featuredCache = slides; setFeaturedSlides(slides) }
-  }, [courseList, sortKey, selectedCat, filters])
-
-  // Main fetch — cache-aware (server-side facets only: sort/category/price/level).
-  useEffect(() => {
-    if (favoritesMode) return
-    const key = makeQueryKey(sortKey, selectedCat, filters)
-    const cached = getCachedCourseList(key)
-    if (cached) {
-      setCourseList(cached.courses)
-      setTotal(cached.total)
-      setLoading(false)
-      setLoadError(false)
-      pageRef.current = 1
-      return
-    }
-
+    if (getCachedCourseList(key)) return
     let cancelled = false
-    setLoading(true)
-    setLoadError(false)
-    pageRef.current = 0
-    coursesApi.list({
-      ...sortToParams(sortKey),
-      ...(selectedCat ? { category: selectedCat } : {}),
-      ...(filters.price ? { is_paid: filters.price === 'paid' } : {}),
-      ...(filters.level ? { level: filters.level } : {}),
-      limit: PAGE_SIZE,
-      offset: 0,
-    }).then(res => {
-      if (cancelled) return
-      setCourseList(res.courses)
-      setTotal(res.total)
-      setCachedCourseList(key, res.courses, res.total)
-      pageRef.current = 1
-    }).catch(() => { if (!cancelled) setLoadError(true) })
-      .finally(() => { if (!cancelled) setLoading(false) })
+    coursesApi.list({ ...listParams(sortKey, selectedCat, filters), limit: PAGE_SIZE, offset: 0 })
+      .then(res => { if (!cancelled) store(key, res) })
+      .catch(() => { if (!cancelled) setErrorKey(key) })
     return () => { cancelled = true }
-  }, [selectedCat, sortKey, filters, favoritesMode])
+  }, [key, sortKey, selectedCat, filters, store])
 
   const fetchMore = useCallback(async () => {
-    if (favoritesMode || loadingMore || courseList.length >= total) return
+    if (!current || loadingMore || current.courses.length >= current.total) return
     setLoadingMore(true)
     try {
       const res = await coursesApi.list({
-        ...sortToParams(sortKey),
-        ...(selectedCat ? { category: selectedCat } : {}),
-        ...(filters.price ? { is_paid: filters.price === 'paid' } : {}),
-        ...(filters.level ? { level: filters.level } : {}),
-        limit: PAGE_SIZE,
-        offset: pageRef.current * PAGE_SIZE,
+        ...listParams(sortKey, selectedCat, filters), limit: PAGE_SIZE, offset: current.courses.length,
       })
-      setCourseList(prev => [...prev, ...res.courses])
-      setTotal(res.total)
-      pageRef.current += 1
+      store(key, { courses: [...current.courses, ...res.courses], total: res.total })
     } catch {}
     finally { setLoadingMore(false) }
-  }, [favoritesMode, loadingMore, courseList.length, total, selectedCat, sortKey, filters])
-
-  const loadFavorites = useCallback(async () => {
-    setFavoritesLoading(true)
-    try {
-      const ids = Array.from(savedIds)
-      const results = await Promise.allSettled(ids.map(id => coursesApi.get(id)))
-      setFavoritesList(results.filter(r => r.status === 'fulfilled').map(r => (r as PromiseFulfilledResult<Course>).value))
-    } catch {}
-    setFavoritesLoading(false)
-  }, [savedIds])
-
-  useEffect(() => { if (favoritesMode) loadFavorites() }, [favoritesMode, loadFavorites])
+  }, [current, loadingMore, key, sortKey, selectedCat, filters, store])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    if (favoritesMode) {
-      await loadFavorites()
-      setRefreshing(false)
-      return
-    }
-    pageRef.current = 0
-    try {
-      const res = await coursesApi.list({
-        ...sortToParams(sortKey),
-        ...(selectedCat ? { category: selectedCat } : {}),
-        ...(filters.price ? { is_paid: filters.price === 'paid' } : {}),
-        ...(filters.level ? { level: filters.level } : {}),
-        limit: PAGE_SIZE,
-        offset: 0,
-      })
-      setCourseList(res.courses)
-      setTotal(res.total)
-      setCachedCourseList(makeQueryKey(sortKey, selectedCat, filters), res.courses, res.total)
-      pageRef.current = 1
-      setLoadError(false)
-    } catch { setLoadError(true) }
-    finally { setRefreshing(false) }
-  }, [favoritesMode, loadFavorites, selectedCat, sortKey, filters])
+    setErrorKey(null)
+    await load(key, listParams(sortKey, selectedCat, filters))
+    setRefreshing(false)
+    useDashboardStore.getState().refresh()
+  }, [key, sortKey, selectedCat, filters, load])
 
-  const handleCoursePress = useCallback((id: number) => {
-    router.push(`/(screens)/course/${id}` as any)
-  }, [router])
+  const openCourse = useCallback((id: number) => router.push(`/(screens)/course/${id}` as any), [router])
 
+  const onSave = useCallback(async (course: Course) => {
+    const saved = await toggleSaved(course.id)
+    showToast('success', saved ? 'Sevimlilarga qoʻshildi' : 'Sevimlilardan olib tashlandi')
+  }, [toggleSaved])
+
+  const enrolledIds = useMemo(() => new Set((enrolled ?? []).map(e => e.course_id)), [enrolled])
+  const featured = useMemo(() => pickFeatured(base.courses, enrolledIds), [base.courses, enrolledIds])
+  const chipCats = useMemo(
+    () => categoriesWithCourses(categories, base.courses, base.total > 0 && base.courses.length >= base.total),
+    [categories, base],
+  )
+  const browseTools = showBrowseTools(base.total)
   const availableLanguages = useMemo(
     () => Array.from(new Set(courseList.map(c => c.language).filter(Boolean))) as string[],
     [courseList],
   )
+  const visibleList = useMemo(() => applyClientFilters(courseList, sortKey, filters), [courseList, sortKey, filters])
+  const filterCount = activeFilterCount(filters)
+  const narrowed = filterCount > 0 || !!selectedCat || sortKey === 'free'
 
-  const visibleList = useMemo(
-    () => favoritesMode ? favoritesList : applyClientFilters(courseList, sortKey, filters),
-    [favoritesMode, favoritesList, courseList, sortKey, filters],
+  // Back to the top when the selection changes, without remounting the list.
+  const listRef = useRef<FlatList<Course>>(null)
+  useEffect(() => { listRef.current?.scrollToOffset({ offset: 0, animated: false }) }, [selectedCat, sortKey, filters])
+
+  const clearAll = () => { setFilters(EMPTY_FILTERS); setSelectedCat(null); setSortKey('popular') }
+
+  const header = (
+    <View style={styles.header}>
+      {enrolled && <ContinueRow enrolled={enrolled} onOpen={openCourse} />}
+      {featured && !narrowed && <FeaturedCourse course={featured} onPress={() => openCourse(featured.id)} />}
+
+      {chipCats.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.bleed}>
+          <Chip label="Hammasi" selected={!selectedCat} onPress={() => setSelectedCat(null)} />
+          {chipCats.map(cat => (
+            <Chip key={cat.slug} label={cat.name} selected={selectedCat === cat.slug} onPress={() => setSelectedCat(cat.slug)} />
+          ))}
+        </ScrollView>
+      )}
+
+      {browseTools && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.bleed}>
+          {SORTS.map(o => (
+            <Chip key={o.key} variant="choice" label={o.label} selected={sortKey === o.key} onPress={() => setSortKey(o.key)} />
+          ))}
+        </ScrollView>
+      )}
+
+      <View style={styles.listHead}>
+        <Text style={[typeScale.overline, styles.flex, { color: colors.textMuted }]} accessibilityRole="header">
+          Barcha kurslar · {narrowed ? visibleList.length : total}
+        </Text>
+        {browseTools && (
+          <Chip
+            label={filterCount > 0 ? `Filtr (${filterCount})` : 'Filtr'}
+            icon={SlidersHorizontal}
+            selected={filterCount > 0}
+            onPress={() => setFilterSheetOpen(true)}
+          />
+        )}
+      </View>
+    </View>
   )
 
-  const isLoadingCurrent = favoritesMode ? favoritesLoading : loading
-  const filterCount = activeFilterCount(filters)
-  const listKey = `${favoritesMode ? 'fav' : `${sortKey}-${selectedCat}-${filters.price}-${filters.duration}-${filters.level}-${filters.language}`}`
-
-  // Scroll back to top when the filter/sort/category selection changes —
-  // WITHOUT remounting the FlatList (that used to be done via a `key` on
-  // the wrapping view, which also remounted ListHeaderComponent — the
-  // carousel restarting/refading on every filter tap was that remount,
-  // not an intentional "reload the whole page" behavior).
-  const flatListRef = useRef<FlatList<Course>>(null)
-  useEffect(() => {
-    flatListRef.current?.scrollToOffset({ offset: 0, animated: false })
-  }, [listKey])
-
-  const renderItem = useCallback(({ item }: { item: Course }) => (
-    <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(250)} style={{ paddingHorizontal: 16 }}>
-      <CourseCard
-        course={item}
-        t={t}
-        isSaved={savedIds.has(item.id)}
-        onPress={() => handleCoursePress(item.id)}
-        onToggleSave={() => toggleSaved(item.id)}
-      />
-    </Animated.View>
-  ), [t, savedIds, handleCoursePress, toggleSaved, reduceMotion])
-
   let body: React.ReactNode
-  if (isLoadingCurrent) {
-    body = <CoursesSkeleton t={t} reduceMotion={reduceMotion} />
-  } else if (loadError && !favoritesMode) {
-    body = <CoursesErrorState t={t} onRetry={onRefresh} />
-  } else if (visibleList.length === 0) {
-    body = favoritesMode
-      ? <CoursesEmptyState t={t} title={s.emptyFavoritesTitle} hint={s.emptyFavoritesHint} />
-      : <CoursesEmptyState
-          t={t}
-          title={s.emptyTitle}
-          ctaLabel={filterCount > 0 || selectedCat ? s.emptyClearFilters : undefined}
-          onCta={() => { setFilters(EMPTY_FILTERS); setSelectedCat(null) }}
-        />
+  if (!current && !loadError) {
+    body = (
+      <View style={styles.content}>
+        <Card loading />
+        {[0, 1, 2, 3].map(i => <SkeletonRow key={i} />)}
+      </View>
+    )
+  } else if (loadError) {
+    body = (
+      <View style={styles.content}>
+        <EmptyState icon={BookOpen} title="Kurslar yuklanmadi" body="Internetni tekshirib, qayta urinib koʻring." action={{ label: 'Qayta urinish', onPress: onRefresh }} />
+      </View>
+    )
   } else {
     body = (
       <FlatList
-        ref={flatListRef}
-        style={{ flex: 1 }}
+        ref={listRef}
         data={visibleList}
-        keyExtractor={item => String(item.id)}
-        renderItem={renderItem}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        ListHeaderComponent={
-          !favoritesMode ? (
-            <>
-              {/* Carousel/chips/sort-tabs live HERE (inside the FlatList's
-                  own scrollable content), not as fixed siblings above it —
-                  otherwise they never scroll away and permanently eat
-                  vertical space, leaving only 1-2 course cards visible. */}
-              <View style={{ marginTop: 14 }}>
-                <FeaturedCarousel slides={featuredSlides} t={t} themeKey={theme} onPress={handleCoursePress} reduceMotion={reduceMotion} />
-              </View>
-              <View style={{ marginTop: 14 }}>
-                <CategoryChips categories={categories} active={selectedCat} onChange={setSelectedCat} t={t} />
-              </View>
-              <View style={{ marginTop: 10 }}>
-                <SortTabs active={sortKey} onChange={setSortKey} t={t} reduceMotion={reduceMotion} />
-              </View>
-              <View style={[styles.resultRow, { marginTop: 8 }]}>
-                <Text style={[styles.resultEyebrow, { color: t.eyebrow }]}>{s.coursesCount(total)}</Text>
-                <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.sortBtn} hitSlop={8}>
-                  <SlidersHorizontal size={13} color={t.accentText} strokeWidth={2.2} />
-                  <Text style={[styles.sortCta, { color: t.accentText }]}>
-                    {s.sortCta}{filterCount > 0 ? ` (${filterCount})` : ''}
-                  </Text>
-                </Pressable>
-              </View>
-            </>
-          ) : null
+        keyExtractor={c => String(c.id)}
+        renderItem={({ item }) => (
+          <CourseRow course={item} onPress={() => openCourse(item.id)} onLongPress={() => onSave(item)} />
+        )}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          <EmptyState
+            icon={BookOpen}
+            title="Bu yerda hali kurs yoʻq"
+            action={narrowed ? { label: 'Filtrlarni tozalash', onPress: clearAll } : undefined}
+          />
         }
-        contentContainerStyle={{ paddingTop: favoritesMode ? 14 : 0, paddingBottom: insets.bottom + 20 }}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space.huge }]}
         showsVerticalScrollIndicator={false}
-        onEndReached={favoritesMode ? undefined : fetchMore}
+        onEndReached={fetchMore}
         onEndReachedThreshold={0.3}
-        removeClippedSubviews
-        windowSize={10}
-        maxToRenderPerBatch={10}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent]} />}
       />
     )
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: t.bg }]}>
-      {/* Header — scrolls away with content, not fixed/collapsing */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={[styles.brandEyebrow, { color: t.eyebrow }]}>{s.brandEyebrow}</Text>
-            <Text style={[styles.screenTitle, { color: t.textPrimary }]}>{s.screenTitle}</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => setFavoritesMode(v => !v)}
-              style={[
-                styles.favBtn,
-                { borderColor: favoritesMode ? t.accent : t.hairline, backgroundColor: favoritesMode ? t.accentSoft : 'transparent' },
-              ]}
-              hitSlop={4}
-            >
-              <Heart size={17} color={favoritesMode ? t.accentText : t.textSecondary} fill={favoritesMode ? t.accentText : 'transparent'} strokeWidth={1.8} />
-            </Pressable>
-            <HeaderAvatar t={t} themeKey={theme} onPress={() => router.push('/(tabs)/profile' as any)} name={authUser?.first_name} photoUrl={authUser?.photo_url} />
-          </View>
-        </View>
-
-        <View style={{ marginTop: 12 }}>
-          <SearchField t={t} onPress={() => router.push('/(screens)/search' as any)} />
-        </View>
+    <View style={[styles.root, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
+      <View style={styles.topBar}>
+        <Text style={[typeScale.title1, styles.flex, { color: colors.text }]} accessibilityRole="header">Kurslar</Text>
+        <IconButton icon={Search} accessibilityLabel="Kurslarni qidirish" onPress={() => router.push('/(screens)/search' as any)} />
+        <ProfileAvatarButton size={26} />
       </View>
 
-      {favoritesMode && (
-        <View style={styles.favModeBar}>
-          <Text style={[styles.favModeTitle, { color: t.textPrimary }]}>{s.favoritesTitle}</Text>
-          <Pressable onPress={() => setFavoritesMode(false)} hitSlop={8}>
-            <Text style={[styles.favModeExit, { color: t.accentText }]}>{s.exitFavorites}</Text>
-          </Pressable>
-        </View>
+      {body}
+
+      {browseTools && (
+        <FilterSheet
+          visible={filterSheetOpen}
+          filters={filters}
+          availableLanguages={availableLanguages}
+          t={getPremiumTheme(theme)}
+          onApply={f => { setFilters(f); setFilterSheetOpen(false) }}
+          onClose={() => setFilterSheetOpen(false)}
+        />
       )}
-
-      <View style={{ flex: 1, marginTop: favoritesMode ? 0 : 8 }}>
-        {body}
-      </View>
-
-      <FilterSheet
-        visible={filterSheetOpen}
-        filters={filters}
-        availableLanguages={availableLanguages}
-        t={t}
-        onApply={(f) => { setFilters(f); setFilterSheetOpen(false) }}
-        onClose={() => setFilterSheetOpen(false)}
-      />
     </View>
-  )
-}
-
-// ── Header avatar (spec-specific — light: solid disc; dark: gold ring) ──────
-
-function HeaderAvatar({ t, themeKey, onPress, name, photoUrl }: {
-  t: any; themeKey: 'light' | 'dark'; onPress: () => void; name?: string; photoUrl?: string | null
-}) {
-  const initial = (name ?? '?').slice(0, 1).toUpperCase()
-  if (themeKey === 'dark') {
-    return (
-      <Pressable onPress={onPress} hitSlop={4}>
-        <LinearGradient colors={t.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatarRing}>
-          <View style={styles.avatarDiscDark}>
-            <Text style={styles.avatarInitialDark}>{initial}</Text>
-          </View>
-        </LinearGradient>
-      </Pressable>
-    )
-  }
-  return (
-    <Pressable onPress={onPress} hitSlop={4} style={styles.avatarDiscLight}>
-      <Text style={styles.avatarInitialLight}>{initial}</Text>
-    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-
-  header: { paddingHorizontal: 16, paddingBottom: 2 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brandEyebrow: { fontSize: 10, fontFamily: typography.fontFamily.extrabold, letterSpacing: 1.3, textTransform: 'uppercase' },
-  screenTitle: { fontSize: 27, fontFamily: typography.fontFamily.extrabold, letterSpacing: -0.6, marginTop: 2 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-
-  favBtn: {
-    width: 38, height: 38, borderRadius: 19, borderWidth: 1.5,
-    alignItems: 'center', justifyContent: 'center',
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: layout.gutter,
+    paddingRight: space.md,
+    paddingVertical: space.xxs,
   },
-
-  avatarRing: {
-    width: 38, height: 38, borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center', padding: 1.5,
-  },
-  avatarDiscDark: {
-    width: '100%', height: '100%', borderRadius: 17,
-    backgroundColor: '#0F0D0B', alignItems: 'center', justifyContent: 'center',
-  },
-  avatarInitialDark: { color: '#F9C97A', fontSize: 15, fontFamily: typography.fontFamily.bold },
-  avatarDiscLight: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#1C1917', alignItems: 'center', justifyContent: 'center',
-  },
-  avatarInitialLight: { color: '#FBBF5C', fontSize: 15, fontFamily: typography.fontFamily.bold },
-
-  resultRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8,
-  },
-  resultEyebrow: { fontSize: 10, fontFamily: typography.fontFamily.extrabold, letterSpacing: 1.3, textTransform: 'uppercase' },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 44, paddingLeft: 8 },
-  sortCta: { fontSize: 13, fontFamily: typography.fontFamily.bold },
-
-  favModeBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4,
-  },
-  favModeTitle: { fontSize: 15, fontFamily: typography.fontFamily.extrabold },
-  favModeExit: { fontSize: 13, fontFamily: typography.fontFamily.bold },
+  flex: { flex: 1 },
+  content: { paddingHorizontal: layout.gutter, paddingTop: space.sm, gap: space.xxs },
+  header: { gap: layout.cardGap, marginBottom: space.xs },
+  bleed: { marginHorizontal: -layout.gutter },
+  chips: { paddingHorizontal: layout.gutter, gap: space.xs },
+  listHead: { flexDirection: 'row', alignItems: 'center', marginTop: space.xs, minHeight: layout.minTouch },
 })
