@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals'
+import mockAsyncStorage from '@react-native-async-storage/async-storage/jest/async-storage-mock'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+  isActive, pendingPurchaseKey, rememberPurchase, settlePurchase, statusCopy, usePendingStore,
+} from '../src/features/courses/purchase'
 
-jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
-
+// jest.mock calls are hoisted above the imports; the factories run lazily.
+jest.mock('@react-native-async-storage/async-storage', () => mockAsyncStorage)
 const mockPendingMine = jest.fn<() => Promise<any[]>>()
 const mockPendingStatus = jest.fn<(id: number) => Promise<any>>()
 jest.mock('../lib/api', () => ({
@@ -10,11 +14,6 @@ jest.mock('../lib/api', () => ({
 }))
 const mockTrackOnce = jest.fn()
 jest.mock('../lib/analytics', () => ({ trackOnce: (...a: unknown[]) => mockTrackOnce(...a) }))
-
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import {
-  isActive, pendingPurchaseKey, rememberPurchase, settlePurchase, statusCopy, usePendingStore,
-} from '../src/features/courses/purchase'
 
 const future = new Date(Date.now() + 3_600_000).toISOString()
 const past = new Date(Date.now() - 60_000).toISOString()
