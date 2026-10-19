@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import type { Challenge } from '../lib/api'
 import {
-  endedCompetitions, hoursLabel, medalTone, otherCompetitions, pickMainCompetition, playersLine, timeLeft,
+  endedChip, endedCompetitions, endedMeta, hoursLabel, medalTone, otherCompetitions, pickMainCompetition, playersLine, rankingRows, timeLeft,
 } from '../src/features/bellashuv/bellashuv'
 
 const ch = (over: Partial<Challenge>): Challenge => ({
@@ -64,5 +64,41 @@ describe('labels', () => {
     expect(playersLine(35, 0)).toBe('35 kishi oʻynadi')
     expect(playersLine(0, 0)).toBe('Hali hech kim oʻynamadi — birinchi boʻling')
     expect(playersLine(undefined, undefined)).toBeNull()
+  })
+})
+
+describe('endedChip / endedMeta', () => {
+  it('shows the place, gold for a top-3 finish', () => {
+    expect(endedChip(ch({ challenge_type: 'sprint', final_rank: 3 } as any))).toEqual({ label: '#3', gold: true })
+    expect(endedChip(ch({ challenge_type: 'sprint', final_rank: 8 } as any))).toEqual({ label: '#8', gold: false })
+    expect(endedChip(ch({ challenge_type: 'sprint', final_rank: null, rank: 5 } as any))).toEqual({ label: '#5', gold: false })
+    expect(endedChip(ch({ challenge_type: 'sprint', final_rank: null, rank: null } as any))).toBeNull()
+  })
+  it('shows the team place', () => {
+    expect(endedChip(ch({ challenge_type: 'team', team: 'A', is_winner: true } as any))).toEqual({ label: 'Jamoa 1-oʻrin', gold: true })
+    expect(endedChip(ch({ challenge_type: 'team', team: 'B', is_winner: false } as any))).toEqual({ label: 'Jamoa 2-oʻrin', gold: false })
+    expect(endedChip(ch({ challenge_type: 'team', team: null } as any))).toBeNull()
+  })
+  it('describes the field', () => {
+    expect(endedMeta(ch({ challenge_type: 'team', participant_count: 99 } as any))).toBe('Jamoaviy · 99 ishtirokchi')
+    expect(endedMeta(ch({ challenge_type: 'sprint', participant_count: 80 } as any))).toBe('80 ishtirokchi')
+  })
+})
+
+describe('rankingRows', () => {
+  const e = (rank: number, me = false) => ({ rank, is_me: me })
+  it('splits the podium, #4-#5 and pins you below', () => {
+    const r = rankingRows([1, 2, 3, 4, 5, 6, 7].map(n => e(n, n === 7)), [])
+    expect(r.podium.map(x => x.rank)).toEqual([1, 2, 3])
+    expect(r.rows.map(x => x.rank)).toEqual([4, 5])
+    expect(r.pinned?.rank).toBe(7)
+  })
+  it('does not pin you when you are already shown', () => {
+    expect(rankingRows([1, 2, 3, 4, 5].map(n => e(n, n === 4)), []).pinned).toBeNull()
+    expect(rankingRows([1, 2, 3].map(n => e(n, n === 1)), []).pinned).toBeNull()
+  })
+  it('pins you from around_me when you are past the list', () => {
+    expect(rankingRows([1, 2, 3, 4, 5].map(n => e(n)), [e(102), e(103, true), e(104)]).pinned?.rank).toBe(103)
+    expect(rankingRows([1, 2].map(n => e(n)), undefined).pinned).toBeNull()
   })
 })
