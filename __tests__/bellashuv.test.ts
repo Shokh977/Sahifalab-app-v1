@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import type { Challenge } from '../lib/api'
 import {
-  endedChip, endedCompetitions, endedMeta, hoursLabel, medalTone, otherCompetitions, pickMainCompetition, playersLine, rankingRows, timeLeft,
+  boardSections, chaseNote, endedChip, endedCompetitions, endedMeta, hoursLabel, medalTone, otherCompetitions, pickMainCompetition, playersLine, rankingRows, timeLeft,
 } from '../src/features/bellashuv/bellashuv'
 
 const ch = (over: Partial<Challenge>): Challenge => ({
@@ -108,5 +108,30 @@ describe('rankingRows', () => {
   it('pins you from around_me when you are past the list', () => {
     expect(rankingRows([1, 2, 3, 4, 5].map(n => e(n)), [e(102), e(103, true), e(104)]).pinned?.rank).toBe(103)
     expect(rankingRows([1, 2].map(n => e(n)), undefined).pinned).toBeNull()
+  })
+})
+
+describe('boardSections (full Reyting screen)', () => {
+  const row = (rank: number, me = false) => ({ rank, score: 1000 - rank * 10, is_me: me })
+  it('splits the podium from the rest and keeps everyone after #3', () => {
+    const s = boardSections([row(5), row(1), row(4), row(2), row(3), row(6)], undefined)
+    expect(s.podium.map(e => e.rank)).toEqual([1, 2, 3])
+    expect(s.rest.map(e => e.rank)).toEqual([4, 5, 6])
+    expect(s.pinned).toBeNull()
+  })
+  it('pins your row from around_me only when you are not in the list', () => {
+    const around = [row(22), row(23, true), row(24)]
+    expect(boardSections([row(1), row(2)], around).pinned?.rank).toBe(23)
+    expect(boardSections([row(1), row(2, true)], around).pinned).toBeNull()
+  })
+})
+
+describe('chaseNote', () => {
+  it('names the place above and the XP gap', () => {
+    expect(chaseNote({ rank: 23, score: 467 }, [{ rank: 22, score: 489 }])).toBe('#22 gacha 22 XP')
+  })
+  it('is at least 1 XP and empty without the row above', () => {
+    expect(chaseNote({ rank: 5, score: 100 }, [{ rank: 4, score: 100 }])).toBe('#4 gacha 1 XP')
+    expect(chaseNote({ rank: 5, score: 100 }, [])).toBeUndefined()
   })
 })

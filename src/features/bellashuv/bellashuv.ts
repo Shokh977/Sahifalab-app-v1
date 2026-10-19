@@ -2,6 +2,7 @@
  * Pure helpers for the Bellashuv screen — tested in __tests__/bellashuv.test.ts.
  */
 import type { Challenge } from '../../../lib/api'
+import { groupDigits } from '../courses/courses'
 
 const HOUR = 3_600_000
 const DAY = 24 * HOUR
@@ -123,4 +124,23 @@ export function rankingRows<T extends { rank: number; is_me?: boolean }>(
   const shown = [...podium, ...rows]
   const me = sorted.find(e => e.is_me) ?? around?.find(e => e.is_me) ?? null
   return { podium, rows, pinned: me && !shown.includes(me) ? me : null }
+}
+
+/**
+ * The full Reyting screen (Phase 8): the top 3 for the podium, everyone
+ * after them as rows, and your row pinned below when you're not in the
+ * list (from around_me).
+ */
+export function boardSections<T extends { rank: number; is_me?: boolean }>(
+  entries: readonly T[], around: readonly T[] | undefined,
+): { podium: T[]; rest: T[]; pinned: T | null } {
+  const sorted = [...entries].sort((a, b) => a.rank - b.rank)
+  const me = sorted.find(e => e.is_me) ? null : around?.find(e => e.is_me) ?? null
+  return { podium: sorted.filter(e => e.rank <= 3).slice(0, 3), rest: sorted.filter(e => e.rank > 3), pinned: me }
+}
+
+/** "#22 gacha 22 XP": the XP to the place above yours, from any rows you have. */
+export function chaseNote<T extends { rank: number; score: number }>(me: T, pool: readonly T[]): string | undefined {
+  const above = pool.find(e => e.rank === me.rank - 1)
+  return above ? `#${above.rank} gacha ${groupDigits(Math.max(1, above.score - me.score))} XP` : undefined
 }
