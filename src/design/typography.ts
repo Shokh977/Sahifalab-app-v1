@@ -36,6 +36,8 @@ export const type = {
   levelLabel: { fontFamily: fonts.extrabold, fontSize: 12, lineHeight: 16, letterSpacing: 1, textTransform: 'uppercase' },
   levelSub: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
   levelNumbers: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 18 },
+  /** The competition hero's small stat values ("#14", "3 soat"). */
+  heroStat: { fontFamily: fonts.extrabold, fontSize: 20, lineHeight: 24 },
   /** Stat tile values (Profil, Bellashuv hero). */
   statValue: { fontFamily: fonts.extrabold, fontSize: 24, lineHeight: 28 },
   /** Coin amount in the header pill. */
