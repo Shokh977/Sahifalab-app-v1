@@ -102,3 +102,45 @@ export function summary(badges: readonly ProfileBadge[]): { earned: number; tota
 export function topEarned(badges: readonly ProfileBadge[], n = 8): ProfileBadge[] {
   return earnedFirst(badges).filter(b => b.earned).slice(0, n)
 }
+
+// ── Badge art without emoji (Phase 7.5 D2) ──────────────────────────────────
+
+export type BadgeArtKind = 'tree' | 'night' | 'time' | 'competition' | 'team' | 'xp' | 'consistency' | 'other'
+
+/** Line icon and tint per kind (icon names resolve to Lucide icons in the UI). */
+export const BADGE_ART: Record<Exclude<BadgeArtKind, 'tree'>, { icon: 'moon' | 'timer' | 'trophy' | 'users' | 'zap' | 'calendarCheck' | 'star'; tint: 'violet' | 'blue' | 'gold' | 'teal' | 'pink' | 'orange' }> = {
+  night: { icon: 'moon', tint: 'violet' },
+  time: { icon: 'timer', tint: 'blue' },
+  competition: { icon: 'trophy', tint: 'gold' },
+  team: { icon: 'users', tint: 'teal' },
+  xp: { icon: 'zap', tint: 'pink' },
+  consistency: { icon: 'calendarCheck', tint: 'orange' },
+  other: { icon: 'star', tint: 'orange' },
+}
+
+const TIME_ACHIEVEMENTS = new Set(['focus_1h', 'focus_5h', 'focus_50h', 'focus_100h', 'deep_work_master'])
+const TEAM_ACHIEVEMENTS = new Set(['first_connection', 'social_5'])
+
+/**
+ * Which picture a badge gets. Tree stages keep their tree; challenge badges
+ * are sorted by words in their name (the backend has no category for them);
+ * achievements by key. Pure; tested in badges.test.ts.
+ */
+export function badgeArtKind(b: Pick<ProfileBadge, 'category' | 'name' | 'source'>): BadgeArtKind {
+  const key = b.source?.key ?? ''
+  if (b.category === 'bosqich' || key.startsWith('stage_')) return 'tree'
+  if (b.category === 'bellashuv') {
+    const name = b.name.toLowerCase()
+    if (/\b(tun|tungi|kech|kechki|night)/.test(name)) return 'night'
+    if (/(jamoa|guruh|team)/.test(name)) return 'team'
+    if (/(kun|seriya|ketma-ket|streak)/.test(name)) return 'consistency'
+    if (/(vaqt|sprint|time|soat|daqiqa)/.test(name)) return 'time'
+    return 'competition'
+  }
+  if (b.category === 'yutuq') {
+    if (TIME_ACHIEVEMENTS.has(key)) return 'time'
+    if (key.startsWith('xp_')) return 'xp'
+    if (TEAM_ACHIEVEMENTS.has(key)) return 'team'
+  }
+  return 'other'
+}

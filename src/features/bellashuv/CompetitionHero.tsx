@@ -20,6 +20,7 @@ import { easing, livePulse } from '../../design/motion'
 import { avatarSize, photoShadow, radius, space } from '../../design/spacing'
 import { coverBandFallback, coverScrim, liveDot, onImage, onImageBorder, onImageChip } from '../../design/tokens'
 import { type as typeScale } from '../../design/typography'
+import { Pressable } from '../../components/ui'
 import { uzText } from '../today/today'
 
 export const COVER_BAND = 168
@@ -42,19 +43,29 @@ function LiveDot() {
   return <Animated.View style={[styles.dot, { backgroundColor: liveDot }, style]} />
 }
 
-export function CompetitionHero({ title, coverUrl, status, live, children }: {
+export function CompetitionHero({ title, coverUrl, status, live, onPressCover, flat, children }: {
   title: string
   coverUrl: string | null
-  /** "FAOL · 5 KUN QOLDI", "2 KUNDAN KEYIN" — shown in capitals. */
+  /** "Faol · 5 kun qoldi", "2 kundan keyin" — shown in capitals. */
   status: string
   /** Running now: the pulsing green dot. */
   live?: boolean
+  /** The cover band opens the competition. */
+  onPressCover?: () => void
+  /** Inside another card: no frame of its own. */
+  flat?: boolean
   children?: React.ReactNode
 }) {
   const { colors, elevation } = useTheme()
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, elevation]}>
-      <View style={[styles.band, { backgroundColor: coverBandFallback }]}>
+    <View style={flat ? null : [styles.shadow, elevation]}>
+    <View style={flat ? null : [styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Pressable
+        onPress={onPressCover}
+        disabled={!onPressCover}
+        accessibilityLabel={`${uzText(title)}, ${status}`}
+        style={[styles.band, { backgroundColor: coverBandFallback }]}
+      >
         {coverUrl ? (
           <Image source={{ uri: coverUrl }} blurRadius={BLUR} contentFit="cover" style={styles.blur} cachePolicy="memory-disk" />
         ) : null}
@@ -75,13 +86,15 @@ export function CompetitionHero({ title, coverUrl, status, live, children }: {
             <Text style={[typeScale.heroTitle, { color: onImage }]} numberOfLines={2} accessibilityRole="header">{uzText(title)}</Text>
           </View>
         </View>
-      </View>
+      </Pressable>
       {children ? <View style={styles.body}>{children}</View> : null}
+    </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  shadow: { borderRadius: HERO_RADIUS },
   card: { borderRadius: HERO_RADIUS, borderWidth: 1, overflow: 'hidden' },
   band: { height: COVER_BAND, overflow: 'hidden' },
   blur: { position: 'absolute', top: -BLEED, left: -BLEED, right: -BLEED, bottom: -BLEED, opacity: 0.9 },

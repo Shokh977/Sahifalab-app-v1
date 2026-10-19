@@ -42,6 +42,9 @@ export const shadow: ViewStyle = {
   boxShadow: '0px 1px 2px rgba(28,37,48,0.04), 0px 6px 18px rgba(28,37,48,0.05)',
 }
 
+/** Under the Profil level card in light mode. */
+export const levelShadow: ViewStyle = { boxShadow: '0px 12px 28px rgba(226,86,14,0.30)' }
+
 /** Under a sharp thumbnail over a photo (CompetitionHero). */
 export const photoShadow: ViewStyle = { boxShadow: '0px 8px 20px rgba(0,0,0,0.35)' }
 

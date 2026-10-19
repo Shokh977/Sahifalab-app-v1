@@ -1,37 +1,28 @@
 /**
- * Bellashuv — redesign Phase 4a.
- * Today's 5 Savol, the one competition card (your live one, or the next
- * with a countdown and a reminder), compact rows for other live/joinable
- * competitions, the weekly ranking with your row pinned, and the finished
- * competitions collapsed into one row.
+ * Bellashuv — redesign Phase 4a, rebuilt to the v2 board in Phase 7.5 D1.
+ * Competitions first ("Bellashuvlar": the hero with your live or the next
+ * competition, other open ones, the finished ones), then the XP ranking
+ * (podium, #4–#5, your row pinned), then a compact 5 Savol card — its main
+ * entry point is now the Bugun plan tile.
  */
 import React, { useCallback, useState } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { ChevronDown, ChevronUp, Trophy } from 'lucide-react-native'
+import { Trophy } from 'lucide-react-native'
 import { challenges as challengesApi, leaderboard, type Challenge, type LeaderboardEntry } from '../../lib/api'
-import { METRIC_UNIT_LABEL, fmtMetricValue } from '../../lib/challenges'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
 import { useTheme } from '../../src/design/ThemeProvider'
 import { avatarSize, layout, space } from '../../src/design/spacing'
 import { type as typeScale } from '../../src/design/typography'
-import { Button, Card, EmptyState, ListRow, Pressable, SkeletonBlock, SkeletonRow, ToastHost, showToast } from '../../src/components/ui'
+import { Card, EmptyState, SectionTitle, SkeletonBlock, SkeletonRow, ToastHost, showToast } from '../../src/components/ui'
 import { useMinuteClock } from '../../src/features/today/useMinuteClock'
-import { uzText } from '../../src/features/today/today'
-import {
-  endedCompetitions, endedResultText, otherCompetitions, pickMainCompetition, timeLeft,
-} from '../../src/features/bellashuv/bellashuv'
-import { CompetitionCard } from '../../src/features/bellashuv/CompetitionCard'
+import { endedCompetitions, otherCompetitions, pickMainCompetition } from '../../src/features/bellashuv/bellashuv'
+import { CompetitionsCard } from '../../src/features/bellashuv/CompetitionsCard'
 import { QuizTodayCard } from '../../src/features/bellashuv/QuizTodayCard'
 import { WeeklyRanking } from '../../src/features/bellashuv/WeeklyRanking'
-
-function rowSubtitle(c: Challenge, now: number): string {
-  if (c.status === 'upcoming') return `Boshlanishiga ${timeLeft(c.starts_at, now).replace(' qoldi', '')}`
-  return `${c.joined ? 'Faol' : 'Ochiq'} · ${timeLeft(c.ends_at, now)}`
-}
 
 export default function BellashuvScreen() {
   const { colors } = useTheme()
@@ -44,6 +35,7 @@ export default function BellashuvScreen() {
   const quizFetchedAt = useDashboardStore(s => s.data?.quizFetchedAt ?? Date.now())
   const cachedLb = useDashboardStore(s => s.data?.leaderboard ?? [])
   const cachedRank = useDashboardStore(s => s.data?.myLeaderRank ?? null)
+  const cachedAround = useDashboardStore(s => s.data?.leaderAround)
 
   const [mine, setMine] = useState<Challenge[]>([])
   const [open, setOpen] = useState<Challenge[]>([])
@@ -51,8 +43,7 @@ export default function BellashuvScreen() {
   const [failed, setFailed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [joiningId, setJoiningId] = useState<string | null>(null)
-  const [showEnded, setShowEnded] = useState(false)
-  const [lb, setLb] = useState<{ entries: LeaderboardEntry[]; myRank: number | null } | null>(null)
+  const [lb, setLb] = useState<{ entries: LeaderboardEntry[]; myRank: number | null; around: LeaderboardEntry[] } | null>(null)
 
   const load = useCallback(async () => {
     const [comp, week] = await Promise.allSettled([
@@ -69,8 +60,13 @@ export default function BellashuvScreen() {
       setFailed(true)
     }
     if (week.status === 'fulfilled') {
-      const entries = week.value.entries.map(e => ({ ...e, is_me: userId != null && e.telegram_id === userId }))
-      setLb({ entries, myRank: week.value.my_rank ?? entries.find(e => e.is_me)?.rank ?? null })
+      const mark = (e: LeaderboardEntry) => ({ ...e, is_me: userId != null && e.telegram_id === userId })
+      const entries = week.value.entries.map(mark)
+      setLb({
+        entries,
+        myRank: week.value.my_rank ?? entries.find(e => e.is_me)?.rank ?? null,
+        around: ((week.value as { around_me?: LeaderboardEntry[] }).around_me ?? []).map(mark),
+      })
     }
     setLoaded(true)
     setRefreshing(false)
@@ -104,11 +100,15 @@ export default function BellashuvScreen() {
   const ended = endedCompetitions(mine)
   const entries = lb?.entries ?? cachedLb
   const myRank = lb?.myRank ?? cachedRank
+  const around = lb?.around ?? cachedAround
+  const liveCount = [...mine, ...open].filter(c => c.status === 'active' && !c.completed_at).length
+  const openQuiz = () => router.push(quiz ? { pathname: '/(screens)/daily-quiz', params: { quizId: String(quiz.id) } } as any : '/(screens)/daily-quiz' as any)
+  const openResults = () => quiz && router.push({ pathname: '/(screens)/daily-quiz-results', params: { quizId: String(quiz.id) } } as any)
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={[typeScale.title1, styles.flex, { color: colors.text }]} accessibilityRole="header">Bellashuv</Text>
+        <Text style={[typeScale.screenTitle, styles.flex, { color: colors.text }]} accessibilityRole="header">Bellashuv</Text>
         <ProfileAvatarButton size={avatarSize.sm} />
       </View>
 
@@ -124,90 +124,44 @@ export default function BellashuvScreen() {
           />
         }
       >
-        <QuizTodayCard
-          quiz={quiz}
-          fetchedAt={quizFetchedAt}
-          now={now}
-          onOpen={() => router.push(quiz ? { pathname: '/(screens)/daily-quiz', params: { quizId: String(quiz.id) } } as any : '/(screens)/daily-quiz' as any)}
-        />
+        <View style={styles.section}>
+          <SectionTitle title="Bellashuvlar" meta={liveCount > 0 ? `${liveCount} ta faol` : undefined} />
+          {!loaded ? (
+            <Card>
+              <SkeletonBlock height={space.huge * 2} />
+              <SkeletonRow />
+            </Card>
+          ) : failed && mine.length === 0 && open.length === 0 ? (
+            <EmptyState
+              icon={Trophy}
+              title="Bellashuvlar yuklanmadi"
+              body="Internet aloqasini tekshirib, qayta urinib koʻring."
+              action={{ label: 'Qayta urinish', onPress: load }}
+            />
+          ) : main || others.length > 0 || ended.length > 0 ? (
+            <CompetitionsCard
+              main={main}
+              others={others}
+              ended={ended}
+              now={now}
+              joiningId={joiningId}
+              onJoin={join}
+              onOpen={openChallenge}
+              onFocus={() => router.push('/(tabs)/study' as any)}
+              onJoined={load}
+            />
+          ) : (
+            <EmptyState icon={Trophy} title="Hozircha bellashuv yoʻq" body="Tez orada yangi bellashuv qoʻshiladi." />
+          )}
+        </View>
 
-        {!loaded ? (
-          <Card>
-            <SkeletonBlock height={space.huge * 2} />
-            <SkeletonRow />
-          </Card>
-        ) : failed && mine.length === 0 && open.length === 0 ? (
-          <EmptyState
-            icon={Trophy}
-            title="Bellashuvlar yuklanmadi"
-            body="Internet aloqasini tekshirib, qayta urinib koʻring."
-            action={{ label: 'Qayta urinish', onPress: load }}
-          />
-        ) : main ? (
-          <CompetitionCard main={main} now={now} onOpen={() => openChallenge(main.challenge)} onJoined={load} />
-        ) : (
-          <EmptyState icon={Trophy} title="Hozircha bellashuv yoʻq" body="Tez orada yangi bellashuv qoʻshiladi." />
-        )}
+        <WeeklyRanking entries={entries} around={around} myRank={myRank} now={now} onAll={() => router.push('/(screens)/leaderboard' as any)} />
 
-        {others.length > 0 && (
-          <Card style={styles.rows}>
-            {others.map(c => (
-              <View key={c.id} style={styles.otherRow}>
-                <View style={styles.flex}>
-                  <ListRow
-                    title={uzText(c.title)}
-                    subtitle={rowSubtitle(c, now)}
-                    leading={c.cover_image_url ? { kind: 'thumbnail', uri: c.cover_image_url } : { kind: 'icon', icon: Trophy }}
-                    trailing={c.joined ? { kind: 'chevron' } : undefined}
-                    onPress={() => openChallenge(c)}
-                  />
-                </View>
-                {!c.joined && (
-                  <Button label="Qoʻshilish" size="sm" loading={joiningId === c.id} onPress={() => join(c)} />
-                )}
-              </View>
-            ))}
-          </Card>
-        )}
-
-        <WeeklyRanking entries={entries} myRank={myRank} onAll={() => router.push('/(screens)/leaderboard' as any)} />
-
-        {ended.length > 0 && (
-          <Card style={styles.rows}>
-            <Pressable
-              noFeedback
-              onPress={() => setShowEnded(v => !v)}
-              accessibilityState={{ expanded: showEnded }}
-              accessibilityLabel={`Yakunlangan bellashuvlar, ${ended.length} ta`}
-              style={styles.endedHeader}
-            >
-              <Text style={[typeScale.headline, styles.flex, { color: colors.text }]}>
-                Yakunlangan bellashuvlar · {ended.length} ta
-              </Text>
-              {showEnded
-                ? <ChevronUp size={avatarSize.sm / 2} color={colors.textMuted} />
-                : <ChevronDown size={avatarSize.sm / 2} color={colors.textMuted} />}
-            </Pressable>
-            {showEnded && ended.map(c => (
-              <ListRow
-                key={c.id}
-                title={uzText(c.title)}
-                subtitle={endedSubtitle(c)}
-                leading={c.cover_image_url ? { kind: 'thumbnail', uri: c.cover_image_url } : { kind: 'icon', icon: Trophy }}
-                trailing={{ kind: 'chevron' }}
-                onPress={() => openChallenge(c)}
-              />
-            ))}
-          </Card>
-        )}
+        <QuizTodayCard quiz={quiz} fetchedAt={quizFetchedAt} now={now} onOpen={openQuiz} onResults={openResults} />
       </ScrollView>
       <ToastHost />
     </View>
   )
-}
-
-function endedSubtitle(c: Challenge): string {
-  return endedResultText(c, v => fmtMetricValue(v, c.metric), METRIC_UNIT_LABEL[c.metric])
 }
 
 const styles = StyleSheet.create({
@@ -215,7 +169,5 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: layout.gutter, paddingVertical: space.xs },
   flex: { flex: 1 },
   content: { paddingHorizontal: layout.gutter, paddingTop: space.xs, gap: layout.sectionGap },
-  rows: { paddingVertical: space.xxs },
-  otherRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  endedHeader: { flexDirection: 'row', alignItems: 'center', minHeight: layout.minTouch },
+  section: { gap: space.sm },
 })

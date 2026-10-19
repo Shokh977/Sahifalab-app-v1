@@ -56,7 +56,7 @@ export function BadgeTile({ name, icon: Icon, art, tint, locked, onPress, style 
 }
 
 const styles = StyleSheet.create({
-  root: { alignItems: 'center', gap: space.xs, width: BADGE_TILE + space.md },
+  root: { alignItems: 'center', gap: space.xs, width: BADGE_TILE + space.xs },
   tile: {
     width: BADGE_TILE,
     height: BADGE_TILE,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import type { Badge } from '../lib/api'
-import { allBadges, earnedFirst, filterBy, summary, topEarned } from '../src/features/profile/badges'
+import { allBadges, badgeArtKind, earnedFirst, filterBy, summary, topEarned } from '../src/features/profile/badges'
 import { focusHours, groupThousands } from '../src/features/profile/profileFormat'
 
 const b = (key: string, earned: boolean, earned_at: string | null = null): Badge => ({
@@ -52,5 +52,26 @@ describe('profile formatting', () => {
     expect(groupThousands(999)).toBe('999')
     expect(groupThousands(1234567)).toBe('1 234 567')
     expect(focusHours(179)).toBe(2)
+  })
+})
+
+describe('badgeArtKind (no emoji)', () => {
+  const challenge = (name: string) => ({ category: 'bellashuv' as const, name, source: { key: `c_${name}` } as Badge })
+  const ach = (key: string) => ({ category: 'yutuq' as const, name: key, source: { key } as Badge })
+  it('sorts challenge badges by the words in their name', () => {
+    expect(badgeArtKind(challenge('Tungi mutolaa'))).toBe('night')
+    expect(badgeArtKind(challenge('Vaqtga qarshi'))).toBe('time')
+    expect(badgeArtKind(challenge('Jamoaviy sprint'))).toBe('team')
+    expect(badgeArtKind(challenge('7 kunda 7 soat'))).toBe('consistency')
+    expect(badgeArtKind(challenge('Grandmaster'))).toBe('competition')
+  })
+  it('maps achievements by key, stages to the tree, the rest to other', () => {
+    expect(badgeArtKind(ach('focus_5h'))).toBe('time')
+    expect(badgeArtKind(ach('deep_work_master'))).toBe('time')
+    expect(badgeArtKind(ach('xp_1000'))).toBe('xp')
+    expect(badgeArtKind(ach('social_5'))).toBe('team')
+    expect(badgeArtKind(ach('course_graduate'))).toBe('other')
+    expect(badgeArtKind({ category: 'bosqich', name: 'Sehrli daraxt', source: { key: 'stage_6' } as Badge })).toBe('tree')
+    expect(badgeArtKind({ category: 'unvon', name: 'Koʻkalosh', source: null })).toBe('other')
   })
 })
