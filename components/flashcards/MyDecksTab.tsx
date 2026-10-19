@@ -5,7 +5,7 @@
  * kutubxona". The Mine/Public switch lives one level up.
  */
 import React, { useEffect, useMemo, useState } from 'react'
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Layers, Library, Plus } from 'lucide-react-native'
 import { useFlashcardStore } from '../../stores/flashcardStore'
@@ -15,8 +15,7 @@ import type { FlashcardDeck } from '../../lib/types'
 import { ConfirmModal } from '../ui/ConfirmModal'
 import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
-import { type as typeScale } from '../../src/design/typography'
-import { Card, EmptyState, ListRow, SkeletonRow } from '../../src/components/ui'
+import { Card, EmptyState, ListRow, SkeletonRow, SectionTitle } from '../../src/components/ui'
 import { uzText } from '../../src/features/today/today'
 import { CardsHero } from '../../src/features/cards/CardsHero'
 import { AiCreateCard } from '../../src/features/cards/AiCreateCard'
@@ -92,9 +91,7 @@ export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePubli
       />
       <AiCreateCard onOpen={onOpenAi} onPro={() => setProOpen(true)} />
       {decks.length > 0 && (
-        <Text style={[typeScale.overline, { color: colors.textMuted }]} accessibilityRole="header">
-          Toʻplamlar · {decks.length}
-        </Text>
+        <SectionTitle title="Toʻplamlar" meta={`${decks.length} ta`} />
       )}
     </View>
   )

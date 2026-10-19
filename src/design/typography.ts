@@ -30,6 +30,8 @@ export const type = {
   levelBadge: { fontFamily: fonts.extrabold, fontSize: 12, lineHeight: 14 },
   /** Section titles (B4): sentence case, 20 px extra bold. */
   section:  { fontFamily: fonts.extrabold, fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
+  /** Text links beside a section title ("Hammasi"). */
+  link:     { fontFamily: fonts.bold,      fontSize: 14, lineHeight: 18 },
   /** Big tile numbers ("48 ta", "180 daq"). */
   tileValue: { fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 32, letterSpacing: -0.6 },
 } as const satisfies Record<string, TypeToken>

@@ -23,7 +23,7 @@ import {
 import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
 import { type as typeScale } from '../../src/design/typography'
-import { Card, Chip, EmptyState, IconButton, SkeletonRow, showToast } from '../../src/components/ui'
+import { Card, Chip, EmptyState, IconButton, SkeletonRow, showToast, SectionTitle } from '../../src/components/ui'
 import { CourseRow } from '../../src/features/courses/CourseRow'
 import { FeaturedCourse } from '../../src/features/courses/FeaturedCourse'
 import { ContinueRow } from '../../src/features/courses/ContinueRow'
@@ -213,9 +213,7 @@ export default function CoursesTab() {
       )}
 
       <View style={styles.listHead}>
-        <Text style={[typeScale.overline, styles.flex, { color: colors.textMuted }]} accessibilityRole="header">
-          Barcha kurslar · {narrowed ? visibleList.length : total}
-        </Text>
+        <SectionTitle title="Barcha kurslar" meta={browseTools ? undefined : `${narrowed ? visibleList.length : total} ta`} style={styles.flex} />
         {browseTools && (
           <Chip
             label={filterCount > 0 ? `Filtr (${filterCount})` : 'Filtr'}

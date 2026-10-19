@@ -19,9 +19,7 @@ import type { ProfileData } from '../../lib/types'
 import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
 import { type as typeScale } from '../../src/design/typography'
-import {
-  Avatar, Button, Card, IconButton, ListRow, Pressable, SkeletonBlock, SkeletonRow, StatTile,
-} from '../../src/components/ui'
+import { Avatar, Card, IconButton, ListRow, Pressable, SkeletonBlock, SkeletonRow, StatTile, SectionTitle } from '../../src/components/ui'
 import { uzText } from '../../src/features/today/today'
 import { allBadges, summary, topEarned, type ProfileBadge } from '../../src/features/profile/badges'
 import { BadgeCell } from '../../src/features/profile/BadgeCell'
@@ -158,12 +156,10 @@ export default function ProfileTab() {
         {/* Nishonlar */}
         <View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={[typeScale.overline, styles.flex, { color: colors.textMuted }]} accessibilityRole="header">Nishonlar</Text>
-            <Button
-              label={`Hammasi (${counts.label})`}
-              variant="ghost"
-              size="sm"
-              onPress={() => router.push('/(screens)/badges' as any)}
+            <SectionTitle
+              title="Nishonlar"
+              link={{ label: `Hammasi · ${counts.label}`, onPress: () => router.push('/(screens)/badges' as any) }}
+              style={styles.flex}
             />
           </View>
           <View style={styles.grid} onLayout={(e: LayoutChangeEvent) => setGridWidth(e.nativeEvent.layout.width)}>
