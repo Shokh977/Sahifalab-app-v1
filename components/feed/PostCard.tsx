@@ -24,6 +24,7 @@ import { RoleBadge } from '../ui/RoleBadge'
 import { ReportContentSheet } from '../ui/ReportContentSheet'
 import { sharePost } from '../../lib/share'
 import type { Post } from '../../lib/types'
+import { moveSpring } from '../../src/design/rnMotion'
 
 interface Props {
   post:            Post
@@ -42,10 +43,10 @@ function ScaleBtn({
     <Pressable
       onPress={onPress}
       onPressIn={() =>
-        Animated.spring(scale, { toValue: 0.80, useNativeDriver: true, speed: 300, bounciness: 0 }).start()
+        moveSpring(scale, { toValue: 0.80, useNativeDriver: true, speed: 300, bounciness: 0 }).start()
       }
       onPressOut={() =>
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 120, bounciness: 6 }).start()
+        moveSpring(scale, { toValue: 1, useNativeDriver: true, speed: 120, bounciness: 6 }).start()
       }
       style={style}
     >

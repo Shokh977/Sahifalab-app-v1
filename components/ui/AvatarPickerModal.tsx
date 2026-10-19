@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Camera, Images } from 'phosphor-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
+import { moveSpring, moveTiming } from '../../src/design/rnMotion'
 
 interface Props {
   visible:   boolean
@@ -26,12 +27,12 @@ export function AvatarPickerModal({ visible, onClose, onCamera, onGallery }: Pro
       setRendered(true)
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(sheetAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+        moveSpring(sheetAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
       ]).start()
     } else {
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-        Animated.timing(sheetAnim,    { toValue: 320, duration: 200, useNativeDriver: true }),
+        moveTiming(sheetAnim,    { toValue: 320, duration: 200, useNativeDriver: true }),
       ]).start(() => setRendered(false))
     }
   }, [visible])

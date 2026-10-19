@@ -30,6 +30,7 @@ import { type as typeScale } from '../../src/design/typography'
 import { IconButton, SegmentedControl } from '../../src/components/ui'
 import { EXTRA_NEW } from '../../src/features/flashcards/queueMath'
 import { Plus as PlusIcon, Search } from 'lucide-react-native'
+import { moveSpring, moveTiming } from '../../src/design/rnMotion'
 
 // Eight distinct deck colours (the old list had two oranges and two greens).
 // Decks saved with an older colour keep it.
@@ -64,12 +65,12 @@ function DeckSheet({ visible, editing, onClose, onSaved }: DeckSheetProps) {
       setRendered(true)
       RNAnimated.parallel([
         RNAnimated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-        RNAnimated.spring(sheetAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+        moveSpring(sheetAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
       ]).start()
     } else {
       RNAnimated.parallel([
         RNAnimated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-        RNAnimated.timing(sheetAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
+        moveTiming(sheetAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
       ]).start(() => { setRendered(false); sheetAnim.setValue(400) })
     }
   }, [visible])

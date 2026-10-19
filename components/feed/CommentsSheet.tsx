@@ -25,6 +25,7 @@ import { typography, spacing, radius } from '../../lib/constants'
 import { ConfirmModal } from '../ui/ConfirmModal'
 import { RoleBadge } from '../ui/RoleBadge'
 import type { Post } from '../../lib/types'
+import { moveSpring } from '../../src/design/rnMotion'
 
 const SCREEN_H     = Dimensions.get('window').height
 const SPRING       = { mass: 0.5, damping: 26, stiffness: 320 }
@@ -120,8 +121,8 @@ function LikeBtn({ liked, count, onPress, c }: { liked: boolean; count: number; 
 
   function press() {
     Animated.sequence([
-      Animated.spring(scale, { toValue: 1.5, useNativeDriver: true, speed: 500, bounciness: 0 }),
-      Animated.spring(scale, { toValue: 1,   useNativeDriver: true, speed: 160, bounciness: 12 }),
+      moveSpring(scale, { toValue: 1.5, useNativeDriver: true, speed: 500, bounciness: 0 }),
+      moveSpring(scale, { toValue: 1,   useNativeDriver: true, speed: 160, bounciness: 12 }),
     ]).start()
     onPress()
   }

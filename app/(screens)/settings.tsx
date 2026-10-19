@@ -15,6 +15,7 @@ import { account, onboarding, auth as authApi, config } from '../../lib/api'
 import { TermsModal } from '../../components/ui/TermsModal'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { typography, spacing, radius } from '../../lib/constants'
+import { moveSpring, moveTiming } from '../../src/design/rnMotion'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -98,12 +99,12 @@ function GoalPickerModal({
       setMounted(true)
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+        moveSpring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
       ]).start()
     } else {
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-        Animated.timing(slideAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
+        moveTiming(slideAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
       ]).start(() => { setMounted(false); slideAnim.setValue(400) })
     }
   }, [visible])
@@ -168,12 +169,12 @@ function QualityPickerModal({
       setMounted(true)
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+        moveSpring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
       ]).start()
     } else {
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-        Animated.timing(slideAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
+        moveTiming(slideAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
       ]).start(() => { setMounted(false); slideAnim.setValue(400) })
     }
   }, [visible])
@@ -440,12 +441,12 @@ function TelegramLinkModal({
       setTgMounted(true)
       Animated.parallel([
         Animated.timing(tgBackdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(tgSlideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+        moveSpring(tgSlideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
       ]).start()
     } else {
       Animated.parallel([
         Animated.timing(tgBackdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-        Animated.timing(tgSlideAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
+        moveTiming(tgSlideAnim,    { toValue: 400, duration: 200, useNativeDriver: true }),
       ]).start(() => { setTgMounted(false); tgSlideAnim.setValue(400) })
     }
   }, [visible])

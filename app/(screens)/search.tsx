@@ -13,6 +13,7 @@ import { RoleBadge } from '../../components/ui/RoleBadge'
 import { useTheme } from '../../hooks/useTheme'
 import { search, type SearchPerson, type SearchCourse, type SearchResults } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
+import { moveSpring } from '../../src/design/rnMotion'
 
 type Filter = 'all' | 'people' | 'courses' | 'posts'
 
@@ -40,8 +41,8 @@ function FilterTabBar({
     const layout = tabLayouts.current[key]
     if (!layout) return
     Animated.parallel([
-      Animated.spring(indicatorX, { toValue: layout.x,     useNativeDriver: false, speed: 22, bounciness: 3 }),
-      Animated.spring(indicatorW, { toValue: layout.width, useNativeDriver: false, speed: 22, bounciness: 3 }),
+      moveSpring(indicatorX, { toValue: layout.x,     useNativeDriver: false, speed: 22, bounciness: 3 }),
+      moveSpring(indicatorW, { toValue: layout.width, useNativeDriver: false, speed: 22, bounciness: 3 }),
     ]).start()
   }, [indicatorX, indicatorW])
 

@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../hooks/useTheme'
 import { Avatar } from '../ui/Avatar'
 import { typography, spacing, radius } from '../../lib/constants'
+import { moveTiming } from '../../src/design/rnMotion'
 
 export interface CompareUser {
   name:             string
@@ -83,12 +84,12 @@ export function CompareModal({ visible, me, them, onClose }: Props) {
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(slideAnim,   { toValue: 0,   duration: 320, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+        moveTiming(slideAnim,   { toValue: 0,   duration: 320, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
         Animated.timing(opacityAnim, { toValue: 1,   duration: 220, useNativeDriver: true }),
       ]).start()
     } else {
       Animated.parallel([
-        Animated.timing(slideAnim,   { toValue: 600, duration: 260, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
+        moveTiming(slideAnim,   { toValue: 600, duration: 260, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
         Animated.timing(opacityAnim, { toValue: 0,   duration: 200, useNativeDriver: true }),
       ]).start()
     }

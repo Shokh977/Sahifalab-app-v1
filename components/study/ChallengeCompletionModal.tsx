@@ -10,6 +10,7 @@ import { Trophy, Medal, Share2 } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { challenges as challengesApi } from '../../lib/api'
+import { moveSpring } from '../../src/design/rnMotion'
 
 export interface CompletedChallenge {
   slug:      string
@@ -44,7 +45,7 @@ export function ChallengeCompletionModal({ visible, challenge, onClose }: Props)
       setRank(null)
       challengesApi.get(challenge.slug).then(d => setRank(d.rank ?? null)).catch(() => {})
       Animated.parallel([
-        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 10, stiffness: 200 }),
+        moveSpring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 10, stiffness: 200 }),
         Animated.timing(opacityAnim, { toValue: 1, duration: 220, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
       ]).start()
     } else {

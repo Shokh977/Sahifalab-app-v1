@@ -13,6 +13,7 @@ import {
 import { useTheme } from '../../hooks/useTheme'
 import { wallet as walletApi, type WalletBalance, type PayoutRequest } from '../../lib/api'
 import { typography, spacing, radius } from '../../lib/constants'
+import { moveSpring, moveTiming } from '../../src/design/rnMotion'
 
 const PLATFORM_FEE  = 0.30
 const MIN_WITHDRAW  = 50_000
@@ -76,12 +77,12 @@ function WithdrawModal({
       setMounted(true)
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
+        moveSpring(slideAnim,    { toValue: 0, tension: 60, friction: 12, useNativeDriver: true }),
       ]).start()
     } else {
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-        Animated.timing(slideAnim,    { toValue: 500, duration: 200, useNativeDriver: true }),
+        moveTiming(slideAnim,    { toValue: 500, duration: 200, useNativeDriver: true }),
       ]).start(() => { setMounted(false); slideAnim.setValue(500) })
     }
   }, [visible])

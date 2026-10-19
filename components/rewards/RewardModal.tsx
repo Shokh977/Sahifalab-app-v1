@@ -15,6 +15,7 @@ import { Modal, View, Text, Pressable, StyleSheet, Animated, Easing } from 'reac
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import type { RewardItem, RewardReason } from '../../lib/api'
+import { moveSpring } from '../../src/design/rnMotion'
 
 const COPY: Record<string, { title: string; icon: string }> = {
   daily_goal_met:            { title: 'Kunlik maqsad bajarildi',        icon: '🎯' },
@@ -69,7 +70,7 @@ export function RewardModal({ visible, rewards, onClose }: {
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 13, stiffness: 180 }),
+        moveSpring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 13, stiffness: 180 }),
         Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
       ]).start()
     } else {

@@ -26,6 +26,7 @@ import { useDashboardStore } from '../../stores/dashboardStore'
 import { useStreakStagesStore } from '../../stores/streakStagesStore'
 import { syncWidget } from '../../lib/syncWidget'
 import { TreeStagesSection } from '../../src/features/streak/TreeStagesSection'
+import { moveSpring, moveTiming } from '../../src/design/rnMotion'
 
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
@@ -847,12 +848,12 @@ function TreeInfoModal({ visible, onClose, c, goalMinutes }: {
       setRendered(true)
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.spring(slideAnim,    { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
+        moveSpring(slideAnim,    { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
       ]).start()
     } else {
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-        Animated.timing(slideAnim,    { toValue: 500, duration: 200, useNativeDriver: true }),
+        moveTiming(slideAnim,    { toValue: 500, duration: 200, useNativeDriver: true }),
       ]).start(() => { setRendered(false); slideAnim.setValue(500) })
     }
   }, [visible])

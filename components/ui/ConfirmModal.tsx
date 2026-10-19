@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { Modal, View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
+import { moveSpring } from '../../src/design/rnMotion'
 
 export interface ConfirmModalProps {
   visible:      boolean
@@ -29,7 +30,7 @@ export function ConfirmModal({
       scale.setValue(0.82)
       opacity.setValue(0)
       Animated.parallel([
-        Animated.spring(scale,   { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 260 }),
+        moveSpring(scale,   { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 260 }),
         Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
       ]).start()
     }

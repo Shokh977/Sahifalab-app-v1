@@ -18,6 +18,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { MagicTree } from './MagicTree'
 import { stageFromStreak } from '../../lib/treeTheme'
+import { moveSpring } from '../../src/design/rnMotion'
 
 interface Props {
   visible:        boolean
@@ -51,7 +52,7 @@ export function StreakAtRiskModal({
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 160 }),
+        moveSpring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 160 }),
         Animated.timing(opacityAnim, { toValue: 1, duration: 220, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
       ]).start()
     } else {

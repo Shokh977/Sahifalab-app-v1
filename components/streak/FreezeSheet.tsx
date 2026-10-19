@@ -9,6 +9,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { streaks as streaksApi } from '../../lib/api'
 import type { FreezePackage } from '../../lib/api'
+import { moveTiming } from '../../src/design/rnMotion'
 
 interface Props {
   visible:      boolean
@@ -59,12 +60,12 @@ export function FreezeSheet({
       setSelected(null)
       setShowInfo(false)
       Animated.parallel([
-        Animated.timing(slideAnim,   { toValue: 0,   duration: 300, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+        moveTiming(slideAnim,   { toValue: 0,   duration: 300, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
         Animated.timing(opacityAnim, { toValue: 1,   duration: 200, useNativeDriver: true }),
       ]).start()
     } else {
       Animated.parallel([
-        Animated.timing(slideAnim,   { toValue: 500, duration: 250, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
+        moveTiming(slideAnim,   { toValue: 500, duration: 250, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
         Animated.timing(opacityAnim, { toValue: 0,   duration: 200, useNativeDriver: true }),
       ]).start()
     }

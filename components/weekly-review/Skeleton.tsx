@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { View, Animated, StyleSheet } from 'react-native'
 import { radius, spacing } from '../../lib/constants'
+import { idleLoop } from '../../src/design/rnMotion'
 
 // Same card geometry as the ready state (radius/padding/heights match
 // Hero/FocusCard/DailyActivityCard/StatsGrid) so there's no layout shift
@@ -8,7 +9,7 @@ import { radius, spacing } from '../../lib/constants'
 function Block({ style, c }: { style: any; c: any }) {
   const opacity = useRef(new Animated.Value(0.5)).current
   useEffect(() => {
-    const loop = Animated.loop(
+    const loop = idleLoop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
         Animated.timing(opacity, { toValue: 0.5, duration: 700, useNativeDriver: true }),

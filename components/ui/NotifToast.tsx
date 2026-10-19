@@ -6,6 +6,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { useNotifToastStore } from '../../stores/notifToastStore'
 import { typography, spacing, radius } from '../../lib/constants'
 import { useRouter } from 'expo-router'
+import { moveSpring, moveTiming } from '../../src/design/rnMotion'
 
 function notifIcon(type: string, color: string) {
   const size = 20
@@ -45,7 +46,7 @@ export function NotifToast() {
   useEffect(() => {
     if (toast) {
       // Slide in
-      Animated.spring(translateY, {
+      moveSpring(translateY, {
         toValue: 0, useNativeDriver: true,
         tension: 100, friction: 10,
       }).start()
@@ -59,7 +60,7 @@ export function NotifToast() {
   }, [toast])
 
   const dismiss = () => {
-    Animated.timing(translateY, {
+    moveTiming(translateY, {
       toValue: -160, duration: 250, useNativeDriver: true,
     }).start(() => hideToast())
   }

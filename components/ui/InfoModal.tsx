@@ -3,6 +3,7 @@ import { Modal, View, Text, Pressable, StyleSheet, Animated } from 'react-native
 import { Info } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing } from '../../lib/constants'
+import { moveSpring, moveTiming } from '../../src/design/rnMotion'
 
 interface Props {
   visible:      boolean
@@ -26,13 +27,13 @@ export function InfoModal({ visible, title, body, buttonLabel = 'Tushunarli', on
       setRendered(true)
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.spring(scaleAnim,    { toValue: 1, tension: 70, friction: 11, useNativeDriver: true }),
+        moveSpring(scaleAnim,    { toValue: 1, tension: 70, friction: 11, useNativeDriver: true }),
         Animated.timing(opacityAnim,  { toValue: 1, duration: 180, useNativeDriver: true }),
       ]).start()
     } else {
       Animated.parallel([
         Animated.timing(backdropAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
-        Animated.timing(scaleAnim,    { toValue: 0.92, duration: 140, useNativeDriver: true }),
+        moveTiming(scaleAnim,    { toValue: 0.92, duration: 140, useNativeDriver: true }),
         Animated.timing(opacityAnim,  { toValue: 0, duration: 140, useNativeDriver: true }),
       ]).start(() => {
         setRendered(false)

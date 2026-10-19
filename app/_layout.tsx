@@ -15,6 +15,7 @@ if (Platform.OS === 'android') {
   registerWidgetTaskHandler(widgetTaskHandler)
 }
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useReducedMotion } from 'react-native-reanimated'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../stores/authStore'
 import { useDashboardStore } from '../stores/dashboardStore'
@@ -39,10 +40,8 @@ import { useRewardStore } from '../stores/rewardStore'
 import { RewardModal } from '../components/rewards/RewardModal'
 import { track, trackOnce } from '../lib/analytics'
 import { ThemeProvider } from '../src/design'
+import { pushAnimation } from '../src/design/motion'
 
-// Native push on Android that matches iOS: the incoming screen slides in
-// from the right while the outgoing one shifts left (redesign motion spec).
-const PUSH_ANIMATION = Platform.OS === 'android' ? 'ios_from_right' : 'default'
 
 const APP_INTRO_KEY = 'sahifalab_app_intro_v1'
 
@@ -179,6 +178,7 @@ async function registerTimezone() {
 }
 
 export default function RootLayout() {
+  const reduceMotion = useReducedMotion()
   const { isLoading, isAuthenticated, needsOnboarding, initAuth } = useAuthStore()
   const { loadTheme, theme, c } = useThemeStore()
   const { fetchUnreadCount } = useNotificationStore()
@@ -476,7 +476,7 @@ export default function RootLayout() {
             screen reuses the one tab navigator instead of stacking a copy.
             Protected: on logout the app's screens are dropped from the
             history, so they don't stay mounted (with no user) under login. */}
-        <Stack screenOptions={{ headerShown: false, animation: PUSH_ANIMATION, contentStyle: { backgroundColor: c.bgPrimary } }}>
+        <Stack screenOptions={{ headerShown: false, animation: pushAnimation(reduceMotion), contentStyle: { backgroundColor: c.bgPrimary } }}>
           <Stack.Protected guard={isAuthenticated}>
             <Stack.Screen name="(tabs)"    options={{ animation: 'fade' }} dangerouslySingular />
             <Stack.Screen name="(screens)" />

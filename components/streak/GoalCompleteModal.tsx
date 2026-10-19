@@ -11,6 +11,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { MagicTree } from './MagicTree'
 import { stageFromStreak } from '../../lib/treeTheme'
+import { moveSpring } from '../../src/design/rnMotion'
 
 interface Props {
   visible:     boolean
@@ -39,7 +40,7 @@ export function GoalCompleteModal({ visible, streakDays, xpEarned, tangaEarned =
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 180 }),
+        moveSpring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 180 }),
         Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
       ]).start()
     } else {

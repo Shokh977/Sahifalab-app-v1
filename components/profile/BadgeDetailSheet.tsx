@@ -8,6 +8,7 @@ import { getBadgeEmoji, getTierColor, isStageBadge, stageNum } from '../../lib/b
 import { MagicTree } from '../streak/MagicTree'
 import type { StageNumber } from '../../lib/treeTheme'
 import type { Badge } from '../../lib/api'
+import { moveTiming } from '../../src/design/rnMotion'
 
 interface Props {
   badge:   Badge | null
@@ -28,7 +29,7 @@ export function BadgeDetailSheet({ badge, onClose }: Props) {
   useEffect(() => {
     if (badge) {
       Animated.parallel([
-        Animated.timing(slideAnim,   { toValue: 0, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        moveTiming(slideAnim,   { toValue: 0, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         Animated.timing(opacityAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
       ]).start()
     } else {

@@ -16,6 +16,7 @@ import { useNotificationStore } from '../../stores/notificationStore'
 import { notifs, type NotifItem } from '../../lib/api'
 import { typography, spacing } from '../../lib/constants'
 import { trackOnce } from '../../lib/analytics'
+import { idleLoop } from '../../src/design/rnMotion'
 
 // ── Notification dictionary ───────────────────────────────────────────────────
 
@@ -308,7 +309,7 @@ function relativeTime(iso: string): string {
 function SkeletonRow({ c }: { c: any }) {
   const pulse = useRef(new Animated.Value(0.4)).current
   useEffect(() => {
-    Animated.loop(
+    idleLoop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 1,   duration: 700, useNativeDriver: true }),
         Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: true }),

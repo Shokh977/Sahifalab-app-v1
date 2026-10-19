@@ -3,6 +3,7 @@ import { Modal, View, Text, Pressable, StyleSheet, Animated, Easing, Dimensions 
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
+import { moveTiming } from '../../src/design/rnMotion'
 
 const SCREEN_H = Dimensions.get('window').height
 const SHEET_H  = Math.round(SCREEN_H * 0.3)
@@ -30,7 +31,7 @@ export function TangaInfoSheet({ visible, tangaBalance, onClose }: Props) {
     if (visible) {
       setModalVisible(true)
       Animated.parallel([
-        Animated.timing(slideY, {
+        moveTiming(slideY, {
           toValue: 0, duration: OPEN_DURATION,
           easing: Easing.out(Easing.cubic), useNativeDriver: true,
         }),
@@ -41,7 +42,7 @@ export function TangaInfoSheet({ visible, tangaBalance, onClose }: Props) {
       ]).start()
     } else {
       Animated.parallel([
-        Animated.timing(slideY, {
+        moveTiming(slideY, {
           toValue: -SHEET_H, duration: CLOSE_DURATION,
           easing: Easing.in(Easing.cubic), useNativeDriver: true,
         }),

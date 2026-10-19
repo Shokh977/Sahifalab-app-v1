@@ -3,6 +3,7 @@
  * `withSpring({ duration, dampingRatio })` natively, so the springs are used
  * exactly as specified (no damping/stiffness conversion).
  */
+import { Platform } from 'react-native'
 import { Easing } from 'react-native-reanimated'
 
 export const springs = {
@@ -44,3 +45,10 @@ export const shake = { distance: 6, duration: 240 }
 
 /** The live dot on a running competition: the one allowed loop (off under reduce motion). */
 export const livePulse = { duration: 900, minOpacity: 0.35 }
+
+/** Stack push: on Android the iOS-style slide (incoming from the right,
+ *  outgoing shifts left); a fade under reduce motion (spec rule 5). */
+export function pushAnimation(reduceMotion: boolean) {
+  if (reduceMotion) return 'fade' as const
+  return Platform.OS === 'android' ? 'ios_from_right' as const : 'default' as const
+}

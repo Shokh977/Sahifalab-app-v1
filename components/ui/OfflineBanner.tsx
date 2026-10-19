@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { WifiOff, Wifi } from 'lucide-react-native'
 import { useOnline } from '../../hooks/useOnline'
 import { typography } from '../../lib/constants'
+import { moveSpring, moveTiming } from '../../src/design/rnMotion'
 
 const BANNER_H = 40
 
@@ -18,7 +19,7 @@ export function OfflineBanner() {
     if (!isOnline) {
       setVisible(true)
       setReconnect(false)
-      Animated.spring(slideAnim, {
+      moveSpring(slideAnim, {
         toValue:   0,
         useNativeDriver: true,
         tension:   80,
@@ -28,7 +29,7 @@ export function OfflineBanner() {
       // Was offline, now back — show "Ulandi" then slide away
       setReconnect(true)
       const timer = setTimeout(() => {
-        Animated.timing(slideAnim, {
+        moveTiming(slideAnim, {
           toValue:   -BANNER_H,
           duration:  350,
           useNativeDriver: true,
