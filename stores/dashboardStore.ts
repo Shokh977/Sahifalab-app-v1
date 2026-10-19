@@ -25,6 +25,9 @@ export interface DashboardData {
   recommended:       Course[]
   leaderboard:       LeaderboardEntry[]
   myLeaderRank:      number | null
+  /** People on the weekly board, and your neighbours outside the top list (Phase 7.5 C4). */
+  leaderTotal?:      number | null
+  leaderAround?:     LeaderboardEntry[]
   focusStats:        FocusStats
   flashcardDueCount: number
   fetchedAt:         number
@@ -174,7 +177,7 @@ async function fetchAll(): Promise<DashboardData> {
   const user       = meRes.status       === 'fulfilled' ? meRes.value              : null
   const enrolled   = enrollRes.status   === 'fulfilled' ? enrollRes.value           : []
   const recCourses = coursesRes.status  === 'fulfilled' ? coursesRes.value.courses  : []
-  const lbRaw      = leaderRes.status   === 'fulfilled' ? leaderRes.value           : { entries: [] as import('../lib/api').LeaderboardEntry[], my_rank: null as number | null }
+  const lbRaw: import('../lib/api').WeeklyLeaderboard = leaderRes.status === 'fulfilled' ? leaderRes.value : { entries: [], my_rank: null }
 
   // Use streak detail's streak_state to correct the lazy-reset streak_days in
   // focusStats. The backend doesn't reset streak_days to 0 immediately when a
@@ -211,6 +214,11 @@ async function fetchAll(): Promise<DashboardData> {
   }))
   const myLeaderRank = lbRaw.my_rank ?? lbEntries.find(e => e.is_me)?.rank ?? null
   const lbData = { entries: lbEntries, my_rank: myLeaderRank }
+  const leaderAround = (lbRaw.around_me ?? []).map(e => ({
+    ...e,
+    is_me: callerId !== null && e.telegram_id === callerId,
+  }))
+  const leaderTotal = lbRaw.total ?? null
 
   // Filter enrolled courses: remove ones where course data is null
   const rawEnrolled = enrolled.filter(e => e.courses !== null)
@@ -247,6 +255,8 @@ async function fetchAll(): Promise<DashboardData> {
     recommended,
     leaderboard:            lbEntries,
     myLeaderRank:           myLeaderRank,
+    leaderTotal,
+    leaderAround,
     focusStats:             stats,
     flashcardDueCount:      0,   // replaced by extras' queue total
     fetchedAt:              Date.now(),

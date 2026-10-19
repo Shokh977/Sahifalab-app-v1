@@ -1157,10 +1157,19 @@ function _mapOldLb(rows: _OldLbRow[]): { entries: LeaderboardEntry[]; my_rank: n
 
 export type LeaderboardPeriod = 'week' | 'month' | 'all'
 
+export interface WeeklyLeaderboard {
+  entries: LeaderboardEntry[]
+  my_rank: number | null
+  /** People on the board this period (newer backends). */
+  total?: number | null
+  /** Your row and its neighbours when you're outside `entries` (newer backends). */
+  around_me?: LeaderboardEntry[]
+}
+
 export const leaderboard = {
   weekly: async (period: LeaderboardPeriod = 'week') => {
     try {
-      const res = await request<{ entries: LeaderboardEntry[]; my_rank: number | null }>(
+      const res = await request<WeeklyLeaderboard>(
         `/api/leaderboard/weekly?period=${period}`, { auth: true },
       )
       // week/month: sparse is correct (only users active in the period appear)
@@ -1952,6 +1961,8 @@ export interface DailyQuizStatus {
   /** Others who finished today, and how many of them you follow (newer backends). */
   players_count?:    number | null
   friends_played?:   number | null
+  /** Your place once submitted (newer backends). */
+  my_rank?:          number | null
 }
 
 export interface DailyQuizSubmitResult {

@@ -2,19 +2,12 @@
  * Pure helpers for Bugun (Home). No React, no I/O — unit-tested in
  * __tests__/today.test.ts.
  */
-import { estMinutes } from '../flashcards/queueMath'
 import { focusLabel } from './focusLabel'
 
 /** Ordinary Uzbek ʻ (U+02BB) in oʻ / gʻ, for server and legacy strings
  *  that still carry an ASCII apostrophe or a curly quote. */
 export function uzText(s: string): string {
   return s.replace(/([oOgG])['‘’`]/g, '$1ʻ')
-}
-
-export function greeting(hour: number): string {
-  if (hour >= 5 && hour < 11) return 'Xayrli tong'
-  if (hour >= 11 && hour < 17) return 'Xayrli kun'
-  return 'Xayrli kech'
 }
 
 export function quizClosesIn(seconds: number): string {
@@ -66,76 +59,116 @@ export function rankGap(entries: readonly RankEntry[], myRank: number | null | u
   return { kind: 'gap', rank: myRank, target: myRank - 1, xp, progress }
 }
 
-// ── Today plan ───────────────────────────────────────────────────────────────
+// ── Today plan (Phase 7.5 C3: a 2×2 grid of tiles) ──────────────────────────
 
 export interface PlanInput {
   /** Always in the plan (Phase 7.5 A6). */
   focus: { minutes: number; goal: number }
-  quiz: { number: number; state: 'not_started' | 'in_progress' | 'submitted'; correct: number | null; secondsLeft: number; answered?: number } | null
-  /** null = the user has no decks, so the row is hidden. */
-  dueCards: number | null
-  course: { id: number; title: string; progress: number } | null
+  quiz: {
+    number: number
+    state: 'not_started' | 'in_progress' | 'submitted'
+    correct: number | null
+    secondsLeft: number
+    answered?: number
+    /** Your place once submitted (newer backends). */
+    rank?: number | null
+  } | null
+  /** Today's review queue; null = no decks, so no tile. */
+  cards: { total: number; estMinutes: number } | null
+  course: { id: number; title: string; progress: number; totalLessons: number } | null
 }
 
-export type PlanRowKey = 'focus' | 'quiz' | 'cards' | 'course'
+export type PlanKey = 'focus' | 'quiz' | 'cards' | 'course'
+/** Kept for callers that still name rows. */
+export type PlanRowKey = PlanKey
 
-export interface PlanRow {
-  key: PlanRowKey
+export interface PlanTileData {
+  key: PlanKey
+  value: string
   title: string
-  subtitle: string
+  sub?: string
+  /** 0–1: a bar instead of the sub-line (the course). */
+  progress?: number
+  /** Top-right text on an unfinished tile ("30%"). */
+  status?: string
   done: boolean
+  next: boolean
 }
 
-/** Rows in plan order with done rows moved to the bottom, plus the count. */
-export function buildPlanRows(input: PlanInput): { rows: PlanRow[]; done: number; total: number } {
-  const rows: PlanRow[] = []
+/** Which tile the primary action points at. */
+export function nextTileKey(target: 'focus' | 'quiz' | 'review' | 'course' | 'none'): PlanKey | null {
+  return target === 'review' ? 'cards' : target === 'none' ? null : target
+}
+
+/**
+ * The plan's tiles: Fokus, 5 Savol, Kartalar (with decks), the course (when
+ * enrolled). Order: the "next" tile, the other unfinished ones, then done.
+ */
+export function planTiles(input: PlanInput, next: PlanKey | null): { tiles: PlanTileData[]; done: number; total: number } {
+  const tiles: PlanTileData[] = []
 
   const f = focusLabel(input.focus.minutes, input.focus.goal)
-  rows.push({
+  const goal = input.focus.goal > 0 ? input.focus.goal : 20
+  tiles.push({
     key: 'focus',
+    value: `${Math.max(0, Math.floor(input.focus.minutes))} daq`,
     title: 'Fokus',
-    subtitle: f.done ? `${f.value} · maqsad bajarildi` : f.right,
+    sub: `Maqsad ${goal} daq`,
     done: f.done,
+    next: false,
   })
 
   if (input.quiz) {
     const q = input.quiz
     const done = q.state === 'submitted'
-    rows.push({
+    const answered = q.answered ?? 0
+    tiles.push({
       key: 'quiz',
+      value: done ? `${q.correct ?? 0}/5` : q.state === 'in_progress' && answered > 0 ? `${answered}/5` : 'Oʻynash',
       title: `5 Savol #${q.number}`,
-      subtitle: done
-        ? `${q.correct ?? 0}/5 · bajarildi`
-        : q.state === 'in_progress' && (q.answered ?? 0) > 0
-          ? `Davom etish · ${q.answered}/5 · ${quizClosesIn(q.secondsLeft)}`
-          : quizClosesIn(q.secondsLeft),
+      sub: done
+        ? (q.rank ? `#${q.rank}-oʻrin bugun` : 'Bajarildi')
+        : quizClosesIn(q.secondsLeft),
       done,
+      next: false,
     })
   }
 
-  if (input.dueCards != null) {
-    const n = input.dueCards
-    rows.push({
+  if (input.cards) {
+    const n = input.cards.total
+    tiles.push({
       key: 'cards',
+      value: `${n} ta`,
       title: 'Kartalar',
-      subtitle: n > 0 ? `${n} ta · ~${estMinutes(n)} daq` : 'Bugun takrorlash yoʻq',
+      sub: n > 0 ? `~${input.cards.estMinutes} daqiqa` : 'Bugun takrorlash yoʻq',
       done: n === 0,
+      next: false,
     })
   }
 
   if (input.course) {
-    const pct = Math.round(Math.min(1, Math.max(0, input.course.progress)) * 100)
-    rows.push({
+    const c = input.course
+    const p = Math.min(1, Math.max(0, c.progress))
+    const lesson = c.totalLessons > 0 ? Math.min(c.totalLessons, Math.round(p * c.totalLessons) + 1) : 1
+    tiles.push({
       key: 'course',
-      title: uzText(input.course.title),
-      subtitle: `${pct}% bajarildi`,
-      done: input.course.progress >= 1,
+      value: `${lesson}-dars`,
+      title: uzText(c.title),
+      progress: p,
+      status: `${Math.round(p * 100)}%`,
+      done: p >= 1,
+      next: false,
     })
   }
 
-  const sorted = [...rows.filter(r => !r.done), ...rows.filter(r => r.done)]
-  const done = rows.filter(r => r.done).length
-  return { rows: sorted, done, total: rows.length }
+  const nextTile = tiles.find(t => t.key === next && !t.done)
+  if (nextTile) nextTile.next = true
+  const ordered = [
+    ...tiles.filter(t => t.next),
+    ...tiles.filter(t => !t.next && !t.done),
+    ...tiles.filter(t => t.done),
+  ]
+  return { tiles: ordered, done: tiles.filter(t => t.done).length, total: tiles.length }
 }
 
 /** The unfinished enrolled course with the most progress (ties: first). */
