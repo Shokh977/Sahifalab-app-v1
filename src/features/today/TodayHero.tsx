@@ -173,11 +173,11 @@ export function TodayHero({
             <View style={styles.rollClip}>
               {rolling ? (
                 <Animated.View style={rollStyle}>
-                  <Text style={numberText}>{Math.max(0, streak - 1)}</Text>
-                  <Text style={numberText}>{streak}</Text>
+                  <Text style={numberText} maxFontSizeMultiplier={1}>{Math.max(0, streak - 1)}</Text>
+                  <Text style={numberText} maxFontSizeMultiplier={1}>{streak}</Text>
                 </Animated.View>
               ) : (
-                <Text style={numberText}>{streak}</Text>
+                <Text style={numberText} maxFontSizeMultiplier={1}>{streak}</Text>
               )}
             </View>
           </View>
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   streakRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   rollClip: { height: typeScale.streak.lineHeight, overflow: 'hidden' },
   lift: { marginTop: -space.xxs },
-  chip: { alignSelf: 'flex-start', borderRadius: radius.full, paddingHorizontal: space.sm - 2, paddingVertical: space.xxs + 1 },
+  chip: { alignSelf: 'flex-start', maxWidth: '100%', borderRadius: radius.full, paddingHorizontal: space.sm - 2, paddingVertical: space.xxs + 1 },
   bold: { fontFamily: fonts.bold },
   focus: { borderRadius: radius.md + 2, paddingVertical: space.sm, paddingHorizontal: space.sm + 2, gap: space.sm - 2 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.xs },

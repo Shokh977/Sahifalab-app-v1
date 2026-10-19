@@ -85,7 +85,7 @@ export function QuizTodayCard({ quiz, fetchedAt, now, onOpen, onResults }: {
             {rank != null && (
               <Text style={[typeScale.callout, tabular, styles.heavy, { color: colors.accentText }]}>#{rank}-oʻrin</Text>
             )}
-            <Text style={[typeScale.callout, styles.flex, { color: colors.textMuted }]} numberOfLines={2}>
+            <Text style={[typeScale.callout, styles.flex, { color: colors.textMuted }]} numberOfLines={3}>
               Ertaga {opensAt(secondsLeft, now)} da yangi savollar
             </Text>
             <Text style={[typeScale.callout, styles.bold, { color: colors.accentText }]}>Natijalar</Text>

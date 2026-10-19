@@ -5,7 +5,7 @@
  * new value just shows.
  */
 import React, { useEffect, useState } from 'react'
-import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
+import { StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle } from 'react-native'
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated'
 import { durations, easing } from '../../design/motion'
 
@@ -16,6 +16,8 @@ export function RollingNumber({ value, style, lineHeight }: {
   lineHeight: number
 }) {
   const reduceMotion = useReducedMotion()
+  // The system font scale grows the text, so the roll and the clip grow with it.
+  const line = lineHeight * useWindowDimensions().fontScale
   const text = String(value)
   const [shown, setShown] = useState(text)
   const [from, setFrom] = useState<string | null>(null)
@@ -30,14 +32,14 @@ export function RollingNumber({ value, style, lineHeight }: {
   useEffect(() => {
     if (from == null) return
     y.set(0)
-    y.set(withTiming(-lineHeight, { duration: durations.slow, easing: easing.standard }))
-  }, [from, shown, lineHeight, y])
+    y.set(withTiming(-line, { duration: durations.slow, easing: easing.standard }))
+  }, [from, shown, line, y])
 
   const roll = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }))
 
   if (from == null) return <Text style={style}>{shown}</Text>
   return (
-    <View style={[styles.clip, { height: lineHeight }]} accessible accessibilityLabel={shown}>
+    <View style={[styles.clip, { height: line }]} accessible accessibilityLabel={shown}>
       <Animated.View style={roll}>
         <Text style={style}>{from}</Text>
         <Text style={style}>{shown}</Text>

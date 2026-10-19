@@ -74,6 +74,7 @@ export function BadgeCell({ badge, width, onPress }: { badge: ProfileBadge; widt
       <BadgeArt badge={badge} size={width} />
       <Text
         numberOfLines={2}
+        maxFontSizeMultiplier={1.15}
         style={[typeScale.caption, styles.name, { color: badge.earned ? colors.text : colors.textMuted }]}
       >
         {name}

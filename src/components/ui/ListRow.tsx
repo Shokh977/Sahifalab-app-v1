@@ -73,8 +73,8 @@ export function ListRow({ title, subtitle, leading, trailing, onPress, onLongPre
     <>
       {lead}
       <View style={styles.text}>
-        <Text style={[typeScale.headline, { color: colors.text }]} numberOfLines={1}>{title}</Text>
-        {subtitle ? <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>{subtitle}</Text> : null}
+        <Text style={[typeScale.headline, { color: colors.text }]} numberOfLines={2}>{title}</Text>
+        {subtitle ? <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={2}>{subtitle}</Text> : null}
       </View>
       {tail}
     </>

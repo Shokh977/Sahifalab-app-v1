@@ -46,8 +46,8 @@ function ProfileStat({ icon: Icon, tint, value, label }: { icon: LucideIcon; tin
       <View style={[styles.statIcon, { backgroundColor: t.soft }]}>
         <Icon size={iconSize.sm - 2} color={t.ink} strokeWidth={iconStroke + 0.2} />
       </View>
-      <Text style={[typeScale.statValue, tabular, { color: colors.text }]} numberOfLines={1}>{value}</Text>
-      <Text style={[typeScale.small, { color: colors.textMuted }]} numberOfLines={1}>{label}</Text>
+      <Text style={[typeScale.statValue, tabular, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{value}</Text>
+      <Text style={[typeScale.small, { color: colors.textMuted }]} numberOfLines={2}>{label}</Text>
     </View>
   )
 }
@@ -65,7 +65,7 @@ function MenuRow({ icon: Icon, title, subtitle, first, onPress }: {
       </View>
       <View style={styles.flex}>
         <Text style={[typeScale.tileTitle, { color: colors.text }]} numberOfLines={1}>{title}</Text>
-        <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>{subtitle}</Text>
+        <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={2}>{subtitle}</Text>
       </View>
       <ChevronRight size={iconSize.sm - 2} color={colors.textMuted} strokeWidth={iconStroke + 0.2} />
     </Pressable>

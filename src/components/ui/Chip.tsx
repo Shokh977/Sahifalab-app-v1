@@ -54,7 +54,7 @@ export function Chip({ label, selected, onPress, variant = 'filter', icon: Icon,
 
 const styles = StyleSheet.create({
   chip: {
-    height: controlHeight.sm,
+    minHeight: controlHeight.sm,
     paddingHorizontal: space.sm + 2,
     borderRadius: radius.sm,
     borderWidth: 1,

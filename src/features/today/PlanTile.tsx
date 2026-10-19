@@ -86,7 +86,7 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
         ) : status}
       </View>
 
-      <Text style={[typeScale.tileValue, tabular, { color: next ? colors.onAccent : colors.text }]} numberOfLines={1}>
+      <Text style={[typeScale.tileValue, tabular, { color: next ? colors.onAccent : colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} maxFontSizeMultiplier={1.15}>
         {value}
       </Text>
 
@@ -103,7 +103,7 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
           ) : sub ? (
             next ? (
               <View style={[styles.pill, styles.subPill, styles.pillClear, { backgroundColor: colors.onAccent }]}>
-                <Text style={[typeScale.callout, tabular, { color: colors.accentText }]} numberOfLines={1}>{sub}</Text>
+                <Text style={[typeScale.callout, tabular, { color: colors.accentText }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{sub}</Text>
               </View>
             ) : (
               <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>{sub}</Text>

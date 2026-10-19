@@ -93,11 +93,11 @@ export function WeeklyRivalCard({ entries, around, myRank, total, todayMinutes, 
             ))}
             {more > 0 && (
               <View style={[styles.stackItem, styles.overlap, { borderColor: colors.surface, backgroundColor: colors.surfaceRaised }]}>
-                <Text style={[typeScale.overline, tabular, styles.moreText, { color: colors.textMuted }]}>+{more > 999 ? '999' : more}</Text>
+                <Text style={[typeScale.overline, tabular, styles.moreText, { color: colors.textMuted }]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1}>+{more > 999 ? '999' : more}</Text>
               </View>
             )}
           </View>
-          <Text style={[typeScale.callout, styles.flex, { color: colors.textMuted }]} numberOfLines={1}>{peopleText}</Text>
+          <Text style={[typeScale.callout, styles.flex, { color: colors.textMuted }]} numberOfLines={2}>{peopleText}</Text>
           <View style={[styles.pill, { backgroundColor: colors.surfaceRaised }]}>
             <Text style={[typeScale.small, tabular, styles.bold, { color: colors.textMuted }]}>{days} kun qoldi</Text>
           </View>

@@ -30,7 +30,7 @@ export function TodayHeader({ offline }: { offline: boolean; now?: number }) {
   return (
     <View style={[styles.bar, { paddingTop: insets.top + space.xs }]}>
       <View style={styles.left}>
-        <Text style={[typeScale.screenTitle, styles.name, { color: colors.text }]} numberOfLines={1} accessibilityRole="header">
+        <Text style={[typeScale.screenTitle, styles.name, { color: colors.text }]} numberOfLines={1} maxFontSizeMultiplier={1.15} accessibilityRole="header">
           {name}
         </Text>
         {offline && <Badge kind="status" status="neutral" label="oflayn" />}

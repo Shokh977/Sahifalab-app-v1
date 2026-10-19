@@ -42,8 +42,8 @@ function HeroStat({ value, label, accent }: { value: string; label: string; acce
   const { colors } = useTheme()
   return (
     <View style={[styles.stat, { backgroundColor: colors.surfaceRaised }]} accessible accessibilityLabel={`${value} ${label}`}>
-      <Text style={[typeScale.heroStat, tabular, { color: accent ? colors.accentText : colors.text }]} numberOfLines={1}>{value}</Text>
-      <Text style={[typeScale.small, { color: colors.textMuted }]} numberOfLines={1}>{label}</Text>
+      <Text style={[typeScale.heroStat, tabular, { color: accent ? colors.accentText : colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{value}</Text>
+      <Text style={[typeScale.small, { color: colors.textMuted }]} numberOfLines={2}>{label}</Text>
     </View>
   )
 }
@@ -236,8 +236,8 @@ export function CompetitionsCard({ main, others, ended, now, joiningId, onJoin, 
                     : <Trophy size={iconSize.sm} color={colors.textMuted} strokeWidth={iconStroke} />}
                 </View>
                 <View style={styles.flex}>
-                  <Text style={[typeScale.rowTitle, { color: colors.text }]} numberOfLines={1}>{uzText(e.title)}</Text>
-                  <Text style={[typeScale.small, { color: colors.textMuted }]} numberOfLines={1}>{endedMeta(e)}</Text>
+                  <Text style={[typeScale.rowTitle, { color: colors.text }]} numberOfLines={2}>{uzText(e.title)}</Text>
+                  <Text style={[typeScale.small, { color: colors.textMuted }]} numberOfLines={2}>{endedMeta(e)}</Text>
                 </View>
                 {chip && (
                   <View style={[styles.chip, { backgroundColor: chip.gold ? colors.goldChip : colors.surfaceRaised }]}>

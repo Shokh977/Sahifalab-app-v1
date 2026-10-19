@@ -39,7 +39,7 @@ function Row({ e, mine, note }: { e: LeaderboardEntry; mine?: boolean; note?: st
       <Avatar name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={ROW_AVATAR} />
       <View style={styles.flex}>
         <Text style={[typeScale.rowTitle, mine && styles.heavy, { color: colors.text }]} numberOfLines={1}>{name}</Text>
-        <Text style={[typeScale.small, tabular, { color: note ? colors.accentText : colors.textMuted, fontFamily: note ? fonts.semibold : fonts.regular }]} numberOfLines={1}>
+        <Text style={[typeScale.small, tabular, { color: note ? colors.accentText : colors.textMuted, fontFamily: note ? fonts.semibold : fonts.regular }]} numberOfLines={2}>
           {note ?? `Lv.${e.level} · ${hoursLabel(e.minutes)}`}
         </Text>
       </View>

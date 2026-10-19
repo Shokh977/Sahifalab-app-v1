@@ -54,7 +54,7 @@ export function Button({
       style={[
         styles.base,
         {
-          height: controlHeight[size],
+          minHeight: controlHeight[size],
           paddingHorizontal: size === 'sm' ? space.md : space.lg,
           backgroundColor: bg,
           borderColor: variant === 'secondary' ? colors.border : 'transparent',

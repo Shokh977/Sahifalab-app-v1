@@ -30,7 +30,7 @@ export function FeaturedCourse({ course, onPress }: { course: Course; onPress: (
         />
         <View style={styles.text}>
           <Text style={[typeScale.title2, { color: colors.text }]} numberOfLines={2}>{title}</Text>
-          <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>{courseMeta(course)}</Text>
+          <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={2}>{courseMeta(course)}</Text>
         </View>
         {pending ? <Badge kind="status" status="accent" label={PENDING_CHIP} /> : (
           <Text style={[typeScale.headline, tabular, { color: isFree(course) ? colors.successText : colors.text }]}>

@@ -41,8 +41,9 @@ export function SectionTitle({ title, meta, link, right, style }: SectionTitlePr
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: layout.minTouch - space.xs },
-  title: { flex: 1 },
+  // Wraps at large font scales: the meta drops under the title instead of cutting it.
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.xs, minHeight: layout.minTouch - space.xs },
+  title: { flexGrow: 1, flexShrink: 1 },
   meta: { fontFamily: fonts.regular, flexShrink: 1 },
   link: { minHeight: layout.minTouch, justifyContent: 'center', paddingLeft: space.xs },
 })

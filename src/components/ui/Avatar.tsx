@@ -65,7 +65,7 @@ export function Avatar({ name, id, uri, size = 'md', level, diameter, style }: A
       </View>
       {ringed && size !== 'sm' && (
         <View style={[styles.level, { backgroundColor: colors.accent, borderColor: colors.bg }]}>
-          <Text style={[typeScale.levelBadge, tabular, { color: colors.onAccent }]}>{level}</Text>
+          <Text style={[typeScale.levelBadge, tabular, { color: colors.onAccent }]} maxFontSizeMultiplier={1}>{level}</Text>
         </View>
       )}
     </View>

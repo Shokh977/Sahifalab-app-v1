@@ -63,7 +63,7 @@ export function SegmentedControl({ segments, index, onChange, style }: Segmented
             accessibilityLabel={label}
             style={styles.segment}
           >
-            <Text style={[typeScale.callout, { color: active ? colors.text : colors.textMuted }]} numberOfLines={1}>
+            <Text style={[typeScale.callout, { color: active ? colors.text : colors.textMuted }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
               {label}
             </Text>
           </Pressable>
