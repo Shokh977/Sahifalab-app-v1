@@ -193,6 +193,38 @@ export const medal = {
   },
 } as const
 
+/**
+ * WeekDayIcon (Phase 7.5 B5): the v3 3D streak tiles, colours copied from
+ * docs/design/v2/week-icons.dc.html. Same in both themes except the
+ * missed tile, which takes the surface's greys.
+ */
+export const weekIcon = {
+  flame: {
+    face: ['#FFB547', '#F7711E', '#E2500C'],   // stops 0, .55, 1
+    depth: ['#C7440A', '#9E3306'],
+    flame: ['#FFFFFF', '#FFE7C7'],
+    core: ['#FFD54A', '#FF9A1F'],
+    gloss: '#FFFFFF',
+  },
+  ice: {
+    top: ['#F4FBFF', '#C6E9FF'],
+    left: ['#8FD2FF', '#3A8EE6'],
+    right: ['#B8E3FF', '#5DAEF2'],
+    edge: '#FFFFFF',
+    snow: '#5AA9EE',
+    shard1: '#8FD2FF',
+    shard2: '#A9DBFF',
+  },
+  missed: {
+    light: { face: ['#EFEBE4', '#DAD4CA'], depth: ['#C9C2B6', '#B5AD9F'], ash: '#B9B1A4', ash2: '#A39B8D', smoke: '#9E978B' },
+    dark: { face: ['#34343C', '#26262C'], depth: ['#18181C', '#101013'], ash: '#4A4A52', ash2: '#5A5A63', smoke: '#7A7882' },
+  },
+  today: '#EE5A12',
+} as const
+
+/** Trophy (RivalLadder footer): gradient cup and handles. */
+export const trophy = { cup: ['#FFD66B', '#E9A21A'], handle: '#E9A21A' } as const
+
 /** The live dot on a running competition (CompetitionHero). */
 export const liveDot = '#4ADE80'
 /** Competition cover band: dark scrim over the blurred cover, 15 % → 72 %. */
@@ -201,6 +233,8 @@ export const coverBandFallback = '#1B1410'
 /** White chip and border over a photo. */
 export const onImageChip = 'rgba(255,255,255,0.18)'
 export const onImageBorder = 'rgba(255,255,255,0.85)'
+/** Icon tile on an accent fill (the "next" plan tile). */
+export const onAccentTile = 'rgba(255,255,255,0.2)'
 
 /**
  * Badge tile tints (Profil): soft background and line from the hue's ink,

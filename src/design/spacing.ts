@@ -42,6 +42,9 @@ export const shadow: ViewStyle = {
   boxShadow: '0px 1px 2px rgba(28,37,48,0.04), 0px 6px 18px rgba(28,37,48,0.05)',
 }
 
+/** Under a sharp thumbnail over a photo (CompetitionHero). */
+export const photoShadow: ViewStyle = { boxShadow: '0px 8px 20px rgba(0,0,0,0.35)' }
+
 /** Under accent fills in light mode (buttons, the "next" tile). */
 export const accentShadow: ViewStyle = {
   boxShadow: '0px 8px 20px rgba(226,86,14,0.28)',
@@ -54,7 +57,7 @@ export const iconStroke = 1.8
 export const controlHeight = { sm: 40, md: 48, lg: 54 } as const
 
 /** Avatar diameters used by the kit. */
-export const avatarSize = { sm: 32, md: 40, lg: 56, xl: 80 } as const
+export const avatarSize = { sm: 32, row: 36, md: 40, lg: 56, podium: 68, xl: 80 } as const
 
 /** Leading tile in ListRow (icon tile / thumbnail). */
 export const tileSize = 40

@@ -24,15 +24,17 @@ export interface AvatarProps {
   size?: AvatarSize
   /** Draws the accent ring and a small level number. */
   level?: number
+  /** An exact diameter instead of a size step (podium avatars). */
+  diameter?: number
   style?: StyleProp<ViewStyle>
 }
 
 const RING = 2
 
-export function Avatar({ name, id, uri, size = 'md', level, style }: AvatarProps) {
+export function Avatar({ name, id, uri, size = 'md', level, diameter, style }: AvatarProps) {
   const { colors } = useTheme()
   const [failed, setFailed] = useState(false)
-  const d = avatarSize[size]
+  const d = diameter ?? avatarSize[size]
   const ringed = level != null
   const inner = ringed ? d - (RING * 2 + RING * 2) : d
   const showImage = !!uri && !failed

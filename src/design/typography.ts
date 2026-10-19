@@ -32,6 +32,14 @@ export const type = {
   section:  { fontFamily: fonts.extrabold, fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
   /** Text links beside a section title ("Hammasi"). */
   link:     { fontFamily: fonts.bold,      fontSize: 14, lineHeight: 18 },
+  /** A title over a cover photo (CompetitionHero). */
+  heroTitle: { fontFamily: fonts.extrabold, fontSize: 21, lineHeight: 25, letterSpacing: -0.3 },
+  /** Ranking rows: name and XP (RivalLadder, Podium). */
+  rowTitle: { fontFamily: fonts.bold,      fontSize: 15, lineHeight: 20 },
+  /** Small secondary lines ("#22", "Lv.9 · 33,8 soat"). */
+  small:    { fontFamily: fonts.regular,   fontSize: 12, lineHeight: 16 },
+  /** Tile and row titles (PlanTile, RivalLadder). */
+  tileTitle: { fontFamily: fonts.bold,     fontSize: 16, lineHeight: 20 },
   /** Big tile numbers ("48 ta", "180 daq"). */
   tileValue: { fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 32, letterSpacing: -0.6 },
 } as const satisfies Record<string, TypeToken>

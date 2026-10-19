@@ -5,17 +5,25 @@
 import React, { useState } from 'react'
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { Redirect } from 'expo-router'
-import { Bell, BookOpen, Clock, Flame, Inbox, Mail, Search, Settings2, Star } from 'lucide-react-native'
+import {
+  Bell, BookOpen, CalendarCheck, ChevronRight, Clock, CircleHelp, Flame, GraduationCap, Inbox, Layers, Mail, Moon, Search,
+  Settings2, Star, Timer, TreePine, Trophy, Users, Zap,
+} from 'lucide-react-native'
 import { ThemeProvider, useTheme } from '../../src/design/ThemeProvider'
 import { LevelUpOverlay } from '../../components/study/LevelUpOverlay'
 import { layout, space } from '../../src/design/spacing'
-import { type as typeScale } from '../../src/design/typography'
+import { tabular, type as typeScale } from '../../src/design/typography'
 import type { Scheme } from '../../src/design/tokens'
 import {
   Avatar, Badge, Button, Card, Chip, CoinPill, Countdown, IconButton, EmptyState, Input, ListRow, ProgressBar, ProgressRing,
   ScreenHeader, SegmentedControl, Sheet, Stepper, SkeletonBlock, SkeletonLine, SkeletonRow, StatTile, TextArea, Toast,
-  ToastHost, showToast,
+  ToastHost, showToast, SectionTitle, WeekDayIcon, BadgeTile,
 } from '../../src/components/ui'
+import { PlanTile } from '../../src/features/today/PlanTile'
+import { RivalLadder, type RivalRow } from '../../src/features/today/RivalLadder'
+import { TrophyIcon } from '../../src/features/today/TrophyIcon'
+import { CompetitionHero } from '../../src/features/bellashuv/CompetitionHero'
+import { Podium } from '../../src/features/bellashuv/Podium'
 
 const WIDE = 760
 
@@ -54,6 +62,8 @@ function Column() {
         noInset
       />
       <View style={styles.body}>
+        <Phase75 />
+
         <Section title="Typography">
           <Text style={[typeScale.display, { color: colors.text }]}>Display</Text>
           <Text style={[typeScale.title1, { color: colors.text }]}>Title 1 — Oʻzbekcha</Text>
@@ -235,6 +245,106 @@ function Column() {
   )
 }
 
+// ── Phase 7.5 (v2 mockups) ──────────────────────────────────────────────────
+
+const LADDER: RivalRow[] = [
+  { id: 1, name: 'Abror', rank: 22, xp: 489 },
+  { id: 2, name: 'Sahifalab', rank: 23, xp: 467, isMe: true },
+  { id: 3, name: 'Diyora', rank: 24, xp: 451 },
+]
+
+function Phase75() {
+  const { colors } = useTheme()
+  const [ladder, setLadder] = useState(LADDER)
+  const noop = () => {}
+  const swap = () => setLadder(rows => {
+    // You pass Abror: +30 XP and the ranks trade places.
+    const me = rows.find(r => r.isMe)!
+    const above = rows.find(r => r.rank === me.rank - 1)
+    if (!above) return LADDER
+    return rows
+      .map(r => r.isMe ? { ...r, rank: r.rank - 1, xp: r.xp + 30 } : r.id === above.id ? { ...r, rank: r.rank + 1 } : r)
+      .sort((a, b) => a.rank - b.rank)
+  })
+  return (
+    <>
+      <Section title="Phase 7.5 · SectionTitle">
+        <SectionTitle title="Bugungi reja" meta="2 / 4" />
+        <SectionTitle title="Haftalik reyting" link={{ label: 'Hammasi', onPress: noop }} />
+      </Section>
+
+      <Section title="Phase 7.5 · WeekDayIcon">
+        <View style={styles.week}>
+          {(['done', 'frozen', 'missed', 'today', 'future'] as const).map((st, i) => (
+            <View key={st} style={styles.weekDay}>
+              <WeekDayIcon state={st} day={['Du', 'Se', 'Ch', 'Pa', 'Ju'][i]} />
+              <Text style={[typeScale.small, { color: colors.textMuted }]}>{st}</Text>
+            </View>
+          ))}
+        </View>
+      </Section>
+
+      <Section title="Phase 7.5 · PlanTile">
+        <View style={styles.grid}>
+          <View style={styles.cell}><PlanTile variant="next" icon={Layers} tint="orange" value="48 ta" title="Kartalar" sub="~6 daqiqa" onPress={noop} /></View>
+          <View style={styles.cell}><PlanTile variant="default" icon={GraduationCap} tint="violet" value="3-dars" title="Mnemonika" progress={0.3} status={<Text style={[typeScale.small, tabular, { color: colors.textMuted }]}>30%</Text>} onPress={noop} /></View>
+          <View style={styles.cell}><PlanTile variant="done" icon={Timer} tint="orange" value="180 daq" title="Fokus" sub="Maqsad 10 daq" onPress={noop} /></View>
+          <View style={styles.cell}><PlanTile variant="done" icon={CircleHelp} tint="blue" value="5/5" title="5 Savol #12" sub="#10-oʻrin bugun" onPress={noop} /></View>
+        </View>
+      </Section>
+
+      <Section title="Phase 7.5 · RivalLadder">
+        <Card>
+          <RivalLadder
+            rows={ladder}
+            footer={
+              <>
+                <TrophyIcon />
+                <Text style={[typeScale.callout, styles.flex, { color: colors.text }]}>
+                  <Text style={{ fontFamily: typeScale.tileValue.fontFamily }}>22 XP</Text> — Abrorni quvib oʻtasiz.{'\n'}
+                  <Text style={{ color: colors.textMuted }}>Taxminan 5 daqiqa fokus</Text>
+                </Text>
+                <ChevronRight size={18} color={colors.textMuted} />
+              </>
+            }
+          />
+        </Card>
+        <Button label="Reytingni almashtirish" variant="secondary" size="sm" onPress={swap} />
+      </Section>
+
+      <Section title="Phase 7.5 · CompetitionHero">
+        <CompetitionHero title="Sahifalab: Fokus Marafoni" coverUrl="https://picsum.photos/seed/marafon/300/300" status="Faol · 5 kun qoldi" live>
+          <ProgressBar value={0.71} thickness="thick" accessibilityLabel="Top 10 gacha" />
+          <Button label="Fokusni boshlash" size="lg" fullWidth onPress={noop} />
+        </CompetitionHero>
+      </Section>
+
+      <Section title="Phase 7.5 · Podium">
+        <Card>
+          <Podium entries={[
+            { id: 11, rank: 1, name: 'Nigora', xp: 4107 },
+            { id: 12, rank: 2, name: 'Feruza', xp: 3116 },
+            { id: 13, rank: 3, name: 'Ali_07_khan', xp: 3039 },
+          ]} />
+        </Card>
+      </Section>
+
+      <Section title="Phase 7.5 · BadgeTile">
+        <View style={styles.badges}>
+          <BadgeTile name="Sehrli daraxt" icon={TreePine} tint="green" />
+          <BadgeTile name="Better me" icon={Star} tint="orange" />
+          <BadgeTile name="Tungi mutolaa" icon={Moon} tint="violet" />
+          <BadgeTile name="Vaqtga qarshi" icon={Timer} tint="blue" />
+          <BadgeTile name="Grandmaster" icon={Trophy} tint="gold" />
+          <BadgeTile name="Jamoaviy sprint" icon={Users} tint="teal" />
+          <BadgeTile name="XP legendi" icon={Zap} tint="pink" />
+          <BadgeTile name="7 kunda 7 soat" icon={CalendarCheck} tint="orange" locked />
+        </View>
+      </Section>
+    </>
+  )
+}
+
 export default function DevGallery() {
   const { width } = useWindowDimensions()
   if (!__DEV__) return <Redirect href="/(tabs)" />
@@ -274,4 +384,10 @@ const styles = StyleSheet.create({
   tiles: { flexDirection: 'row', gap: space.xs },
   sheetActions: { marginTop: space.lg },
   wrapCenter: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, alignItems: 'center' },
+  week: { flexDirection: 'row', justifyContent: 'space-between' },
+  weekDay: { alignItems: 'center', gap: space.xxs + 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: layout.cardGap },
+  cell: { width: '47%', flexGrow: 1 },
+  flex: { flex: 1 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, justifyContent: 'space-between' },
 })
