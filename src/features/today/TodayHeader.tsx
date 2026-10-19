@@ -1,6 +1,8 @@
 /**
- * Bugun header: time-of-day greeting + first name; coin pill, bell with an
- * unread dot, and the avatar that opens Profil. "oflayn" when offline.
+ * Bugun header (Phase 7.5 C1): one 48 px row — the display name (28/34,
+ * extra bold, one line) and, on the right, the coin pill, the bell with an
+ * unread dot and the avatar (44 px, accent ring, level badge) that opens
+ * Profil. No greeting. "oflayn" sits after the name when offline.
  */
 import React, { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
@@ -14,9 +16,9 @@ import { useTheme } from '../../design/ThemeProvider'
 import { layout, space } from '../../design/spacing'
 import { type as typeScale } from '../../design/typography'
 import { Avatar, Badge, CoinPill, IconButton, Pressable } from '../../components/ui'
-import { greeting, uzText } from './today'
+import { uzText } from './today'
 
-export function TodayHeader({ offline, now }: { offline: boolean; now: number }) {
+export function TodayHeader({ offline }: { offline: boolean; now?: number }) {
   const { colors } = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -28,13 +30,10 @@ export function TodayHeader({ offline, now }: { offline: boolean; now: number })
   return (
     <View style={[styles.bar, { paddingTop: insets.top + space.xs }]}>
       <View style={styles.left}>
-        <View style={styles.greetRow}>
-          <Text style={[typeScale.callout, { color: colors.textMuted }]}>{greeting(new Date(now).getHours())},</Text>
-          {offline && <Badge kind="status" status="neutral" label="oflayn" />}
-        </View>
-        <Text style={[typeScale.title1, { color: colors.text }]} numberOfLines={1} accessibilityRole="header">
+        <Text style={[typeScale.screenTitle, styles.name, { color: colors.text }]} numberOfLines={1} accessibilityRole="header">
           {name}
         </Text>
+        {offline && <Badge kind="status" status="neutral" label="oflayn" />}
       </View>
 
       <View style={styles.right}>
@@ -52,7 +51,7 @@ export function TodayHeader({ offline, now }: { offline: boolean; now: number })
           accessibilityLabel="Profil"
           style={styles.avatarTarget}
         >
-          <Avatar name={user?.first_name ?? '?'} id={user?.telegram_id} uri={user?.photo_url} size="md" level={user?.level} />
+          <Avatar name={user?.first_name ?? '?'} id={user?.telegram_id} uri={user?.photo_url} size="header" level={user?.level} />
         </Pressable>
       </View>
 
@@ -66,11 +65,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: layout.gutter,
-    paddingBottom: space.sm,
+    paddingBottom: space.xs,
     gap: space.sm,
+    minHeight: layout.minTouch,
   },
-  left: { flex: 1, minWidth: 0 },
-  greetRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  right: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
+  left: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  name: { flexShrink: 1 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: space.xxs + 2 },
   avatarTarget: { width: layout.minTouch, height: layout.minTouch, alignItems: 'flex-end', justifyContent: 'center' },
 })

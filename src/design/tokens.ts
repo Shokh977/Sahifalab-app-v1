@@ -222,6 +222,16 @@ export const weekIcon = {
   today: '#EE5A12',
 } as const
 
+/** The gold coin (header pill): gradient face, ring and mark — v2 board. */
+export const coinIcon = { face: ['#FFD66B', '#E9A21A'], ring: '#B9770E', mark: '#8A5A08' } as const
+
+/** Bugun hero: the streak flame (gradient, gold core) and the tree tile's glow. */
+export const streakFlame = { body: ['#FFB45E', '#EE5A12'], core: '#FFD66B' } as const
+export const treeGlow = {
+  light: ['#E3F5EA', '#F4FBF6'],
+  dark: ['rgba(77,191,126,0.22)', 'rgba(77,191,126,0.04)'],
+} as const
+
 /** Trophy (RivalLadder footer): gradient cup and handles. */
 export const trophy = { cup: ['#FFD66B', '#E9A21A'], handle: '#E9A21A' } as const
 

@@ -1,14 +1,15 @@
 /**
- * CoinPill — coin icon + compact tabular amount ("1.5K"). Coin colour is
- * reserved for coins (spec section 4). Pressable when onPress is given.
+ * CoinPill — the v2 header pill (Phase 7.5 C1): 36 px tall, surface with a
+ * 1 px border, the gradient gold coin and the compact amount ("1.7K") in
+ * 15/700 tabular. Pressable when onPress is given.
  */
 import React from 'react'
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
-import { Coins } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
-import { controlHeight, iconSize, iconStroke, layout, radius, space } from '../../design/spacing'
+import { controlHeight, layout, radius, space } from '../../design/spacing'
 import { tabular, type as typeScale } from '../../design/typography'
 import { formatCompact } from '../../lib/formatCompact'
+import { CoinIcon } from './CoinIcon'
 import { Pressable } from './Pressable'
 
 export interface CoinPillProps {
@@ -17,7 +18,7 @@ export interface CoinPillProps {
   style?: StyleProp<ViewStyle>
 }
 
-const HEIGHT = controlHeight.sm - space.xs
+const HEIGHT = controlHeight.sm - space.xxs
 const SLOP = (layout.minTouch - HEIGHT) / 2
 
 export function CoinPill({ amount, onPress, style }: CoinPillProps) {
@@ -25,11 +26,11 @@ export function CoinPill({ amount, onPress, style }: CoinPillProps) {
   const label = `${amount} tanga`
   const body = (
     <>
-      <Coins size={iconSize.sm - 4} color={colors.coin} strokeWidth={iconStroke} />
-      <Text style={[typeScale.callout, tabular, { color: colors.coin }]}>{formatCompact(amount)}</Text>
+      <CoinIcon />
+      <Text style={[typeScale.coin, tabular, { color: colors.text }]}>{formatCompact(amount)}</Text>
     </>
   )
-  const frame = [styles.pill, { backgroundColor: colors.surfaceRaised }, style]
+  const frame = [styles.pill, { backgroundColor: colors.surface, borderColor: colors.border }, style]
 
   if (!onPress) return <View style={frame} accessibilityLabel={label}>{body}</View>
   return (
@@ -44,8 +45,10 @@ const styles = StyleSheet.create({
     height: HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.xxs,
-    paddingHorizontal: space.sm - 2,
+    gap: space.xxs + 2,
+    paddingLeft: space.xs,
+    paddingRight: space.sm,
     borderRadius: radius.full,
+    borderWidth: 1,
   },
 })

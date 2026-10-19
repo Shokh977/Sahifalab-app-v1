@@ -24,6 +24,14 @@ export const type = {
   overline: { fontFamily: fonts.bold,      fontSize: 11, lineHeight: 14, letterSpacing: 0.9, textTransform: 'uppercase' },
   /** Tab bar labels and other tiny non-uppercase text. */
   caption:  { fontFamily: fonts.semibold,  fontSize: 11, lineHeight: 14 },
+  /** Bugun's header name (Phase 7.5 C1). */
+  screenTitle: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 34, letterSpacing: -0.5 },
+  /** The streak number on Bugun's hero. */
+  streak:   { fontFamily: fonts.extrabold, fontSize: 48, lineHeight: 50, letterSpacing: -1.5 },
+  /** Block labels ("Bugungi fokus") and links in cards. */
+  label:    { fontFamily: fonts.semibold,  fontSize: 14, lineHeight: 18 },
+  /** Coin amount in the header pill. */
+  coin:     { fontFamily: fonts.bold,      fontSize: 15, lineHeight: 20 },
   /** White on the orange accent fill: the large-text minimum (Phase 7.5 B1). */
   onAccent: { fontFamily: fonts.extrabold, fontSize: 18, lineHeight: 22 },
   /** The level number on an avatar (Phase 7.5 C1: white on accent). */
