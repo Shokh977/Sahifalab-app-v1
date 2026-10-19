@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import type { Challenge } from '../lib/api'
 import {
-  boardSections, chaseNote, endedChip, endedCompetitions, endedMeta, hoursLabel, medalTone, otherCompetitions, pickMainCompetition, playersLine, rankingRows, timeLeft,
+  boardItems, boardSections, chaseNote, myEntry, endedChip, endedCompetitions, endedMeta, hoursLabel, medalTone, otherCompetitions, pickMainCompetition, playersLine, rankingRows, timeLeft,
 } from '../src/features/bellashuv/bellashuv'
 
 const ch = (over: Partial<Challenge>): Challenge => ({
@@ -133,5 +133,36 @@ describe('chaseNote', () => {
   it('is at least 1 XP and empty without the row above', () => {
     expect(chaseNote({ rank: 5, score: 100 }, [{ rank: 4, score: 100 }])).toBe('#4 gacha 1 XP')
     expect(chaseNote({ rank: 5, score: 100 }, [])).toBeUndefined()
+  })
+})
+
+describe('boardItems (Reyting list under the podium)', () => {
+  const row = (rank: number, me = false) => ({ rank, telegram_id: rank, score: 5000 - rank * 10, is_me: me })
+  const top = (n: number) => Array.from({ length: n }, (_, i) => row(i + 1))
+  const ranks = (items: ReturnType<typeof boardItems<ReturnType<typeof row>>>) =>
+    items.map(i => (i.kind === 'gap' ? '···' : i.e.rank))
+
+  it('Doʻstlar: everyone after the podium', () => {
+    expect(ranks(boardItems(top(14), undefined, false))).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+  })
+  it('Global, you in the top 11: #4–#11 only', () => {
+    const list = top(40); list[6] = row(7, true)
+    expect(ranks(boardItems(list, undefined, true))).toEqual([4, 5, 6, 7, 8, 9, 10, 11])
+  })
+  it('Global, you further down the list: top, ···, your neighbours', () => {
+    const list = top(40); list[29] = row(30, true)
+    expect(ranks(boardItems(list, undefined, true))).toEqual([4, 5, 6, 7, 8, 9, 10, 11, '···', 29, 30, 31])
+  })
+  it('Global, you outside the list: neighbours come from around_me', () => {
+    expect(ranks(boardItems(top(20), [row(55), row(56, true), row(57)], true)))
+      .toEqual([4, 5, 6, 7, 8, 9, 10, 11, '···', 55, 56, 57])
+  })
+  it('no ··· when you are right after #11', () => {
+    const list = top(20); list[11] = row(12, true)
+    expect(ranks(boardItems(list, undefined, true))).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+  })
+  it('myEntry finds you in the list or around_me', () => {
+    expect(myEntry([row(1)], [row(9, true)])?.rank).toBe(9)
+    expect(myEntry([row(1)], undefined)).toBeNull()
   })
 })

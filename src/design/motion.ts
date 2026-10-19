@@ -52,3 +52,9 @@ export function pushAnimation(reduceMotion: boolean) {
   if (reduceMotion) return 'fade' as const
   return Platform.OS === 'android' ? 'ios_from_right' as const : 'default' as const
 }
+
+/** iOS-style sheet preset: the screen behind shrinks and rounds its corners. */
+export const sheetBehind = { scale: 0.93, radius: 22 }
+
+/** Large title: scroll distance over which it hands over to the nav-bar title. */
+export const largeTitle = { collapse: 40 }

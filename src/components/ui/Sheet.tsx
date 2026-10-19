@@ -4,14 +4,15 @@
  * closing spring; a short drag springs back. Interruptible: a drag mid-
  * animation starts from the current position.
  *
- * Not here yet: scaling the screen behind to 0.93 (needs a root-level
- * wrapper; added with the first iOS-style sheet screen).
+ * `scaleBehind` is the iOS sheet preset: the screen behind scales to 0.93
+ * with 22 px corners (SheetBehindProvider at the root), tracking the
+ * sheet's position. Not under reduce motion.
  */
 import React, { useCallback, useEffect, useState } from 'react'
 import { Modal, Pressable as RNPressable, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native'
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
 import Animated, {
-  interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming,
+  interpolate, useAnimatedReaction, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming,
 } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -19,6 +20,7 @@ import { useTheme } from '../../design/ThemeProvider'
 import { durations, easing, sheetDrag, springs } from '../../design/motion'
 import { layout, radius, space } from '../../design/spacing'
 import { type as typeScale } from '../../design/typography'
+import { useSheetBehind } from './SheetBehind'
 
 export interface SheetProps {
   visible: boolean
@@ -26,11 +28,13 @@ export interface SheetProps {
   title?: string
   children?: React.ReactNode
   style?: StyleProp<ViewStyle>
+  /** iOS sheet preset: scale the screen behind to 0.93. */
+  scaleBehind?: boolean
 }
 
 const GRABBER = { width: 36, height: 5 }
 
-export function Sheet({ visible, onClose, title, children, style }: SheetProps) {
+export function Sheet({ visible, onClose, title, children, style, scaleBehind }: SheetProps) {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const { height: screenH } = useWindowDimensions()
@@ -42,6 +46,17 @@ export function Sheet({ visible, onClose, title, children, style }: SheetProps) 
 
   const unmount = useCallback(() => setMounted(false), [])
   const offscreen = sheetH || screenH
+  const behind = useSheetBehind()
+  const shrink = !!scaleBehind && !reduceMotion && behind != null
+
+  // The screen behind follows the sheet: fully open = fully scaled.
+  useAnimatedReaction(
+    () => (shrink ? interpolate(y.get(), [0, offscreen], [1, 0], 'clamp') : 0),
+    // Only a scaleBehind sheet writes, so other (hidden) sheets never reset it.
+    p => { if (behind && shrink) behind.set(p) },
+    [shrink, offscreen],
+  )
+  useEffect(() => () => { if (shrink) behind?.set(0) }, [behind, shrink])
 
   // Open: mount first; the layout pass below measures and springs in.
   if (visible && !mounted) setMounted(true)

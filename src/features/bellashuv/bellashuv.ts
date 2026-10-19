@@ -144,3 +144,43 @@ export function chaseNote<T extends { rank: number; score: number }>(me: T, pool
   const above = pool.find(e => e.rank === me.rank - 1)
   return above ? `#${above.rank} gacha ${groupDigits(Math.max(1, above.score - me.score))} XP` : undefined
 }
+
+/** Reyting, Global: the list stops after this rank, then jumps to you. */
+export const GLOBAL_TOP = 11
+
+export type BoardItem<T> = { kind: 'row'; e: T } | { kind: 'gap' }
+
+/**
+ * The rows under the podium. Doʻstlar: everyone after #3. Global: #4 to
+ * #11; when you're further down, a "···" and then the rows just above you,
+ * yours and just below (from the list or around_me).
+ */
+export function boardItems<T extends { rank: number; telegram_id: number; is_me?: boolean }>(
+  entries: readonly T[], around: readonly T[] | undefined, global: boolean,
+): BoardItem<T>[] {
+  const sorted = [...entries].sort((a, b) => a.rank - b.rank)
+  const afterPodium = sorted.filter(e => e.rank > 3)
+  if (!global) return afterPodium.map(e => ({ kind: 'row', e }))
+
+  const top = afterPodium.filter(e => e.rank <= GLOBAL_TOP)
+  const pool = [...sorted, ...(around ?? [])]
+  const me = pool.find(e => e.is_me)
+  if (!me || me.rank <= GLOBAL_TOP) return top.map(e => ({ kind: 'row', e }))
+
+  const seen = new Set(top.map(e => e.telegram_id))
+  const near = pool
+    .filter(e => e.rank >= me.rank - 1 && e.rank <= me.rank + 1 && e.rank > GLOBAL_TOP)
+    .sort((a, b) => a.rank - b.rank)
+    .filter(e => !seen.has(e.telegram_id) && seen.add(e.telegram_id))
+  const gap = near.length > 0 && near[0].rank > GLOBAL_TOP + 1
+  return [
+    ...top.map(e => ({ kind: 'row' as const, e })),
+    ...(gap ? [{ kind: 'gap' as const }] : []),
+    ...near.map(e => ({ kind: 'row' as const, e })),
+  ]
+}
+
+/** You, from the list or around_me, for the floating bar. */
+export function myEntry<T extends { is_me?: boolean }>(entries: readonly T[], around: readonly T[] | undefined): T | null {
+  return entries.find(e => e.is_me) ?? around?.find(e => e.is_me) ?? null
+}

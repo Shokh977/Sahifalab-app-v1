@@ -166,6 +166,9 @@ export const imageScrim = ['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)'] as const
 /** Small chip behind controls over a photo (back button). */
 export const imageChip = 'rgba(0,0,0,0.38)'
 
+/** Behind a screen that shrinks under an iOS-style sheet (both themes). */
+export const behindSheet = '#000000'
+
 /** Opacity for states that dim rather than recolour. */
 export const stateOpacity = { disabled: 0.4, done: 0.55 } as const
 
