@@ -8,11 +8,15 @@
  *             extra bold only; the sub-line sits in a white pill.
  *   default — surface card.
  *   done    — surface card at full opacity with a green check badge.
+ * When "next" moves to another tile the orange layer crossfades (220 ms;
+ * instant under reduce motion).
  */
-import React from 'react'
+import React, { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated'
 import { Check, Play, type LucideIcon } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
+import { durations, easing } from '../../design/motion'
 import { iconSize, iconStroke, layout, radius, space } from '../../design/spacing'
 import { onAccentTile, type TintName } from '../../design/tokens'
 import { tabular, type as typeScale } from '../../design/typography'
@@ -44,6 +48,12 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
   const { colors, elevation, accentShadow, tint: tintOf } = useTheme()
   const next = variant === 'next'
   const t = tintOf(tint)
+  const reduceMotion = useReducedMotion()
+  const fill = useSharedValue(next ? 1 : 0)
+  useEffect(() => {
+    fill.set(reduceMotion ? (next ? 1 : 0) : withTiming(next ? 1 : 0, { duration: durations.fade, easing: easing.standard }))
+  }, [next, reduceMotion, fill])
+  const fillStyle = useAnimatedStyle(() => ({ opacity: fill.get() }))
   const a11y = `${title}: ${value}${sub ? `, ${sub}` : ''}${next ? ', keyingi' : variant === 'done' ? ', bajarildi' : ''}`
 
   return (
@@ -52,12 +62,14 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
       accessibilityLabel={a11y}
       style={[
         styles.tile,
-        next
-          ? [styles.nextTile, accentShadow]
-          : [{ backgroundColor: colors.surface, borderColor: colors.border }, elevation],
+        { backgroundColor: colors.surface, borderColor: next ? 'transparent' : colors.border },
+        next ? accentShadow : elevation,
       ]}
     >
-      {next && <AccentFill radius={TILE_RADIUS} />}
+      {/* Over the 1 px border too, so the orange reaches the edge. */}
+      <Animated.View style={[styles.fill, fillStyle]} pointerEvents="none">
+        <AccentFill radius={TILE_RADIUS} />
+      </Animated.View>
 
       <View style={styles.top}>
         <View style={[styles.iconTile, { backgroundColor: next ? onAccentTile : t.soft }]}>
@@ -90,7 +102,7 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
             <ProgressBar value={progress} color={t.ink} accessibilityLabel={title} style={styles.bar} />
           ) : sub ? (
             next ? (
-              <View style={[styles.pill, styles.subPill, { backgroundColor: colors.onAccent }]}>
+              <View style={[styles.pill, styles.subPill, styles.pillClear, { backgroundColor: colors.onAccent }]}>
                 <Text style={[typeScale.callout, tabular, { color: colors.accentText }]} numberOfLines={1}>{sub}</Text>
               </View>
             ) : (
@@ -99,6 +111,7 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
           ) : null}
         </View>
         {next && (
+          // Bottom-right corner, so the title can use the full width.
           <View style={[styles.play, { backgroundColor: colors.onAccent }]}>
             <Play size={iconSize.sm - 4} color={colors.accent} fill={colors.accent} strokeWidth={iconStroke} />
           </View>
@@ -117,16 +130,17 @@ const styles = StyleSheet.create({
     gap: space.sm - 2,
     justifyContent: 'space-between',
   },
-  nextTile: { borderColor: 'transparent' },
+  fill: { position: 'absolute', top: -1, left: -1, right: -1, bottom: -1 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: ICON_TILE },
   iconTile: { width: ICON_TILE, height: ICON_TILE, borderRadius: radius.sm + 2, alignItems: 'center', justifyContent: 'center' },
   pill: { borderRadius: radius.full, paddingHorizontal: space.xs, paddingVertical: space.xxs, alignSelf: 'flex-start' },
   subPill: { marginTop: space.xxs },
+  pillClear: { maxWidth: '75%' },
   check: { width: CHECK, height: CHECK, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   bottom: { flexDirection: 'row', alignItems: 'flex-end', gap: space.xs },
   flex: { flex: 1, gap: 2 },
   bar: { marginTop: space.xs },
-  play: { width: PLAY, height: PLAY, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+  play: { position: 'absolute', right: 0, bottom: 0, width: PLAY, height: PLAY, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
 })
 
 /** Grid gap for the 2×2 plan. */

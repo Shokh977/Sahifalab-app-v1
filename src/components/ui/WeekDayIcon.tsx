@@ -9,6 +9,7 @@
  * Gradient ids are unique per instance (useId) so lists never mix them up.
  */
 import React, { useId } from 'react'
+import { View } from 'react-native'
 import Svg, { Defs, Ellipse, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 import { useTheme } from '../../design/ThemeProvider'
 import { weekIcon } from '../../design/tokens'
@@ -52,7 +53,8 @@ export function WeekDayIcon({ state, day, size = WEEK_ICON_SIZE }: {
   const label = `${day}: ${STATE_LABEL[state]}`
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 64 64" accessible accessibilityRole="image" accessibilityLabel={label}>
+    <View accessible accessibilityRole="image" accessibilityLabel={label}>
+    <Svg width={size} height={size} viewBox="0 0 64 64">
       {state === 'done' && (
         <>
           <Defs>
@@ -116,5 +118,6 @@ export function WeekDayIcon({ state, day, size = WEEK_ICON_SIZE }: {
         <Rect x="6" y="5" width="52" height="52" rx="17" fill="none" stroke={colors.border} strokeWidth={2.4} />
       )}
     </Svg>
+    </View>
   )
 }

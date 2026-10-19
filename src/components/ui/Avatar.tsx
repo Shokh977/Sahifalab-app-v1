@@ -78,6 +78,8 @@ const styles = StyleSheet.create({
     right: -space.xxs,
     bottom: -space.xxs,
     minWidth: space.lg,
+    minHeight: space.lg,
+    justifyContent: 'center',
     paddingHorizontal: space.xxs,
     borderRadius: radius.full,
     borderWidth: RING,

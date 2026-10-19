@@ -1,6 +1,8 @@
 /**
- * Bugun (Home) — redesign Phase 2. One obvious action (getPrimaryAction),
- * today's plan, the weekly rank teaser and one extra slot.
+ * Bugun (Home) — redesign Phase 2, rebuilt in Phase 7.5 C to the v2 board:
+ * the header row, the streak hero, today's plan as a 2×2 grid whose
+ * "KEYINGI" tile is the one obvious action (getPrimaryAction), the weekly
+ * rival ladder and one extra slot.
  *
  * Loading: the persisted dashboard cache renders first and refreshes in the
  * background; skeletons only when there is no cache at all.
@@ -22,12 +24,13 @@ import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
 import { Card, EmptyState, SkeletonRow } from '../../src/components/ui'
 import { getPrimaryAction } from '../../src/features/today/primaryAction'
-import { localDateKey, pickCurrentCourse, rankGap, type PlanRowKey } from '../../src/features/today/today'
+import { localDateKey, nextTileKey, pickCurrentCourse, type PlanKey } from '../../src/features/today/today'
+import { estMinutes } from '../../src/features/flashcards/queueMath'
 import { useMinuteClock } from '../../src/features/today/useMinuteClock'
 import { TodayHeader } from '../../src/features/today/TodayHeader'
 import { TodayHero } from '../../src/features/today/TodayHero'
 import { TodayPlan } from '../../src/features/today/TodayPlan'
-import { RankTeaser } from '../../src/features/today/RankTeaser'
+import { WeeklyRivalCard } from '../../src/features/today/WeeklyRivalCard'
 import { ExtraSlot } from '../../src/features/today/ExtraSlot'
 import { AnnouncementCard } from '../../src/features/today/AnnouncementCard'
 
@@ -134,7 +137,9 @@ export default function HomeTab() {
     ? Math.max(0, quiz.seconds_remaining - Math.floor((now - (data.quizFetchedAt ?? now)) / 1000))
     : 0
   const current = pickCurrentCourse(data.enrolled)
-  const currentCourse = current?.courses ? { id: current.course_id, title: current.courses.title, progress: current.progress } : null
+  const currentCourse = current?.courses
+    ? { id: current.course_id, title: current.courses.title, progress: current.progress, totalLessons: current.courses.total_lessons ?? 0 }
+    : null
   const topDeck = data.topDueDeck ?? null
   const fresh = localDateKey(new Date(data.fetchedAt)) === localDateKey(new Date(now))
 
@@ -160,9 +165,11 @@ export default function HomeTab() {
   }
   const openCourse = (id: number) => router.push(`/(screens)/course/${id}` as any)
 
-  // Preset the timer to what's left of the goal (only when idle).
-  const openFocus = () => {
-    useTimerStore.getState().selectMinutes(Math.max(MIN_FOCUS_PRESET, Math.max(0, goalMinutes - todayMinutes) || goalMinutes))
+  // Preset the timer (only when idle): what's left of the goal, or the
+  // minutes the ranking footer asks for.
+  const openFocus = (minutes?: number) => {
+    const preset = minutes ?? (Math.max(0, goalMinutes - todayMinutes) || goalMinutes)
+    useTimerStore.getState().selectMinutes(Math.max(MIN_FOCUS_PRESET, preset))
     router.push('/(tabs)/study' as any)
   }
 
@@ -177,7 +184,8 @@ export default function HomeTab() {
     }
   }
 
-  function onPlanRow(key: PlanRowKey) {
+  function onPlanTile(key: PlanKey, isNext: boolean) {
+    if (isNext) { onPrimary(); return }
     if (key === 'focus') openFocus()
     else if (key === 'quiz') openQuiz()
     else if (key === 'cards') openReview()
@@ -206,8 +214,7 @@ export default function HomeTab() {
           todayMinutes={todayMinutes}
           goalMinutes={goalMinutes}
           weekCalendar={data.weekCalendar}
-          action={action}
-          onAction={onPrimary}
+          hint={action.target === 'focus' ? { text: action.caption, tone: action.tone } : undefined}
           onTreePress={() => router.push('/(screens)/streak-detail' as any)}
           fresh={fresh}
         />
@@ -215,16 +222,26 @@ export default function HomeTab() {
         <TodayPlan
           input={{
             focus: { minutes: todayMinutes, goal: goalMinutes },
-            quiz: quiz ? { number: quiz.quiz_number, state: quiz.state, correct: quiz.correct_count, secondsLeft: quizSecondsLeft, answered: quiz.answered_count ?? 0 } : null,
-            dueCards: data.hasDecks === undefined ? null : data.hasDecks ? data.flashcardDueCount : null,
+            quiz: quiz ? {
+              number: quiz.quiz_number, state: quiz.state, correct: quiz.correct_count,
+              secondsLeft: quizSecondsLeft, answered: quiz.answered_count ?? 0, rank: quiz.my_rank ?? null,
+            } : null,
+            cards: data.hasDecks ? { total: data.flashcardDueCount, estMinutes: estMinutes(data.flashcardDueCount) } : null,
             course: currentCourse,
           }}
-          onOpen={onPlanRow}
+          next={nextTileKey(action.target)}
+          onOpen={onPlanTile}
         />
 
-        <RankTeaser
-          gap={rankGap(data.leaderboard, data.myLeaderRank)}
-          onPress={() => router.push('/(tabs)/musobaqalar' as any)}
+        <WeeklyRivalCard
+          entries={data.leaderboard}
+          around={data.leaderAround}
+          myRank={data.myLeaderRank}
+          total={data.leaderTotal}
+          todayMinutes={todayMinutes}
+          now={now}
+          onAll={() => router.push('/(tabs)/musobaqalar' as any)}
+          onFocus={openFocus}
         />
 
         <ExtraSlot
@@ -267,6 +284,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.gutter,
     paddingTop: space.xs,
     paddingBottom: space.xxl,
-    gap: layout.sectionGap,
+    gap: space.lg,
   },
 })

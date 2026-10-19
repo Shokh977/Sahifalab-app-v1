@@ -57,13 +57,13 @@ export const iconStroke = 1.8
 export const controlHeight = { sm: 40, md: 48, lg: 54 } as const
 
 /** Avatar diameters used by the kit. */
-export const avatarSize = { sm: 32, row: 36, md: 40, lg: 56, podium: 68, xl: 80 } as const
+export const avatarSize = { sm: 32, row: 36, md: 40, header: 44, lg: 56, podium: 68, xl: 80 } as const
 
 /** Leading tile in ListRow (icon tile / thumbnail). */
 export const tileSize = 40
 
 /** ProgressBar / ProgressRing stroke. */
-export const progressThickness = { thin: 4, thick: 8 } as const
+export const progressThickness = { thin: 4, thick: 8, hero: 10 } as const
 
 /** TextArea minimum height. */
 export const textAreaMinHeight = 112

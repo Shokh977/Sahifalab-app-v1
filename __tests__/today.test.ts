@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import {
-  buildPlanRows, greeting, isMonday, localDateKey, pickCurrentCourse, quizClosesIn,
+  isMonday, localDateKey, nextTileKey, pickCurrentCourse, planTiles, quizClosesIn,
   rankGap, uzText, weekdayOf,
 } from '../src/features/today/today'
 
@@ -10,12 +10,6 @@ describe('uzText', () => {
     expect(uzText('Ko‘proq so’m')).toBe('Koʻproq soʻm')
     expect(uzText('ta’lim')).toBe('ta’lim')
   })
-})
-
-describe('greeting', () => {
-  it.each([[5, 'Xayrli tong'], [10, 'Xayrli tong'], [11, 'Xayrli kun'], [16, 'Xayrli kun'], [17, 'Xayrli kech'], [2, 'Xayrli kech']])(
-    '%i:00 → %s', (h, g) => expect(greeting(h)).toBe(g),
-  )
 })
 
 describe('small helpers', () => {
@@ -51,35 +45,55 @@ describe('rankGap', () => {
   })
 })
 
-describe('buildPlanRows', () => {
-  const focus = { minutes: 5, goal: 20 }
-  it('always has Fokus first, moves done rows to the bottom and counts them all', () => {
-    const { rows, done, total } = buildPlanRows({
-      focus,
-      quiz: { number: 67, state: 'submitted', correct: 4, secondsLeft: 100 },
-      dueCards: 12,
-      course: { id: 3, title: "Ingliz tili o'rganish", progress: 0.4 },
-    })
-    expect(rows.map(r => r.key)).toEqual(['focus', 'cards', 'course', 'quiz'])
-    expect(rows[0]).toEqual({ key: 'focus', title: 'Fokus', subtitle: '5 / 20 daq', done: false })
-    expect(rows[1]).toEqual({ key: 'cards', title: 'Kartalar', subtitle: '12 ta · ~2 daq', done: false })
-    expect(rows[2].title).toBe('Ingliz tili oʻrganish')
-    expect(rows[2].subtitle).toBe('40% bajarildi')
-    expect(rows[3].subtitle).toBe('4/5 · bajarildi')
-    expect({ done, total }).toEqual({ done: 1, total: 4 })
+describe('planTiles', () => {
+  const focus = { minutes: 12, goal: 20 }
+  const quiz = { number: 67, state: 'not_started' as const, correct: null, secondsLeft: 3700 }
+  const cards = { total: 48, estMinutes: 6 }
+  const course = { id: 3, title: "Ingliz tili o'rganish", progress: 0.3, totalLessons: 10 }
+
+  it('builds the four tiles with values and sub-lines', () => {
+    const { tiles, done, total } = planTiles({ focus, quiz, cards, course }, null)
+    const by = Object.fromEntries(tiles.map(t => [t.key, t]))
+    expect(by.focus).toMatchObject({ value: '12 daq', title: 'Fokus', sub: 'Maqsad 20 daq', done: false })
+    expect(by.quiz).toMatchObject({ value: 'Oʻynash', title: '5 Savol #67', sub: 'Yopilishiga 1 s 1 d', done: false })
+    expect(by.cards).toMatchObject({ value: '48 ta', title: 'Kartalar', sub: '~6 daqiqa', done: false })
+    expect(by.course).toMatchObject({ value: '4-dars', title: 'Ingliz tili oʻrganish', progress: 0.3, status: '30%', done: false })
+    expect({ done, total }).toEqual({ done: 0, total: 4 })
   })
-  it('marks Fokus done once the goal is met', () => {
-    const r = buildPlanRows({ focus: { minutes: 180, goal: 10 }, quiz: null, dueCards: null, course: null })
-    expect(r.rows).toEqual([{ key: 'focus', title: 'Fokus', subtitle: '180 daq · maqsad bajarildi', done: true }])
-    expect({ done: r.done, total: r.total }).toEqual({ done: 1, total: 1 })
+
+  it('puts the next tile first, then unfinished, then done', () => {
+    const r = planTiles({
+      focus: { minutes: 180, goal: 10 },
+      quiz: { ...quiz, state: 'submitted', correct: 5, rank: 10 },
+      cards, course,
+    }, 'cards')
+    expect(r.tiles.map(t => [t.key, t.next, t.done])).toEqual([
+      ['cards', true, false], ['course', false, false], ['focus', false, true], ['quiz', false, true],
+    ])
+    expect(r.tiles.find(t => t.key === 'quiz')).toMatchObject({ value: '5/5', sub: '#10-oʻrin bugun' })
+    expect(r.tiles.find(t => t.key === 'focus')).toMatchObject({ value: '180 daq', sub: 'Maqsad 10 daq' })
+    expect(r.done).toBe(2)
   })
-  it('hides rows without data and marks 0 due as done', () => {
-    const r = buildPlanRows({ focus, quiz: { number: 2, state: 'not_started', correct: null, secondsLeft: 3700 }, dueCards: 0, course: null })
-    expect(r.rows.map(x => [x.key, x.done])).toEqual([['focus', false], ['quiz', false], ['cards', true]])
-    expect(r.rows[1].subtitle).toBe('Yopilishiga 1 s 1 d')
-    expect(buildPlanRows({ focus, quiz: null, dueCards: null, course: null }).total).toBe(1)
-    const resumed = buildPlanRows({ focus, quiz: { number: 2, state: 'in_progress', correct: null, secondsLeft: 600, answered: 3 }, dueCards: null, course: null })
-    expect(resumed.rows[1].subtitle).toBe('Davom etish · 3/5 · Yopilishiga 0 s 10 d')
+
+  it('never marks a done tile as next, and hides tiles without data', () => {
+    const r = planTiles({ focus: { minutes: 30, goal: 20 }, quiz: null, cards: null, course: null }, 'focus')
+    expect(r.tiles).toHaveLength(1)
+    expect(r.tiles[0]).toMatchObject({ key: 'focus', next: false, done: true })
+  })
+
+  it('shows quiz progress and falls back when the rank is unknown', () => {
+    const inProgress = planTiles({ focus, quiz: { ...quiz, state: 'in_progress', answered: 3 }, cards: null, course: null }, 'quiz')
+    expect(inProgress.tiles[0]).toMatchObject({ key: 'quiz', value: '3/5', next: true, sub: '1 s 1 d qoldi' })
+    const noRank = planTiles({ focus, quiz: { ...quiz, state: 'submitted', correct: 4 }, cards: null, course: null }, null)
+    expect(noRank.tiles.find(t => t.key === 'quiz')?.sub).toBe('Bajarildi')
+    const empty = planTiles({ focus, quiz: null, cards: { total: 0, estMinutes: 0 }, course: null }, null)
+    expect(empty.tiles.find(t => t.key === 'cards')).toMatchObject({ done: true, sub: 'Bugun takrorlash yoʻq' })
+  })
+
+  it('maps the primary action to a tile', () => {
+    expect(nextTileKey('review')).toBe('cards')
+    expect(nextTileKey('focus')).toBe('focus')
+    expect(nextTileKey('none')).toBeNull()
   })
 })
 

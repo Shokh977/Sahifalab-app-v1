@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { MINUTE_MS } from './today'
 
 /** Date.now(), re-read on each minute boundary (a timeout, not an
- *  interval) — drives the greeting, the quiz countdown and day changes. */
+ *  interval) — drives the quiz countdown and day changes. */
 export function useMinuteClock(): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
