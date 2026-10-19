@@ -94,6 +94,9 @@ export const palette = {
 
 /** Accent surfaces (buttons, the "next" tile): a top → bottom gradient. */
 export const accentFill = ['#F7782C', '#E2560E'] as const
+/** A deeper accent surface for small white text (the KEYINGI plan tile):
+ *  white is at least 4.5:1 over both stops (Phase 8). */
+export const accentFillDeep = ['#D04A0A', '#B53B0A'] as const
 /** Progress fills: left → right. */
 export const progressFill = ['#FFB45E', '#EE5A12'] as const
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { accentFill, avatarColors, backgroundTokens, onAvatar, palette, textTokens, tintOf, type TintName } from '../src/design/tokens'
+import { accentFill, accentFillDeep, avatarColors, backgroundTokens, onAvatar, palette, textTokens, tintOf, type TintName } from '../src/design/tokens'
 import { contrastRatio, meetsAA } from '../src/design/contrast'
 
 /** Midpoint of two #RRGGBB colours (the gradient's centre). */
@@ -36,6 +36,11 @@ describe.each(['dark', 'light'] as const)('%s palette', scheme => {
     expect(contrastRatio(p.onAccent, mix(accentFill[0], accentFill[1]))).toBeGreaterThanOrEqual(3)
     expect(contrastRatio(p.onAccent, accentFill[1])).toBeGreaterThanOrEqual(3)
     expect(contrastRatio(p.onAccent, p.accent)).toBeGreaterThanOrEqual(3)
+  })
+
+  // Phase 8: the deep fill carries small white text (the KEYINGI tile).
+  it('white on the deep accent gradient is at least 4.5:1 everywhere', () => {
+    for (const stop of accentFillDeep) expect(contrastRatio(p.onAccent, stop)).toBeGreaterThanOrEqual(4.5)
   })
 })
 

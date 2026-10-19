@@ -184,3 +184,10 @@ export function boardItems<T extends { rank: number; telegram_id: number; is_me?
 export function myEntry<T extends { is_me?: boolean }>(entries: readonly T[], around: readonly T[] | undefined): T | null {
   return entries.find(e => e.is_me) ?? around?.find(e => e.is_me) ?? null
 }
+
+/** Bugun's competition tile: the one you joined that's running (featured first, then ending soonest). */
+export function runningCompetition(mine: readonly Challenge[]): Challenge | null {
+  const live = mine.filter(c => isLive(c) && c.joined !== false && !isFinishedForMe(c))
+  live.sort((a, b) => Number(b.is_featured) - Number(a.is_featured) || Date.parse(a.ends_at) - Date.parse(b.ends_at))
+  return live[0] ?? null
+}

@@ -1,13 +1,14 @@
 /**
- * PlanTile (Phase 7.5 B5, used by C3) — one item of "Bugungi reja" in the
- * 2×2 grid: a tinted 40 px icon tile and a status on top, a big value
- * ("48 ta", "180 daq", "5/5", "3-dars"), then a title and a sub-line or a
- * thin bar.
- *   next    — the one action: orange gradient, accent shadow, a white
- *             "KEYINGI" pill and a white play circle. White text is 18 px+
- *             extra bold only; the sub-line sits in a white pill.
+ * PlanTile (Phase 7.5 B5, reworked in Phase 8) — one item of "Bugungi
+ * reja". Every variant has the same layout and height, so the grid is
+ * even: a 32 px tinted icon and a status on top, a 24 px value ("48 ta",
+ * "180 daq", "5/5", "#14"), a 14 px title, and a 12 px sub-line (or a thin
+ * bar) on one row with the play button.
+ *   next    — the one action: the deep orange gradient (white text passes
+ *             AA at any size there), a white "KEYINGI" pill and a white
+ *             play circle beside the sub-line.
  *   default — surface card.
- *   done    — surface card at full opacity with a green check badge.
+ *   done    — surface card with a green check badge.
  * When "next" moves to another tile the orange layer crossfades (220 ms;
  * instant under reduce motion).
  */
@@ -19,16 +20,16 @@ import { useTheme } from '../../design/ThemeProvider'
 import { durations, easing } from '../../design/motion'
 import { iconSize, iconStroke, radius, space } from '../../design/spacing'
 import { onAccentTile, type TintName } from '../../design/tokens'
-import { tabular, type as typeScale } from '../../design/typography'
+import { fonts, tabular, type as typeScale } from '../../design/typography'
 import { AccentFill, Pressable, ProgressBar } from '../../components/ui'
 
 export type PlanTileVariant = 'next' | 'default' | 'done'
 
-export const PLAN_TILE_MIN_HEIGHT = 150
-const TILE_RADIUS = 24
-const ICON_TILE = 40
-const CHECK = 26
-const PLAY = 34
+export const PLAN_TILE_MIN_HEIGHT = 140
+const TILE_RADIUS = 22
+const ICON_TILE = 32
+const CHECK = 22
+const PLAY = 28
 
 export interface PlanTileProps {
   variant: PlanTileVariant
@@ -39,7 +40,7 @@ export interface PlanTileProps {
   sub?: string
   /** 0–1: a thin bar instead of the sub-line (the course tile). */
   progress?: number
-  /** Top-right on a default tile: "30%", a chip… */
+  /** Top-right on a default tile: "30%", "Yangi"… */
   status?: React.ReactNode
   onPress?: () => void
 }
@@ -55,6 +56,8 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
   }, [next, reduceMotion, fill])
   const fillStyle = useAnimatedStyle(() => ({ opacity: fill.get() }))
   const a11y = `${title}: ${value}${sub ? `, ${sub}` : ''}${next ? ', keyingi' : variant === 'done' ? ', bajarildi' : ''}`
+  const ink = next ? colors.onAccent : colors.text
+  const muted = next ? colors.onAccent : colors.textMuted
 
   return (
     <Pressable
@@ -68,12 +71,12 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
     >
       {/* Over the 1 px border too, so the orange reaches the edge. */}
       <Animated.View style={[styles.fill, fillStyle]} pointerEvents="none">
-        <AccentFill radius={TILE_RADIUS} />
+        <AccentFill radius={TILE_RADIUS} deep />
       </Animated.View>
 
       <View style={styles.top}>
         <View style={[styles.iconTile, { backgroundColor: next ? onAccentTile : t.soft }]}>
-          <Icon size={iconSize.sm + 2} color={next ? colors.onAccent : t.ink} strokeWidth={iconStroke + 0.1} />
+          <Icon size={iconSize.sm - 2} color={next ? colors.onAccent : t.ink} strokeWidth={iconStroke + 0.1} />
         </View>
         {next ? (
           <View style={[styles.pill, { backgroundColor: colors.onAccent }]}>
@@ -81,39 +84,29 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
           </View>
         ) : variant === 'done' ? (
           <View style={[styles.check, { backgroundColor: colors.green }]}>
-            <Check size={iconSize.sm - 6} color={colors.onAccent} strokeWidth={3.2} />
+            <Check size={iconSize.sm - 8} color={colors.onAccent} strokeWidth={3.2} />
           </View>
         ) : status}
       </View>
 
-      <Text style={[typeScale.tileValue, tabular, { color: next ? colors.onAccent : colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} maxFontSizeMultiplier={1.15}>
-        {value}
-      </Text>
+      <View style={styles.text}>
+        <Text style={[typeScale.statValue, tabular, { color: ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={1.15}>
+          {value}
+        </Text>
+        <Text style={[typeScale.label, styles.bold, { color: ink }]} numberOfLines={1}>{title}</Text>
+      </View>
 
       <View style={styles.bottom}>
-        <View style={styles.flex}>
-          <Text
-            style={[next ? typeScale.onAccent : typeScale.tileTitle, { color: next ? colors.onAccent : colors.text }]}
-            numberOfLines={1}
-          >
-            {title}
+        {progress != null ? (
+          <ProgressBar value={progress} color={t.ink} accessibilityLabel={title} style={styles.flex} />
+        ) : (
+          <Text style={[typeScale.small, styles.flex, { color: muted }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+            {sub ?? ''}
           </Text>
-          {progress != null ? (
-            <ProgressBar value={progress} color={t.ink} accessibilityLabel={title} style={styles.bar} />
-          ) : sub ? (
-            next ? (
-              <View style={[styles.pill, styles.subPill, styles.pillClear, { backgroundColor: colors.onAccent }]}>
-                <Text style={[typeScale.callout, tabular, { color: colors.accentText }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{sub}</Text>
-              </View>
-            ) : (
-              <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>{sub}</Text>
-            )
-          ) : null}
-        </View>
+        )}
         {next && (
-          // Bottom-right corner, so the title can use the full width.
           <View style={[styles.play, { backgroundColor: colors.onAccent }]}>
-            <Play size={iconSize.sm - 4} color={colors.accent} fill={colors.accent} strokeWidth={iconStroke} />
+            <Play size={iconSize.sm - 8} color={colors.accent} fill={colors.accent} strokeWidth={iconStroke} />
           </View>
         )}
       </View>
@@ -126,19 +119,20 @@ const styles = StyleSheet.create({
     minHeight: PLAN_TILE_MIN_HEIGHT,
     borderRadius: TILE_RADIUS,
     borderWidth: 1,
-    padding: space.md,
-    gap: space.sm - 2,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md - 2,
+    gap: space.sm,
     justifyContent: 'space-between',
   },
   fill: { position: 'absolute', top: -1, left: -1, right: -1, bottom: -1 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: ICON_TILE },
-  iconTile: { width: ICON_TILE, height: ICON_TILE, borderRadius: radius.sm + 2, alignItems: 'center', justifyContent: 'center' },
-  pill: { borderRadius: radius.full, paddingHorizontal: space.xs, paddingVertical: space.xxs, alignSelf: 'flex-start' },
-  subPill: { marginTop: space.xxs },
-  pillClear: { maxWidth: '75%' },
+  iconTile: { width: ICON_TILE, height: ICON_TILE, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  pill: { borderRadius: radius.full, paddingHorizontal: space.xs, paddingVertical: space.xxs / 2 },
   check: { width: CHECK, height: CHECK, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  bottom: { flexDirection: 'row', alignItems: 'flex-end', gap: space.xs },
-  flex: { flex: 1, gap: 2 },
-  bar: { marginTop: space.xs },
-  play: { position: 'absolute', right: 0, bottom: 0, width: PLAY, height: PLAY, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+  text: { gap: space.xxs / 2 },
+  bold: { fontFamily: fonts.bold },
+  // Same height on every tile (the play circle's), so sub-lines and bars line up across the grid.
+  bottom: { flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: PLAY },
+  flex: { flex: 1, minWidth: 0 },
+  play: { width: PLAY, height: PLAY, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
 })

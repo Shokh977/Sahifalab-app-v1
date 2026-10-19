@@ -1,46 +1,30 @@
 /**
- * The one extra slot on Bugun: the weekly review on Mondays; otherwise,
- * for a user with no enrolment, one recommended course (a card row with a
- * 16:9 thumbnail, Phase 7.5 C5); otherwise nothing.
+ * The one extra slot on Bugun: for a user with no enrolment, one
+ * recommended course (a card row with a 16:9 thumbnail, Phase 7.5 C5);
+ * otherwise nothing. (Haftalik sharh is a plan tile since Phase 8.)
  */
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
-import { BookOpen, ChevronRight, NotebookPen } from 'lucide-react-native'
+import { BookOpen, ChevronRight } from 'lucide-react-native'
 import type { Course } from '../../../lib/api'
 import { useTheme } from '../../design/ThemeProvider'
 import { iconSize, iconStroke, radius, space } from '../../design/spacing'
 import { type as typeScale } from '../../design/typography'
-import { Card, ListRow, SectionTitle } from '../../components/ui'
+import { Card, SectionTitle } from '../../components/ui'
 import { courseMeta } from '../courses/courses'
-import { isMonday, uzText } from './today'
+import { uzText } from './today'
 
 const THUMB_W = 96
 
 export interface ExtraSlotProps {
-  now: number
   hasEnrolment: boolean
   recommended: Course | null
-  onWeeklyReview: () => void
   onCourse: (id: number) => void
 }
 
-export function ExtraSlot({ now, hasEnrolment, recommended, onWeeklyReview, onCourse }: ExtraSlotProps) {
+export function ExtraSlot({ hasEnrolment, recommended, onCourse }: ExtraSlotProps) {
   const { colors } = useTheme()
-
-  if (isMonday(new Date(now))) {
-    return (
-      <Card style={styles.card}>
-        <ListRow
-          title="Haftalik sharh"
-          subtitle="Oʻtgan hafta tahlili tayyor"
-          leading={{ kind: 'icon', icon: NotebookPen }}
-          trailing={{ kind: 'chevron' }}
-          onPress={onWeeklyReview}
-        />
-      </Card>
-    )
-  }
 
   if (!hasEnrolment && recommended) {
     const teacher = recommended.teacher?.first_name
@@ -74,7 +58,6 @@ export function ExtraSlot({ now, hasEnrolment, recommended, onWeeklyReview, onCo
 
 const styles = StyleSheet.create({
   section: { gap: space.sm },
-  card: { paddingVertical: space.xxs },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   thumb: { width: THUMB_W, aspectRatio: 16 / 9, borderRadius: radius.sm, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1, gap: 2 },

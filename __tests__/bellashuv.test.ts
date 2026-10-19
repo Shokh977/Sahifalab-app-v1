@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import type { Challenge } from '../lib/api'
 import {
-  boardItems, boardSections, chaseNote, myEntry, endedChip, endedCompetitions, endedMeta, hoursLabel, medalTone, otherCompetitions, pickMainCompetition, playersLine, rankingRows, timeLeft,
+  boardItems, runningCompetition, boardSections, chaseNote, myEntry, endedChip, endedCompetitions, endedMeta, hoursLabel, medalTone, otherCompetitions, pickMainCompetition, playersLine, rankingRows, timeLeft,
 } from '../src/features/bellashuv/bellashuv'
 
 const ch = (over: Partial<Challenge>): Challenge => ({
@@ -164,5 +164,19 @@ describe('boardItems (Reyting list under the podium)', () => {
   it('myEntry finds you in the list or around_me', () => {
     expect(myEntry([row(1)], [row(9, true)])?.rank).toBe(9)
     expect(myEntry([row(1)], undefined)).toBeNull()
+  })
+})
+
+describe('runningCompetition (Bugun tile)', () => {
+  const c = (over: Partial<Challenge>): Challenge => ({ id: 'x', status: 'active', joined: true, completed_at: null, is_winner: false, failed_at: null, is_featured: false, ends_at: '2026-11-01T00:00:00Z', ...over } as Challenge)
+  it('picks a running one you joined, featured first, then ending soonest', () => {
+    const a = c({ id: 'a', ends_at: '2026-11-05T00:00:00Z' })
+    const b = c({ id: 'b', ends_at: '2026-11-02T00:00:00Z' })
+    const f = c({ id: 'f', is_featured: true, ends_at: '2026-11-09T00:00:00Z' })
+    expect(runningCompetition([a, b])?.id).toBe('b')
+    expect(runningCompetition([a, b, f])?.id).toBe('f')
+  })
+  it('skips upcoming, ended and finished-for-you ones', () => {
+    expect(runningCompetition([c({ status: 'upcoming' }), c({ status: 'ended' }), c({ completed_at: '2026-10-10' })])).toBeNull()
   })
 })

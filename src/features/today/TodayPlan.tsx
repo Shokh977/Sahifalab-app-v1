@@ -1,7 +1,8 @@
 /**
  * "Bugungi reja" (Phase 7.5 C3): a 2×2 grid of PlanTiles — Fokus, 5 Savol,
  * Kartalar, the current course — with the one "KEYINGI" tile first (the
- * primary action), then unfinished tiles, then done ones. A mini progress
+ * primary action), then unfinished tiles, your running competition and
+ * Haftalik sharh (Phase 8), then done ones. A mini progress
  * (one segment per item) and "2 / 4" sit by the title. When a tile becomes
  * done it glides to its new place (LinearTransition, springs.ui); reduce
  * motion: no movement.
@@ -9,7 +10,7 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, { LinearTransition, useReducedMotion } from 'react-native-reanimated'
-import { CircleHelp, GraduationCap, Layers, Timer, type LucideIcon } from 'lucide-react-native'
+import { CircleHelp, GraduationCap, Layers, NotebookPen, Timer, Trophy, type LucideIcon } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
 import { springs } from '../../design/motion'
 import { layout, radius, space } from '../../design/spacing'
@@ -19,8 +20,12 @@ import { SectionTitle } from '../../components/ui'
 import { PlanTile } from './PlanTile'
 import { planTiles, type PlanInput, type PlanKey } from './today'
 
-const ICONS: Record<PlanKey, LucideIcon> = { focus: Timer, quiz: CircleHelp, cards: Layers, course: GraduationCap }
-const TINTS: Record<PlanKey, TintName> = { focus: 'orange', quiz: 'blue', cards: 'orange', course: 'violet' }
+const ICONS: Record<PlanKey, LucideIcon> = {
+  focus: Timer, quiz: CircleHelp, cards: Layers, course: GraduationCap, competition: Trophy, review: NotebookPen,
+}
+const TINTS: Record<PlanKey, TintName> = {
+  focus: 'orange', quiz: 'blue', cards: 'orange', course: 'violet', competition: 'gold', review: 'teal',
+}
 const SEGMENT = { width: 14, height: 6 }
 
 const layoutTransition = LinearTransition.springify().duration(springs.ui.duration).dampingRatio(springs.ui.dampingRatio)

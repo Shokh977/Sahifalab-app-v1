@@ -84,9 +84,14 @@ export interface PlanInput {
   /** Today's review queue; null = no decks, so no tile. */
   cards: { total: number; estMinutes: number } | null
   course: { id: number; title: string; progress: number; totalLessons: number } | null
+  /** The competition you joined, while it runs (Phase 8): rank and time left. */
+  competition?: { title: string; rank: number | null; participants: number; left: string } | null
+  /** Haftalik sharh is always a tile (Phase 8); `isNew` on Mondays. */
+  review?: { isNew: boolean } | null
 }
 
-export type PlanKey = 'focus' | 'quiz' | 'cards' | 'course'
+/** Daily tasks (counted in "2 / 4") and the two info tiles that aren't. */
+export type PlanKey = 'focus' | 'quiz' | 'cards' | 'course' | 'competition' | 'review'
 /** Kept for callers that still name rows. */
 export type PlanRowKey = PlanKey
 
@@ -110,7 +115,9 @@ export function nextTileKey(target: 'focus' | 'quiz' | 'review' | 'course' | 'no
 
 /**
  * The plan's tiles: Fokus, 5 Savol, Kartalar (with decks), the course (when
- * enrolled). Order: the "next" tile, the other unfinished ones, then done.
+ * enrolled), then your running competition and Haftalik sharh. Order: the
+ * "next" tile, the other unfinished tasks, the two info tiles, then done
+ * tasks. "2 / 4" counts the tasks only.
  */
 export function planTiles(input: PlanInput, next: PlanKey | null): { tiles: PlanTileData[]; done: number; total: number } {
   const tiles: PlanTileData[] = []
@@ -169,6 +176,32 @@ export function planTiles(input: PlanInput, next: PlanKey | null): { tiles: Plan
     })
   }
 
+  // Not daily tasks: shown after the unfinished ones, never "done".
+  const info: PlanTileData[] = []
+  if (input.competition) {
+    const c = input.competition
+    info.push({
+      key: 'competition',
+      value: c.rank != null ? `#${c.rank}` : '—',
+      title: uzText(c.title),
+      sub: `Faol · ${c.left}`,
+      status: `${c.participants} kishi`,
+      done: false,
+      next: false,
+    })
+  }
+  if (input.review) {
+    info.push({
+      key: 'review',
+      value: 'Tahlil',
+      title: 'Haftalik sharh',
+      sub: 'Oʻtgan hafta',
+      status: input.review.isNew ? 'Yangi' : undefined,
+      done: false,
+      next: false,
+    })
+  }
+
   const nextTile = tiles.find(t => t.key === next && !t.done)
   if (nextTile) {
     nextTile.next = true
@@ -178,6 +211,7 @@ export function planTiles(input: PlanInput, next: PlanKey | null): { tiles: Plan
   const ordered = [
     ...tiles.filter(t => t.next),
     ...tiles.filter(t => !t.next && !t.done),
+    ...info,
     ...tiles.filter(t => t.done),
   ]
   return { tiles: ordered, done: tiles.filter(t => t.done).length, total: tiles.length }

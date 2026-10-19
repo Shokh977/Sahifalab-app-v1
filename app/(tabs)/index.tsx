@@ -24,7 +24,8 @@ import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
 import { Card, EmptyState, SkeletonRow } from '../../src/components/ui'
 import { getPrimaryAction } from '../../src/features/today/primaryAction'
-import { localDateKey, nextTileKey, pickCurrentCourse, type PlanKey } from '../../src/features/today/today'
+import { isMonday, localDateKey, nextTileKey, pickCurrentCourse, type PlanKey } from '../../src/features/today/today'
+import { timeLeft } from '../../src/features/bellashuv/bellashuv'
 import { estMinutes } from '../../src/features/flashcards/queueMath'
 import { useMinuteClock } from '../../src/features/today/useMinuteClock'
 import { TodayHeader } from '../../src/features/today/TodayHeader'
@@ -141,6 +142,7 @@ export default function HomeTab() {
     ? { id: current.course_id, title: current.courses.title, progress: current.progress, totalLessons: current.courses.total_lessons ?? 0 }
     : null
   const topDeck = data.topDueDeck ?? null
+  const competition = data.competition ?? null
   const fresh = localDateKey(new Date(data.fetchedAt)) === localDateKey(new Date(now))
 
   const action = getPrimaryAction({
@@ -164,6 +166,7 @@ export default function HomeTab() {
     else router.push('/(tabs)/flashcards' as any)
   }
   const openCourse = (id: number) => router.push(`/(screens)/course/${id}` as any)
+  const openRanking = () => router.push('/(screens)/leaderboard' as any)
 
   // Preset the timer (only when idle): what's left of the goal, or the
   // minutes the ranking footer asks for.
@@ -189,6 +192,8 @@ export default function HomeTab() {
     if (key === 'focus') openFocus()
     else if (key === 'quiz') openQuiz()
     else if (key === 'cards') openReview()
+    else if (key === 'competition') { if (competition) router.push(`/(screens)/challenge/${competition.slug}` as any) }
+    else if (key === 'review') router.push('/(screens)/weekly-review' as any)
     else if (currentCourse) openCourse(currentCourse.id)
   }
 
@@ -228,6 +233,11 @@ export default function HomeTab() {
             } : null,
             cards: data.hasDecks ? { total: data.flashcardDueCount, estMinutes: estMinutes(data.flashcardDueCount) } : null,
             course: currentCourse,
+            competition: competition ? {
+              title: competition.title, rank: competition.rank, participants: competition.participant_count,
+              left: timeLeft(competition.ends_at, now),
+            } : null,
+            review: { isNew: isMonday(new Date(now)) },
           }}
           next={nextTileKey(action.target)}
           onOpen={onPlanTile}
@@ -240,15 +250,14 @@ export default function HomeTab() {
           total={data.leaderTotal}
           todayMinutes={todayMinutes}
           now={now}
-          onAll={() => router.push('/(tabs)/musobaqalar' as any)}
+          onAll={openRanking}
+          onOpen={openRanking}
           onFocus={openFocus}
         />
 
         <ExtraSlot
-          now={now}
           hasEnrolment={data.enrolled.length > 0}
           recommended={data.recommended[0] ?? null}
-          onWeeklyReview={() => router.push('/(screens)/weekly-review' as any)}
           onCourse={openCourse}
         />
 

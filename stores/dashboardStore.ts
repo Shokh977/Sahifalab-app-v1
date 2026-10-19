@@ -2,12 +2,13 @@ import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   auth, courses, enrollments, lessons as lessonsApi, leaderboard, focusStats, flashcards as flashcardsApi, streaks, dailyQuiz,
-  type MeResponse, type Course, type LeaderboardEntry, type FocusStats, type StreakState,
+  challenges, type Challenge, type MeResponse, type Course, type LeaderboardEntry, type FocusStats, type StreakState,
   type DailyQuizStatus, type StreakCalendarDay,
 } from '../lib/api'
 import { useAuthStore } from './authStore'
 import { useFlashcardStore } from './flashcardStore'
 import { getTodayReviewQueue } from '../src/features/flashcards/queue'
+import { runningCompetition } from '../src/features/bellashuv/bellashuv'
 
 const CACHE_KEY = 'sahifalab_dashboard_cache'
 const CACHE_TTL = 300_000 // 5 min
@@ -52,16 +53,20 @@ export interface DashboardData {
   weekCalendar?:  StreakCalendarDay[]    // last 7 days from /api/streaks/detail
   topDueDeck?:    { id: number; due: number } | null
   hasDecks?:      boolean
+  /** The competition you joined, while it runs (Bugun tile, Phase 8). */
+  competition?:   Challenge | null
 }
 
 /** Quiz status + decks, refreshed on every Home focus (cheap, not TTL-gated). */
-type TodayExtras = Pick<DashboardData, 'quiz' | 'quizFetchedAt' | 'topDueDeck' | 'hasDecks' | 'flashcardDueCount'>
+type TodayExtras = Pick<DashboardData, 'quiz' | 'quizFetchedAt' | 'topDueDeck' | 'hasDecks' | 'flashcardDueCount' | 'competition'>
 
 async function fetchTodayExtras(): Promise<Partial<TodayExtras>> {
-  const [quizRes, decksRes, statsRes] = await Promise.allSettled([
-    dailyQuiz.status(), flashcardsApi.listDecks(), flashcardsApi.getStats(),
+  const [quizRes, decksRes, statsRes, mineRes] = await Promise.allSettled([
+    dailyQuiz.status(), flashcardsApi.listDecks(), flashcardsApi.getStats(), challenges.mine(),
   ])
   const out: Partial<TodayExtras> = {}
+  // Joining happens on Bellashuv; this refresh on every Bugun focus picks it up.
+  if (mineRes.status === 'fulfilled' && Array.isArray(mineRes.value)) out.competition = runningCompetition(mineRes.value)
   if (quizRes.status === 'fulfilled') {
     out.quiz = quizRes.value.quiz
     out.quizFetchedAt = Date.now()

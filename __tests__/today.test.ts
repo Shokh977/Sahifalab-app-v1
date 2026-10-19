@@ -103,3 +103,26 @@ describe('pickers', () => {
     expect(pickCurrentCourse([{ id: 1, progress: 1 }])).toBeNull()
   })
 })
+
+describe('planTiles: competition and Haftalik sharh tiles (Phase 8)', () => {
+  const focus = { minutes: 30, goal: 20 }
+  const competition = { title: 'Fokus Marafoni', rank: 14, participants: 128, left: '5 kun qoldi' }
+
+  it('adds them after unfinished tasks, before done ones, outside the 2 / 4 count', () => {
+    const quiz = { number: 67, state: 'not_started' as const, correct: null, secondsLeft: 3700 }
+    const r = planTiles({ focus, quiz, cards: null, course: null, competition, review: { isNew: true } }, 'quiz')
+    expect(r.tiles.map(t => t.key)).toEqual(['quiz', 'competition', 'review', 'focus'])
+    expect(r.total).toBe(2)
+    expect(r.done).toBe(1)
+    const by = Object.fromEntries(r.tiles.map(t => [t.key, t]))
+    expect(by.competition).toMatchObject({ value: '#14', title: 'Fokus Marafoni', sub: 'Faol · 5 kun qoldi', status: '128 kishi', done: false })
+    expect(by.review).toMatchObject({ title: 'Haftalik sharh', status: 'Yangi', done: false })
+  })
+
+  it('shows a dash before your rank exists, and no "Yangi" off Mondays', () => {
+    const r = planTiles({ focus, quiz: null, cards: null, course: null, competition: { ...competition, rank: null }, review: { isNew: false } }, null)
+    const by = Object.fromEntries(r.tiles.map(t => [t.key, t]))
+    expect(by.competition.value).toBe('—')
+    expect(by.review.status).toBeUndefined()
+  })
+})

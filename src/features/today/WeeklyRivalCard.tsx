@@ -27,7 +27,7 @@ const TOP_N = 3
 /** The weekly list holds at most this many rows. */
 const LIST_MAX = 100
 
-export function WeeklyRivalCard({ entries, around, myRank, total, todayMinutes, now, onAll, onFocus }: {
+export function WeeklyRivalCard({ entries, around, myRank, total, todayMinutes, now, onAll, onOpen, onFocus }: {
   entries: readonly LeaderboardEntry[]
   around?: readonly LeaderboardEntry[]
   myRank: number | null
@@ -36,6 +36,8 @@ export function WeeklyRivalCard({ entries, around, myRank, total, todayMinutes, 
   todayMinutes: number
   now: number
   onAll: () => void
+  /** The whole card opens the full ranking. */
+  onOpen: () => void
   /** Open Fokus, preset to this many minutes. */
   onFocus: (minutes?: number) => void
 }) {
@@ -83,29 +85,30 @@ export function WeeklyRivalCard({ entries, around, myRank, total, todayMinutes, 
   return (
     <View style={styles.section}>
       <SectionTitle title="Haftalik reyting" link={{ label: 'Hammasi', onPress: onAll }} />
+      {/* The board opens the full ranking; the footer (its own button) opens Fokus. */}
       <Card style={styles.card}>
-        <View style={styles.head}>
-          <View style={styles.stack} accessible accessibilityLabel={`Top ${top.length}: ${top.map(t => t.first_name).join(', ')}`}>
-            {top.map((e, i) => (
-              <View key={e.telegram_id} style={[styles.stackItem, i > 0 && styles.overlap, { borderColor: colors.surface }]}>
-                <Avatar name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={STACK - STACK_BORDER * 2} />
-              </View>
-            ))}
-            {more > 0 && (
-              <View style={[styles.stackItem, styles.overlap, { borderColor: colors.surface, backgroundColor: colors.surfaceRaised }]}>
-                <Text style={[typeScale.overline, tabular, styles.moreText, { color: colors.textMuted }]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1}>+{more > 999 ? '999' : more}</Text>
-              </View>
-            )}
+        <Pressable onPress={onOpen} noFeedback accessibilityRole="link" accessibilityLabel={`Haftalik reyting, ${peopleText}. Toʻliq reyting`} style={styles.board}>
+          <View style={styles.head}>
+            <View style={styles.stack}>
+              {top.map((e, i) => (
+                <View key={e.telegram_id} style={[styles.stackItem, i > 0 && styles.overlap, { borderColor: colors.surface }]}>
+                  <Avatar name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={STACK - STACK_BORDER * 2} />
+                </View>
+              ))}
+              {more > 0 && (
+                <View style={[styles.stackItem, styles.overlap, { borderColor: colors.surface, backgroundColor: colors.surfaceRaised }]}>
+                  <Text style={[typeScale.overline, tabular, styles.moreText, { color: colors.textMuted }]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1}>+{more > 999 ? '999' : more}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[typeScale.callout, styles.flex, { color: colors.textMuted }]} numberOfLines={2}>{peopleText}</Text>
+            <View style={[styles.pill, { backgroundColor: colors.surfaceRaised }]}>
+              <Text style={[typeScale.small, tabular, styles.bold, { color: colors.textMuted }]}>{days} kun qoldi</Text>
+            </View>
           </View>
-          <Text style={[typeScale.callout, styles.flex, { color: colors.textMuted }]} numberOfLines={2}>{peopleText}</Text>
-          <View style={[styles.pill, { backgroundColor: colors.surfaceRaised }]}>
-            <Text style={[typeScale.small, tabular, styles.bold, { color: colors.textMuted }]}>{days} kun qoldi</Text>
-          </View>
-        </View>
-
-        {rows.length > 0 ? <RivalLadder rows={rows} footer={footer} /> : (
-          <View style={[styles.soloFooter, { backgroundColor: colors.surfaceRaised }]}>{footer}</View>
-        )}
+          {rows.length > 0 ? <RivalLadder rows={rows} /> : null}
+        </Pressable>
+        <View style={[styles.soloFooter, { backgroundColor: colors.surfaceRaised }]}>{footer}</View>
       </Card>
     </View>
   )
@@ -123,6 +126,7 @@ const styles = StyleSheet.create({
   pill: { borderRadius: radius.full, paddingHorizontal: space.xs + 1, paddingVertical: space.xxs + 1 },
   bold: { fontFamily: fonts.bold },
   heavy: { fontFamily: fonts.extrabold },
+  board: { gap: space.sm + 2 },
   footerPress: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm },
   soloFooter: { borderRadius: radius.md + 2, paddingVertical: space.sm, paddingHorizontal: space.sm + 2 },
 })
