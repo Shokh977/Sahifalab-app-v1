@@ -28,6 +28,14 @@ describe('pickMainCompetition', () => {
     expect(pickMainCompetition([done, later], [soon])).toEqual({ kind: 'next', challenge: later })   // joined first
     expect(pickMainCompetition([done], [])).toBeNull()
   })
+
+  it('shows a live competition you can still join before the next one', () => {
+    const openLive = ch({ id: 'o', joined: false })
+    const soon = ch({ id: 's', status: 'upcoming', joined: false, starts_at: '2026-10-20T00:00:00Z' })
+    expect(pickMainCompetition([], [openLive, soon])).toEqual({ kind: 'live', challenge: openLive })
+    const mineLive = ch({ id: 'm' })
+    expect(pickMainCompetition([mineLive], [openLive])).toEqual({ kind: 'live', challenge: mineLive })
+  })
 })
 
 describe('competition lists', () => {

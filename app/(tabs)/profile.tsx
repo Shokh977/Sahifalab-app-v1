@@ -183,8 +183,8 @@ export default function ProfileTab() {
             ) : (
               <SkeletonRow />
             )}
+            <Button label="Tahrirlash" variant="secondary" size="sm" onPress={() => router.push('/(screens)/edit-profile' as any)} style={styles.edit} />
           </View>
-          <Button label="Tahrirlash" variant="secondary" size="sm" onPress={() => router.push('/(screens)/edit-profile' as any)} />
         </View>
 
         <LevelHeroCard level={level} xp={p?.total_xp ?? authUser?.total_xp ?? 0} nextXp={p?.next_level_xp ?? 0} />
@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 2 },
   ring: { width: AVATAR, height: AVATAR, borderRadius: radius.full, borderWidth: AVATAR_RING, alignItems: 'center', justifyContent: 'center' },
   counts: { flexDirection: 'row', alignItems: 'center', gap: space.xxs + 2, marginTop: 2, flexWrap: 'wrap' },
+  edit: { marginTop: space.xs },
   stats: { flexDirection: 'row', gap: space.sm - 2 },
   stat: { flex: 1, borderRadius: radius.lg, borderWidth: 1, padding: space.sm + 2, gap: space.xs },
   statIcon: { width: STAT_ICON, height: STAT_ICON, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },

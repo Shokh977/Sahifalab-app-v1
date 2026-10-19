@@ -16,17 +16,18 @@ export type MainCompetition =
   | null
 
 /**
- * The one competition card: your live competition (featured first, then
- * the one ending soonest); otherwise the next to start (joined first, then
- * featured, then soonest). Live ones you haven't joined are rows, not the card.
+ * The hero (Phase 7.5 D1: "the live competition, or the next one if none is
+ * live"): your live competition; else a live one you can still join (it
+ * shows "Qoʻshilish"); each featured first, then ending soonest. Otherwise
+ * the next to start (joined first, then featured, then soonest).
  */
 export function pickMainCompetition(mine: readonly Challenge[], open: readonly Challenge[]): MainCompetition {
+  const byFeatured = (list: Challenge[]) => [...list].sort((a, b) =>
+    Number(b.is_featured) - Number(a.is_featured) || Date.parse(a.ends_at) - Date.parse(b.ends_at))
   const live = mine.filter(c => isLive(c) && !isFinishedForMe(c))
-  if (live.length > 0) {
-    const sorted = [...live].sort((a, b) =>
-      Number(b.is_featured) - Number(a.is_featured) || Date.parse(a.ends_at) - Date.parse(b.ends_at))
-    return { kind: 'live', challenge: sorted[0] }
-  }
+  if (live.length > 0) return { kind: 'live', challenge: byFeatured(live)[0] }
+  const openLive = open.filter(c => isLive(c) && !c.joined)
+  if (openLive.length > 0) return { kind: 'live', challenge: byFeatured(openLive)[0] }
   const upcoming = [...mine, ...open].filter(c => c.status === 'upcoming')
   if (upcoming.length === 0) return null
   const sorted = [...upcoming].sort((a, b) =>
