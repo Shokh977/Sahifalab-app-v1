@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Bugun v2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+button{font-family:inherit;cursor:pointer}
+.tap{transition:transform 200ms cubic-bezier(.32,.72,0,1)}
+.tap:active{transform:scale(.97)}
+</style>
+</helmet>
+<div style="width: 390px; height: 1180px; position: relative; box-sizing: border-box; background: {{c.bg}}; color: {{c.text}}; font-family: 'Onest', system-ui, sans-serif; overflow: hidden;">
+
+<svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+<defs>
+<linearGradient id="gDone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB45E"></stop><stop offset="1" stop-color="#EE5A12"></stop></linearGradient>
+<linearGradient id="gIce" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E6F6FF"></stop><stop offset=".55" stop-color="#8FD0FF"></stop><stop offset="1" stop-color="#3B8FE6"></stop></linearGradient>
+<linearGradient id="bsFace" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB547"></stop><stop offset=".55" stop-color="#F7711E"></stop><stop offset="1" stop-color="#E2500C"></stop></linearGradient>
+<linearGradient id="bsDepth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C7440A"></stop><stop offset="1" stop-color="#9E3306"></stop></linearGradient>
+<linearGradient id="bsFlame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"></stop><stop offset="1" stop-color="#FFE7C7"></stop></linearGradient>
+<linearGradient id="bsCore" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD54A"></stop><stop offset="1" stop-color="#FF9A1F"></stop></linearGradient>
+<linearGradient id="biTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4FBFF"></stop><stop offset="1" stop-color="#C6E9FF"></stop></linearGradient>
+<linearGradient id="biLeft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FD2FF"></stop><stop offset="1" stop-color="#3A8EE6"></stop></linearGradient>
+<linearGradient id="biRight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B8E3FF"></stop><stop offset="1" stop-color="#5DAEF2"></stop></linearGradient>
+<linearGradient id="bmFaceL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EFEBE4"></stop><stop offset="1" stop-color="#DAD4CA"></stop></linearGradient>
+<linearGradient id="bmDepthL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C9C2B6"></stop><stop offset="1" stop-color="#B5AD9F"></stop></linearGradient>
+<linearGradient id="bmFaceD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34343C"></stop><stop offset="1" stop-color="#26262C"></stop></linearGradient>
+<linearGradient id="bmDepthD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#18181C"></stop><stop offset="1" stop-color="#101013"></stop></linearGradient>
+<linearGradient id="gBtn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7782C"></stop><stop offset="1" stop-color="#E2560E"></stop></linearGradient>
+<linearGradient id="gTrophy" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD66B"></stop><stop offset="1" stop-color="#E9A21A"></stop></linearGradient>
+</defs>
+</svg>
+
+<div style="padding: 18px 20px 120px; display: flex; flex-direction: column; gap: 20px;">
+
+<header style="display: flex; align-items: center; justify-content: space-between; height: 48px;">
+<h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 800; letter-spacing: -0.5px;">Sahifalab</h1>
+<div style="display: flex; align-items: center; gap: 10px;">
+<div style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 8px; border-radius: 999px; background: {{c.surface}}; border: 1px solid {{c.border}}; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">
+<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="url(#gTrophy)"></circle><circle cx="11" cy="11" r="6.5" fill="none" stroke="#B9770E" stroke-width="1.6"></circle><path d="M9 8.5h3.2a1.6 1.6 0 0 1 0 3.2H9.6m-.6-3.2v6" stroke="#8A5A08" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg>
+<span>1.7K</span>
+</div>
+<button aria-label="Bildirishnomalar" class="tap" style="width: 44px; height: 44px; border-radius: 50%; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; padding: 0; position: relative; color: {{c.text}};">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+<span style="position: absolute; top: 9px; right: 10px; width: 9px; height: 9px; border-radius: 50%; background: #EE5A12; border: 2px solid {{c.bg}};"></span>
+</button>
+<a href="Profil2.dc.html" aria-label="Profil" class="tap" style="position: relative; width: 44px; height: 44px; border-radius: 50%; background: #2A211C; border: 2px solid #EE5A12; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 9px; font-weight: 800; font-style: italic; color: #F7782C; box-sizing: border-box;">
+Sahifalab
+<span style="position: absolute; right: -4px; bottom: -4px; min-width: 20px; height: 20px; border-radius: 10px; background: #EE5A12; color: #FFFFFF; font-size: 11px; font-style: normal; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid {{c.bg}};">8</span>
+</a>
+</div>
+</header>
+
+<section style="background: {{c.surface}}; border: 1px solid {{c.border}}; border-radius: 28px; padding: 20px; display: flex; flex-direction: column; gap: 18px; box-shadow: {{c.shadow}};">
+<div style="display: flex; align-items: center; gap: 16px;">
+<div style="width: 112px; height: 112px; border-radius: 28px; background: {{c.treeBg}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+<svg width="100" height="100" viewBox="0 0 104 104" role="img" aria-label="Sehrli daraxt, 6-bosqich">
+<ellipse cx="52" cy="92" rx="28" ry="5" fill="{{c.soil}}"></ellipse>
+<path d="M49 91c1-10 1-20-1-30h8c-2 10-2 20-1 30z" fill="#8B5E3C"></path>
+<path d="M52 68c-6-3-10-6-13-11M53 65c5-2 9-6 11-10" stroke="#8B5E3C" stroke-width="3" fill="none" stroke-linecap="round"></path>
+<circle cx="37" cy="51" r="15" fill="#2E8A57"></circle>
+<circle cx="67" cy="49" r="16" fill="#2E8A57"></circle>
+<circle cx="52" cy="36" r="19" fill="#3DA66A"></circle>
+<circle cx="41" cy="40" r="12" fill="#4FBF7E"></circle>
+<circle cx="63" cy="38" r="11" fill="#4FBF7E"></circle>
+<circle cx="52" cy="27" r="9" fill="#74D69B"></circle>
+<circle cx="74" cy="58" r="6" fill="#74D69B"></circle>
+<circle cx="30" cy="38" r="4.5" fill="#FFD66B"></circle>
+<circle cx="66" cy="28" r="3.5" fill="#FFD66B"></circle>
+</svg>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<div style="display: flex; align-items: center; gap: 8px;">
+<svg width="28" height="34" viewBox="0 0 22 26" aria-hidden="true"><path d="M11 1c1 4 7 7 7 14a7 7 0 0 1-14 0c0-3 1.5-5 3-6 0 2.5 1 4 2.5 4C9 9 9 5 11 1z" fill="url(#gDone)"></path><path d="M11 13c.6 2 3 3 3 6a3 3 0 0 1-6 0c0-1.6.8-2.6 1.6-3 .1 1.2.6 1.8 1.2 1.8C10.6 16 10.6 14.5 11 13z" fill="#FFD66B"></path></svg>
+<span style="font-size: 48px; line-height: 50px; font-weight: 800; letter-spacing: -1.5px; font-variant-numeric: tabular-nums;">66</span>
+</div>
+<span style="font-size: 15px; color: {{c.muted}}; margin-top: -4px;">kunlik seriya</span>
+<span style="align-self: flex-start; font-size: 13px; font-weight: 700; color: {{c.green}}; background: {{c.greenSoft}}; padding: 5px 10px; border-radius: 999px;">Sehrli daraxt · 6-bosqich</span>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;">
+<sc-for list="{{week}}" as="d" hint-placeholder-count="7">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<sc-if value="{{d.done}}" hint-placeholder-val="{{true}}">
+<svg width="40" height="40" viewBox="0 0 64 64" role="img" aria-label="{{d.aria}}"><rect x="5" y="7" width="54" height="52" rx="17" fill="url(#bsDepth)"></rect><rect x="5" y="4" width="54" height="51" rx="17" fill="url(#bsFace)"></rect><path d="M14 12c4-4 10-5 18-5s14 1 18 5c-5-1-11-1.6-18-1.6S19 11 14 12z" fill="#FFFFFF" fill-opacity=".45"></path><path d="M32 12.5c2.2 7.5 12.5 11.5 12.5 22.8a12.5 12.5 0 0 1-25 0c0-5.4 2.6-8.6 5.2-10.4 0 4.3 2.1 6.8 4.7 6.8C27 25 28.2 19 32 12.5z" fill="url(#bsFlame)"></path><path d="M32 29.5c1.3 3.2 5.4 5 5.4 9.8a5.4 5.4 0 0 1-10.8 0c0-2.8 1.4-4.3 2.8-5.1.2 2.1 1.1 3 2.2 3C30.4 34.6 30.6 32 32 29.5z" fill="url(#bsCore)"></path></svg>
+</sc-if>
+<sc-if value="{{d.frozen}}" hint-placeholder-val="{{false}}">
+<svg width="40" height="40" viewBox="0 0 64 64" role="img" aria-label="{{d.aria}}"><path d="M32 6 55 18.5 32 31 9 18.5z" fill="url(#biTop)"></path><path d="M9 18.5 32 31v25L9 43.5z" fill="url(#biLeft)"></path><path d="M55 18.5 32 31v25l23-12.5z" fill="url(#biRight)"></path><path d="M9 18.5 32 6l23 12.5" fill="none" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"></path><g transform="translate(32 18.5) scale(1 .54)" stroke="#5AA9EE" stroke-width="2.6" stroke-linecap="round"><path d="M0-12V12M-10.4-6 10.4 6M-10.4 6 10.4-6"></path></g><path d="M14 46.2 17.5 48l-1.6 6z" fill="#8FD2FF"></path><path d="M44 49.6 47.6 47.8 46.8 53.4z" fill="#A9DBFF"></path></svg>
+</sc-if>
+<sc-if value="{{d.missed}}" hint-placeholder-val="{{false}}">
+<svg width="40" height="40" viewBox="0 0 64 64" role="img" aria-label="{{d.aria}}"><rect x="5" y="7" width="54" height="52" rx="17" fill="{{c.mDepth}}"></rect><rect x="5" y="4" width="54" height="51" rx="17" fill="{{c.mFace}}"></rect><ellipse cx="32" cy="44" rx="11" ry="3.6" fill="{{c.ash}}"></ellipse><path d="M24.5 43.2c2-3.2 5-4.6 7.5-4.6s5.5 1.4 7.5 4.6" fill="{{c.ash2}}"></path><path d="M32 37c-4-3.4-4-7.4 0-10.4s4-7 0-10.6" fill="none" stroke="{{c.smoke}}" stroke-width="3.6" stroke-linecap="round"></path></svg>
+</sc-if>
+<sc-if value="{{d.today}}" hint-placeholder-val="{{false}}">
+<svg width="40" height="40" viewBox="0 0 64 64" role="img" aria-label="{{d.aria}}"><rect x="6" y="5" width="52" height="52" rx="17" fill="{{c.surface}}" stroke="#EE5A12" stroke-width="3" stroke-dasharray="6 5"></rect><path d="M32 17c1.8 6 10 9.2 10 18.2a10 10 0 0 1-20 0c0-4.3 2-6.9 4.2-8.3 0 3.4 1.7 5.4 3.7 5.4C28 26.8 29 22 32 17z" fill="#EE5A12" fill-opacity=".14" stroke="#EE5A12" stroke-width="2.6" stroke-linejoin="round"></path></svg>
+</sc-if>
+<span style="font-size: 12px; font-weight: {{d.weight}}; color: {{d.ink}};">{{d.label}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="background: {{c.raised}}; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; align-items: center; justify-content: space-between;">
+<span style="font-size: 14px; font-weight: 600;">Bugungi fokus</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: {{c.green}};">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+Maqsad bajarildi
+</span>
+</div>
+<div style="height: 10px; border-radius: 5px; background: {{c.track}}; overflow: hidden;"><div style="width: 100%; height: 100%; border-radius: 5px; background: linear-gradient(90deg, #FFB45E, #EE5A12);"></div></div>
+<div style="display: flex; justify-content: space-between; font-size: 13px; color: {{c.muted}}; font-variant-numeric: tabular-nums;">
+<span><b style="color: {{c.text}}; font-weight: 700;">180 daq</b> bugun</span>
+<span>Maqsad: 10 daq</span>
+</div>
+</div>
+</section>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: -6px;">
+<h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.2px;">Bugungi reja</h2>
+<div style="display: flex; align-items: center; gap: 8px;">
+<div style="display: flex; gap: 3px;"><span style="width: 14px; height: 6px; border-radius: 3px; background: {{c.green}};"></span><span style="width: 14px; height: 6px; border-radius: 3px; background: {{c.green}};"></span><span style="width: 14px; height: 6px; border-radius: 3px; background: {{c.track}};"></span><span style="width: 14px; height: 6px; border-radius: 3px; background: {{c.track}};"></span></div>
+<span style="font-size: 13px; font-weight: 600; color: {{c.muted}}; font-variant-numeric: tabular-nums;">2 / 4</span>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+
+<a href="Bugun2.dc.html" class="tap" style="text-decoration: none; color: #FFFFFF; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: linear-gradient(160deg, #F7782C 0%, #E2560E 100%); box-shadow: 0 10px 24px rgba(226,86,14,0.28); min-height: 150px; box-sizing: border-box;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"></path><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"></path></svg></span>
+<span style="font-size: 11px; font-weight: 800; letter-spacing: 0.6px; background: #FFFFFF; color: #C2410C; padding: 4px 8px; border-radius: 999px;">KEYINGI</span>
+</div>
+<span style="font-size: 30px; line-height: 32px; font-weight: 800; letter-spacing: -0.6px; font-variant-numeric: tabular-nums;">48 ta</span>
+<div style="display: flex; justify-content: space-between; align-items: flex-end;">
+<span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px; font-weight: 700;">Kartalar</span><span style="font-size: 13px; opacity: .9;">~6 daqiqa</span></span>
+<span style="width: 34px; height: 34px; border-radius: 50%; background: #FFFFFF; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="#E2560E" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"></path></svg></span>
+</div>
+</a>
+
+<a href="Bugun2.dc.html" class="tap" style="text-decoration: none; color: {{c.text}}; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: {{c.surface}}; border: 1px solid {{c.border}}; box-shadow: {{c.shadow}}; min-height: 150px; box-sizing: border-box;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="width: 40px; height: 40px; border-radius: 12px; background: {{c.violetSoft}}; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{c.violet}}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5z"></path><path d="M6 12v5c3 2 9 2 12 0v-5"></path></svg></span>
+<span style="font-size: 12px; font-weight: 700; color: {{c.muted}}; font-variant-numeric: tabular-nums;">30%</span>
+</div>
+<span style="font-size: 30px; line-height: 32px; font-weight: 800; letter-spacing: -0.6px;">3-dars</span>
+<span style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Mnemonika</span>
+<span style="height: 6px; border-radius: 3px; background: {{c.track}}; overflow: hidden;"><span style="display: block; width: 30%; height: 100%; background: {{c.violet}}; border-radius: 3px;"></span></span></span>
+</a>
+
+<a href="Bugun2.dc.html" class="tap" style="text-decoration: none; color: {{c.text}}; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: {{c.surface}}; border: 1px solid {{c.border}}; box-shadow: {{c.shadow}}; min-height: 150px; box-sizing: border-box;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="width: 40px; height: 40px; border-radius: 12px; background: {{c.orangeSoft}}; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{c.accentText}}" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2M10 2h4"></path></svg></span>
+<span style="width: 26px; height: 26px; border-radius: 50%; background: {{c.green}}; display: flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+</div>
+<span style="font-size: 30px; line-height: 32px; font-weight: 800; letter-spacing: -0.6px; font-variant-numeric: tabular-nums;">180 daq</span>
+<span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px; font-weight: 700;">Fokus</span><span style="font-size: 13px; color: {{c.muted}};">Maqsad 10 daq</span></span>
+</a>
+
+<a href="Bellashuv2.dc.html" class="tap" style="text-decoration: none; color: {{c.text}}; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: {{c.surface}}; border: 1px solid {{c.border}}; box-shadow: {{c.shadow}}; min-height: 150px; box-sizing: border-box;">
+<div style="display: flex; justify-content: space-between; align-items: center;">
+<span style="width: 40px; height: 40px; border-radius: 12px; background: {{c.blueSoft}}; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{c.blue}}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.2 9a3 3 0 0 1 5.6 1c0 2-3 2.5-3 4.5M12 18h.01"></path></svg></span>
+<span style="width: 26px; height: 26px; border-radius: 50%; background: {{c.green}}; display: flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+</div>
+<span style="font-size: 30px; line-height: 32px; font-weight: 800; letter-spacing: -0.6px; font-variant-numeric: tabular-nums;">5/5</span>
+<span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px; font-weight: 700;">5 Savol #69</span><span style="font-size: 13px; color: {{c.muted}};">#10-oʻrin bugun</span></span>
+</a>
+
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: -6px; margin-top: 4px;">
+<h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.2px;">Haftalik reyting</h2>
+<a href="Bellashuv2.dc.html" style="font-size: 14px; font-weight: 700; text-decoration: none; color: {{c.accentText}};">Hammasi</a>
+</div>
+
+<section style="background: {{c.surface}}; border: 1px solid {{c.border}}; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: {{c.shadow}};">
+<div style="display: flex; align-items: center; gap: 12px;">
+<div style="display: flex;">
+<span style="width: 34px; height: 34px; border-radius: 50%; background: #2F8F5B; border: 2.5px solid {{c.surface}}; color: #FFFFFF; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center;">NI</span>
+<span style="width: 34px; height: 34px; border-radius: 50%; background: #4C7FE0; border: 2.5px solid {{c.surface}}; color: #FFFFFF; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-left: -10px;">FZ</span>
+<span style="width: 34px; height: 34px; border-radius: 50%; background: #9A6BE0; border: 2.5px solid {{c.surface}}; color: #FFFFFF; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-left: -10px;">AK</span>
+<span style="width: 34px; height: 34px; border-radius: 50%; background: {{c.raised}}; border: 2.5px solid {{c.surface}}; color: {{c.muted}}; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-left: -10px;">+183</span>
+</div>
+<span style="flex-grow: 1; font-size: 13px; color: {{c.muted}};">186 kishi bu hafta</span>
+<span style="font-size: 12px; font-weight: 700; color: {{c.muted}}; background: {{c.raised}}; padding: 5px 9px; border-radius: 999px;">2 kun qoldi</span>
+</div>
+
+<div style="position: relative; display: flex; flex-direction: column; gap: 6px;">
+<div style="position: absolute; left: 21px; top: 22px; bottom: 22px; width: 2px; background: {{c.border}};"></div>
+<div style="position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 4px;">
+<span style="width: 36px; height: 36px; border-radius: 50%; background: #3BA7A0; color: #FFFFFF; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">AB</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column;"><span style="font-size: 15px; font-weight: 700;">Abror</span><span style="font-size: 12px; color: {{c.muted}};">#22</span></span>
+<span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">489 XP</span>
+</div>
+<div style="position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 4px; border-radius: 16px; background: {{c.orangeSoft}}; border: 1.5px solid {{c.orangeLine}};">
+<span style="width: 36px; height: 36px; border-radius: 50%; background: #2A211C; border: 2px solid #EE5A12; color: #F7782C; font-size: 8px; font-style: italic; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box;">Sahifalab</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column;"><span style="font-size: 15px; font-weight: 800;">Siz</span><span style="font-size: 12px; color: {{c.accentText}}; font-weight: 600;">#23</span></span>
+<span style="font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums;">467 XP</span>
+</div>
+<div style="position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 4px;">
+<span style="width: 36px; height: 36px; border-radius: 50%; background: #D06A8A; color: #FFFFFF; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">DI</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column;"><span style="font-size: 15px; font-weight: 700;">Diyora</span><span style="font-size: 12px; color: {{c.muted}};">#24 · 16 XP orqada</span></span>
+<span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">451 XP</span>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: {{c.raised}};">
+<svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v6a5 5 0 0 1-10 0z" fill="url(#gTrophy)"></path><path d="M17 4.5h3v2.2a3.2 3.2 0 0 1-3.2 3.2M7 4.5H4v2.2a3.2 3.2 0 0 0 3.2 3.2" fill="none" stroke="#E9A21A" stroke-width="1.6"></path><path d="M12 14v4M8 21h8" stroke="#E9A21A" stroke-width="2" stroke-linecap="round"></path></svg>
+<span style="flex-grow: 1; font-size: 14px; line-height: 19px;"><b style="font-weight: 800;">22 XP</b> — Abrorni quvib oʻtasiz.<br><span style="color: {{c.muted}};">Taxminan 5 daqiqa fokus</span></span>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.muted}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+</div>
+</section>
+
+</div>
+
+<nav aria-label="Asosiy menyu" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: {{c.tabBar}}; border-top: 1px solid {{c.border}}; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 6px 14px; box-sizing: border-box;">
+<a href="Bugun2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: {{c.accentText}}; position: relative;">
+<span style="position: absolute; top: 0; width: 64px; height: 34px; border-radius: 12px; background: {{c.orangeSoft}};"></span>
+<svg style="position: relative;" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+<span style="font-size: 12px; font-weight: 700; margin-top: 6px;">Bugun</span>
+</a>
+<a href="Bugun2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: {{c.tabInk}};">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2M10 2h4"></path></svg>
+<span style="font-size: 12px; font-weight: 500;">Fokus</span>
+</a>
+<a href="Bugun2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: {{c.tabInk}};">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5z"></path><path d="M6 12v5c3 2 9 2 12 0v-5"></path></svg>
+<span style="font-size: 12px; font-weight: 500;">Kurslar</span>
+</a>
+<a href="Bugun2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: {{c.tabInk}};">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"></path><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"></path></svg>
+<span style="font-size: 12px; font-weight: 500;">Kartalar</span>
+</a>
+<a href="Bellashuv2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: {{c.tabInk}};">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg>
+<span style="font-size: 12px; font-weight: 500;">Bellashuv</span>
+</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = (this.props.theme || 'light') === 'dark';
+    var c = dark ? {
+      bg: '#0D0D0F', surface: '#17171B', raised: '#202026', border: '#2B2B32', track: '#2B2B32',
+      text: '#F4F2EE', muted: '#A3A1A8', faint: '#6E6C74', tabBar: '#121215', tabInk: '#A3A1A8',
+      accentText: '#FF8A4C', orangeSoft: 'rgba(238,90,18,0.16)', orangeLine: 'rgba(238,90,18,0.45)',
+      green: '#3DC47A', greenSoft: 'rgba(61,196,122,0.14)', blue: '#6FB2F0', blueSoft: 'rgba(76,158,235,0.16)',
+      violet: '#B49CF2', violetSoft: 'rgba(150,120,235,0.18)',
+      treeBg: 'radial-gradient(circle at 50% 45%, rgba(77,191,126,0.22), rgba(77,191,126,0.04) 70%)', soil: '#2A2420',
+      mFace: 'url(#bmFaceD)', mDepth: 'url(#bmDepthD)', ash: '#4A4A52', ash2: '#5A5A63', smoke: '#7A7882',
+      shadow: 'none'
+    } : {
+      bg: '#F7F3EC', surface: '#FFFFFF', raised: '#F4EFE6', border: '#ECE5D8', track: '#EEE7DB',
+      text: '#1C2530', muted: '#5B6573', faint: '#9AA1AA', tabBar: '#FFFFFF', tabInk: '#5B6573',
+      accentText: '#C2410C', orangeSoft: 'rgba(238,90,18,0.09)', orangeLine: 'rgba(238,90,18,0.35)',
+      green: '#1F9D55', greenSoft: 'rgba(31,157,85,0.10)', blue: '#2F7DD3', blueSoft: 'rgba(47,125,211,0.10)',
+      violet: '#7A55D6', violetSoft: 'rgba(122,85,214,0.10)',
+      treeBg: 'radial-gradient(circle at 50% 45%, #E3F5EA, #F4FBF6 70%)', soil: '#E3D8C8',
+      mFace: 'url(#bmFaceL)', mDepth: 'url(#bmDepthL)', ash: '#B9B1A4', ash2: '#A39B8D', smoke: '#9E978B',
+      shadow: '0 1px 2px rgba(28,37,48,0.04), 0 6px 18px rgba(28,37,48,0.05)'
+    };
+    var labels = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
+    var states = ['done', 'frozen', 'done', 'frozen', 'done', 'done', 'done'];
+    var names = { done: 'bajarildi', frozen: 'muzlatildi', missed: 'oʻtkazildi', today: 'bugun, hali bajarilmagan' };
+    var week = labels.map(function (l, i) {
+      var s = states[i];
+      var isToday = i === 6;
+      return {
+        label: l, done: s === 'done', frozen: s === 'frozen', missed: s === 'missed', today: s === 'today',
+        aria: l + ': ' + names[s],
+        weight: isToday ? '800' : '600',
+        ink: isToday ? c.text : c.muted
+      };
+    });
+    return { c: c, week: week };
+  }
+}
+</script>
+</body>
+</html>
