@@ -17,7 +17,7 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTimin
 import { Check, Play, type LucideIcon } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
 import { durations, easing } from '../../design/motion'
-import { iconSize, iconStroke, layout, radius, space } from '../../design/spacing'
+import { iconSize, iconStroke, radius, space } from '../../design/spacing'
 import { onAccentTile, type TintName } from '../../design/tokens'
 import { tabular, type as typeScale } from '../../design/typography'
 import { AccentFill, Pressable, ProgressBar } from '../../components/ui'
@@ -142,6 +142,3 @@ const styles = StyleSheet.create({
   bar: { marginTop: space.xs },
   play: { position: 'absolute', right: 0, bottom: 0, width: PLAY, height: PLAY, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
 })
-
-/** Grid gap for the 2×2 plan. */
-export const PLAN_GRID_GAP = layout.cardGap

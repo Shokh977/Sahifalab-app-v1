@@ -1,12 +1,10 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ChevronLeft, Sparkles, Moon, Sun } from 'lucide-react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useTheme } from '../../hooks/useTheme'
 import { useWeeklyReview } from '../../hooks/useWeeklyReview'
-import { WEEKLY_REVIEW_SEEN_KEY } from '../../components/dashboard/BugunGrid/WeeklyReviewGridCard'
 import { typography, spacing, radius } from '../../lib/constants'
 import { Hero } from '../../components/weekly-review/Hero'
 import { FocusCard } from '../../components/weekly-review/FocusCard'
@@ -25,16 +23,6 @@ export default function WeeklyReviewScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { data, status, error, refetch } = useWeeklyReview()
-
-  // Marks the completed-week review as seen for the dashboard's
-  // WeeklyReviewGridCard unread dot — recorded here (the actual review
-  // screen), not on the dashboard card itself, so glancing at the card
-  // never counts as read.
-  useEffect(() => {
-    if (data?.lastWeek) {
-      AsyncStorage.setItem(WEEKLY_REVIEW_SEEN_KEY, data.lastWeek.weekStart).catch(() => {})
-    }
-  }, [data?.lastWeek?.weekStart])
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>

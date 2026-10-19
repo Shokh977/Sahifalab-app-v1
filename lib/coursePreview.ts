@@ -21,7 +21,3 @@ export function rememberCourses(rows: readonly (Course | null | undefined)[]): v
 export function getCoursePreview(id: number): Course | null {
   return cache.get(id) ?? null
 }
-
-export function clearCoursePreviews(): void {
-  cache.clear()
-}

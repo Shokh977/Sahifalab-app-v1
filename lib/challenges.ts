@@ -29,10 +29,6 @@ export function daysLeft(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000))
 }
 
-export function daysUntil(iso: string): number {
-  return daysLeft(iso)
-}
-
 export function daysBetween(a: string, b: string): number {
   return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000))
 }

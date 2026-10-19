@@ -174,6 +174,16 @@ Routes nothing links to (no navigation call and no deep link): `ai-companion`, `
 | Buttons | `components/ui/Button.tsx`, plus inline `RatingBtn`, `DownloadBtn`, `FollowButton`, `OptionButton`, `LikeBtn`, `ScaleBtn` and many styled `Pressable`s | `Button` and the base `Pressable` |
 | Empty and error states | `kurslar/States.tsx` (`CoursesEmptyState`, `CoursesErrorState`), `donation/EmptyMethods.tsx`, `flashcards/MyDecksTab.tsx` `EmptyState`, inline emoji-plus-text states in most screens | `EmptyState` |
 
+**Status after Phase 8 (2026-10-19).** The rebuilt screens (Bugun, Fokus, Kurslar and course detail, Kartalar, 5 Savol, Bellashuv, Profil) use only the shared components. Phase 8 deleted the unreachable copies: `dashboard/CourseHCard`, `dashboard/CourseVCard`, `dashboard/SkeletonBlock`, `flashcards/ProgressRing`, `study/ChallengeProgressRing`, `flashcards/DeckRow`, `courses/LessonRow`, and the whole `dashboard/BugunGrid` folder. Copies that remain sit in screens outside the redesign scope and are left for a later pass:
+- `courses/CourseCard` (teacher dashboard, saved);
+- `weekly-review/Skeleton` and `StatsGrid`;
+- `daily-quiz/ResultTicket` `ProgressRing` (share card);
+- `flashcards/FilterChips` and `MyDecksTab`'s own skeleton and empty state (public decks);
+- `study/ChallengeChip`;
+- `donation/EmptyMethods`;
+- 6 files with `animationType="slide"` Modals;
+- 27 files with core `Animated`, mostly modals and overlays.
+
 ## 5. Other rule violations in today's code
 
 - **Full-screen spinners (rule 3):** 19 route files use `ActivityIndicator size="large"` as their loading state: `verify-email`, `interests`, `book-reader/[id]`, `certificate/[code]`, `course/[id]`, `daily-quiz-results`, `daily-quiz`, `flashcard-deck/[id]`, `flashcard-study/[id]`, `lesson/[id]`, `payment-complete/[courseId]`, `profile/[id]`, `public-deck/[id]`, `teacher-dashboard`, `teacher-earnings`, `test/[id]`, `(tabs)/musobaqalar`, `(tabs)/profile` and `(tabs)/study`.

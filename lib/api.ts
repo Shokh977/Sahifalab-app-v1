@@ -345,24 +345,6 @@ export const social = {
 
 // ── Upload ────────────────────────────────────────────────────────────────────
 
-export async function uploadPostImage(
-  localUri: string,
-  mimeType = 'image/jpeg',
-): Promise<string> {
-  const token = await getToken()
-  const form  = new FormData()
-  form.append('file', { uri: localUri, type: mimeType, name: 'photo.jpg' } as any)
-
-  const res = await fetch(`${API_URL}/api/upload/post-image`, {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body:    form,
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data?.detail ?? `Upload failed ${res.status}`)
-  return data.url as string
-}
-
 // ── Search ────────────────────────────────────────────────────────────────────
 
 export interface SearchPerson {

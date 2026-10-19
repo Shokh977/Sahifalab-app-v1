@@ -101,12 +101,6 @@ export function kartalarCardShadow(theme: 'light' | 'dark') {
     : { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }
 }
 
-export function kartalarRaisedShadow(theme: 'light' | 'dark') {
-  return theme === 'dark'
-    ? {}
-    : { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1 }
-}
-
 // ── Subject color + glyph map ────────────────────────────────────────────────
 
 export interface SubjectStyle {

@@ -70,12 +70,6 @@ export async function cancelStreakReminder(): Promise<void> {
   ).catch(() => {});
 }
 
-// Call after user achieves today's daily goal — cancels today's reminder.
-// The next app open will re-register it via syncStreakReminderWithPrefs().
-export async function rescheduleStreakReminderForTomorrow(): Promise<void> {
-  await cancelStreakReminder();
-}
-
 // Fetch prefs and sync the local schedule accordingly
 export async function syncStreakReminderWithPrefs(): Promise<void> {
   try {

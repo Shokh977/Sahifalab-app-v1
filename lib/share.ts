@@ -42,26 +42,6 @@ export async function sharePost(opts: {
   try { await Share.share({ message: msg }) } catch {}
 }
 
-export async function shareWeeklyReport(opts: {
-  totalMinutes: number
-  weekXp: number
-  streakDays: number
-}) {
-  const { totalMinutes, weekXp, streakDays } = opts
-  const h = Math.floor(totalMinutes / 60)
-  const m = totalMinutes % 60
-  const timeStr = h && m ? `${h} soat ${m} daqiqa` : h ? `${h} soat` : `${m} daqiqa`
-
-  const msg = [
-    `📊 Bu hafta SAHIFALAB'da:`,
-    `⏱ ${timeStr} o'qildi`,
-    `⚡ +${weekXp.toLocaleString()} XP`,
-    `🔥 ${streakDays} kunlik seriya`,
-    appFooter(),
-  ].join('\n')
-  try { await Share.share({ message: msg }) } catch {}
-}
-
 export async function shareTreeEvolution(opts: {
   stageName: string
   streakDays: number
@@ -94,20 +74,6 @@ export async function shareFlashcardDeck(opts: {
   const url = `${WEB_URL}/deck/${opts.id}`
   const msg = `Men Sahifalab'da "${opts.title}" kartochkalar to'plamini topdim — bepul o'rganing! 📚\n\n${url}`
   try { await Share.share({ message: msg }) } catch {}
-}
-
-export async function shareChallengeCompletion(opts: {
-  title:    string
-  rewardXp: number
-  rank?:    number | null
-}) {
-  const lines = [`🏆 Men "${opts.title}" bellashuvini yakunladim!`]
-  const stats: string[] = []
-  if (opts.rewardXp > 0) stats.push(`+${opts.rewardXp} Tanga`)
-  if (opts.rank)         stats.push(`#${opts.rank}-o'rin`)
-  if (stats.length) lines.push(stats.join(' · '))
-  lines.push(appFooter('musobaqalar'))
-  try { await Share.share({ message: lines.join('\n') }) } catch {}
 }
 
 export async function shareCertificateImage(opts: {
