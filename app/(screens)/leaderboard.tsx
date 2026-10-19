@@ -234,10 +234,10 @@ export default function LeaderboardScreen() {
             >
               {item.kind === 'gap' ? (
                 <View style={[styles.gap, { borderTopColor: colors.border }]} accessible accessibilityLabel="Oraliq oʻrinlar">
-                  <Text style={[typeScale.headline, styles.dots, { color: colors.textMuted }]}>···</Text>
+                  <Text style={[typeScale.label, styles.dots, { color: colors.textMuted }]}>···</Text>
                 </View>
               ) : (
-                <RankingRow e={item.e} mine={item.e.is_me} first={first || item.e.is_me} onPress={() => setPerson(item.e)} />
+                <RankingRow e={item.e} mine={item.e.is_me} first={first || item.e.is_me} dense onPress={() => setPerson(item.e)} />
               )}
             </Animated.View>
           )

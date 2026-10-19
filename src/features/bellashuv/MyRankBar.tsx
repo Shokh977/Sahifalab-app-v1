@@ -2,17 +2,19 @@
  * Reyting: your place, floating over the bottom of the list — rank, you,
  * "#22 gacha 22 XP" (or "Siz birinchisiz") and a Fokus button, since
  * focus is how you climb. Before you have XP in the period it says so.
+ * The Fokus button is a soft orange pill (14 px accentText): white text on
+ * orange would have to be 18 px (contrast rule), too loud for this bar.
  */
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Timer } from 'lucide-react-native'
 import type { LeaderboardEntry } from '../../../lib/api'
 import { useTheme } from '../../design/ThemeProvider'
-import { radius, space } from '../../design/spacing'
+import { iconSize, iconStroke, layout, radius, space } from '../../design/spacing'
 import { fonts, tabular, type as typeScale } from '../../design/typography'
-import { Avatar, Button, Pressable } from '../../components/ui'
+import { Avatar, Pressable } from '../../components/ui'
 
-const RANK_COL = 30
+const RANK_COL = 26
 
 export function MyRankBar({ me, note, name, photoUrl, id, onPress, onFocus }: {
   me: LeaderboardEntry | null
@@ -32,9 +34,9 @@ export function MyRankBar({ me, note, name, photoUrl, id, onPress, onFocus }: {
     <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.orangeLine }, elevation]}>
       <Pressable onPress={onPress} disabled={!onPress} noFeedback accessibilityLabel={label} style={styles.who}>
         <Text style={[typeScale.label, tabular, styles.rank, { color: colors.accentText }]}>{me ? me.rank : '–'}</Text>
-        <Avatar name={name || '?'} id={id} uri={photoUrl} size="row" />
+        <Avatar name={name || '?'} id={id} uri={photoUrl} size="sm" />
         <View style={styles.flex}>
-          <Text style={[typeScale.rowTitle, styles.heavy, { color: colors.text }]} numberOfLines={1}>
+          <Text style={[typeScale.label, styles.heavy, { color: colors.text }]} numberOfLines={1}>
             {me ? 'Siz' : 'Hali reytingda yoʻqsiz'}
           </Text>
           {sub ? (
@@ -42,7 +44,15 @@ export function MyRankBar({ me, note, name, photoUrl, id, onPress, onFocus }: {
           ) : null}
         </View>
       </Pressable>
-      <Button label="Fokus" icon={Timer} size="sm" onPress={onFocus} />
+      <Pressable
+        onPress={onFocus}
+        accessibilityLabel="Fokusni boshlash"
+        hitSlop={space.xs}
+        style={[styles.focus, { backgroundColor: colors.accentSoft, borderColor: colors.orangeLine }]}
+      >
+        <Timer size={iconSize.sm} color={colors.accentText} strokeWidth={iconStroke} />
+        <Text style={[typeScale.link, { color: colors.accentText }]}>Fokus</Text>
+      </Pressable>
     </View>
   )
 }
@@ -50,7 +60,11 @@ export function MyRankBar({ me, note, name, photoUrl, id, onPress, onFocus }: {
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row', alignItems: 'center', gap: space.sm,
-    borderRadius: radius.xl, borderWidth: 1.5, paddingVertical: space.sm, paddingLeft: space.xs, paddingRight: space.sm,
+    borderRadius: radius.xl, borderWidth: 1.5, paddingVertical: space.xs, paddingLeft: space.xs, paddingRight: space.xs,
+  },
+  focus: {
+    flexDirection: 'row', alignItems: 'center', gap: space.xxs, minHeight: layout.minTouch - space.sm,
+    paddingHorizontal: space.sm, borderRadius: radius.full, borderWidth: 1,
   },
   who: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, minWidth: 0 },
   rank: { width: RANK_COL, textAlign: 'center', fontFamily: fonts.extrabold },

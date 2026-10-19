@@ -14,12 +14,23 @@ import { getLevelInfo } from '../../../lib/levelTitles'
 import { useAuthStore } from '../../../stores/authStore'
 import { useProfileStore } from '../../../stores/profileStore'
 import { useTheme } from '../../design/ThemeProvider'
-import { avatarSize, space } from '../../design/spacing'
-import { type as typeScale } from '../../design/typography'
-import { Avatar, Button, Sheet, StatTile } from '../../components/ui'
+import { avatarSize, radius, space } from '../../design/spacing'
+import { tabular, type as typeScale } from '../../design/typography'
+import { Avatar, Button, Sheet } from '../../components/ui'
 import { groupDigits } from '../courses/courses'
 import { uzText } from '../today/today'
 import { hoursLabel } from './bellashuv'
+
+/** A compact stat: 20 px value over a 12 px label. */
+function Tile({ value, label }: { value: string; label: string }) {
+  const { colors } = useTheme()
+  return (
+    <View style={[styles.tile, { backgroundColor: colors.surfaceRaised }]} accessible accessibilityLabel={`${label}: ${value}`}>
+      <Text style={[typeScale.heroStat, tabular, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{value}</Text>
+      <Text style={[typeScale.small, { color: colors.textMuted }]} numberOfLines={1}>{label}</Text>
+    </View>
+  )
+}
 
 export function PersonSheet({ entry, periodLabel, onClose, onOpenProfile }: {
   entry: LeaderboardEntry | null
@@ -72,9 +83,9 @@ export function PersonSheet({ entry, periodLabel, onClose, onOpenProfile }: {
       {e ? (
         <View style={styles.body}>
           <View style={styles.who}>
-            <Avatar name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} size="lg" />
+            <Avatar name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} size="md" />
             <View style={styles.flex}>
-              <Text style={[typeScale.title2, { color: colors.text }]} numberOfLines={2} accessibilityRole="header">{name}</Text>
+              <Text style={[typeScale.headline, { color: colors.text }]} numberOfLines={2} accessibilityRole="header">{name}</Text>
               <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>
                 {e.rank}-oʻrin · {getLevelInfo(e.level).title}
               </Text>
@@ -82,15 +93,10 @@ export function PersonSheet({ entry, periodLabel, onClose, onOpenProfile }: {
           </View>
 
           <View style={styles.tiles}>
-            <StatTile value={e.level} label="Daraja" style={styles.tile} />
-            <StatTile value={e.score} label={`XP · ${periodLabel}`} format={groupDigits} style={styles.tile} />
-            <StatTile value={e.minutes} label="Fokus" format={hoursLabel} style={styles.tile} />
-            <StatTile
-              value={streak ?? 0}
-              label="Seriya"
-              format={n => (streak == null ? '–' : `${n} kun`)}
-              style={styles.tile}
-            />
+            <Tile value={String(e.level)} label="Daraja" />
+            <Tile value={groupDigits(e.score)} label={`XP · ${periodLabel}`} />
+            <Tile value={hoursLabel(e.minutes)} label="Fokus" />
+            <Tile value={streak == null ? '–' : `${streak} kun`} label="Seriya" />
           </View>
 
           <View style={styles.actions}>
@@ -115,9 +121,9 @@ export function PersonSheet({ entry, periodLabel, onClose, onOpenProfile }: {
 
 const styles = StyleSheet.create({
   body: { gap: space.md, paddingTop: space.xs },
-  who: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: avatarSize.lg },
+  who: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: avatarSize.md },
   flex: { flex: 1, minWidth: 0 },
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  tile: { flexGrow: 1, flexBasis: '45%' },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
+  tile: { flexGrow: 1, flexBasis: '45%', minWidth: 0, borderRadius: radius.md, paddingVertical: space.sm, paddingHorizontal: space.sm, gap: space.xxs / 2 },
   actions: { gap: space.sm },
 })
