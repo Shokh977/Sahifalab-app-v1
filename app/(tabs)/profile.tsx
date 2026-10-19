@@ -1,14 +1,15 @@
 /**
- * Profil — redesign Phase 5. Opens from the avatar, with a back button.
- * Identity, the level hero, three stats, the newest earned badges (the
- * full grid lives on /(screens)/badges) and one list card. About two
- * screen heights.
+ * Profil — redesign Phase 5, rebuilt to the v2 board in Phase 7.5 D2.
+ * Opens from the avatar, with a back button. The identity row (with
+ * "Tahrirlash"), the gradient level card, three stat tiles, the newest
+ * earned badges as tinted icon tiles (no emoji; the full grid lives on
+ * /(screens)/badges) and one menu card.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { RefreshControl, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { BarChart3, ChevronLeft, Flame, GraduationCap, Heart, Pencil, Settings, Share2 } from 'lucide-react-native'
+import { BarChart3, ChevronLeft, ChevronRight, Clock, Flame, GraduationCap, Heart, Settings, Share2, Trophy, type LucideIcon } from 'lucide-react-native'
 import { shareProfile } from '../../lib/share'
 import { useProfileStore } from '../../stores/profileStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -17,12 +18,13 @@ import { focusStats, leaderboard, profile as profileApi, type BadgeGroups } from
 import { LEVEL_TITLES } from '../../lib/levelTitles'
 import type { ProfileData } from '../../lib/types'
 import { useTheme } from '../../src/design/ThemeProvider'
-import { layout, space } from '../../src/design/spacing'
-import { type as typeScale } from '../../src/design/typography'
-import { Avatar, Card, IconButton, ListRow, Pressable, SkeletonBlock, SkeletonRow, StatTile, SectionTitle } from '../../src/components/ui'
+import { avatarSize, iconSize, iconStroke, layout, radius, space } from '../../src/design/spacing'
+import type { TintName } from '../../src/design/tokens'
+import { fonts, tabular, type as typeScale } from '../../src/design/typography'
+import { Avatar, BadgeTile, Button, Card, IconButton, Pressable, SkeletonBlock, SkeletonRow, SectionTitle } from '../../src/components/ui'
 import { uzText } from '../../src/features/today/today'
 import { allBadges, summary, topEarned, type ProfileBadge } from '../../src/features/profile/badges'
-import { BadgeCell } from '../../src/features/profile/BadgeCell'
+import { badgeVisual, stageArt } from '../../src/features/profile/BadgeCell'
 import { BadgeSheet } from '../../src/features/profile/BadgeSheet'
 import { FollowListSheet, type FollowKind } from '../../src/features/profile/FollowListSheet'
 import { LevelHeroCard } from '../../src/features/profile/LevelHeroCard'
@@ -30,6 +32,45 @@ import { focusHours } from '../../src/features/profile/profileFormat'
 
 const BADGE_COLS = 4
 const BADGE_PREVIEW = 8
+const AVATAR = 72
+const AVATAR_RING = 3
+const STAT_ICON = 32
+const MENU_ICON = 40
+
+/** A stat tile: tinted icon square, the value, a label (Phase 7.5 D2). */
+function ProfileStat({ icon: Icon, tint, value, label }: { icon: LucideIcon; tint: TintName; value: string; label: string }) {
+  const { colors, tint: tintOf, elevation } = useTheme()
+  const t = tintOf(tint)
+  return (
+    <View style={[styles.stat, { backgroundColor: colors.surface, borderColor: colors.border }, elevation]} accessible accessibilityLabel={`${value} ${label}`}>
+      <View style={[styles.statIcon, { backgroundColor: t.soft }]}>
+        <Icon size={iconSize.sm - 2} color={t.ink} strokeWidth={iconStroke + 0.2} />
+      </View>
+      <Text style={[typeScale.statValue, tabular, { color: colors.text }]} numberOfLines={1}>{value}</Text>
+      <Text style={[typeScale.small, { color: colors.textMuted }]} numberOfLines={1}>{label}</Text>
+    </View>
+  )
+}
+
+/** A menu row: a raised 40 px icon square, title 16/700, subtitle, chevron. */
+function MenuRow({ icon: Icon, title, subtitle, first, onPress }: {
+  icon: LucideIcon; title: string; subtitle: string; first?: boolean; onPress: () => void
+}) {
+  const { colors } = useTheme()
+  return (
+    <Pressable onPress={onPress} accessibilityLabel={`${title}, ${subtitle}`}
+      style={[styles.menuRow, !first && { borderTopWidth: 1, borderTopColor: colors.border }]}>
+      <View style={[styles.menuIcon, { backgroundColor: colors.surfaceRaised }]}>
+        <Icon size={iconSize.sm} color={colors.text} strokeWidth={iconStroke + 0.1} />
+      </View>
+      <View style={styles.flex}>
+        <Text style={[typeScale.tileTitle, { color: colors.text }]} numberOfLines={1}>{title}</Text>
+        <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>{subtitle}</Text>
+      </View>
+      <ChevronRight size={iconSize.sm - 2} color={colors.textMuted} strokeWidth={iconStroke + 0.2} />
+    </Pressable>
+  )
+}
 
 function teacherRow(role: string, status: string): { title: string; subtitle: string; route: string } {
   const isTeacher = role === 'admin' || (role === 'teacher' && status === 'active')
@@ -58,7 +99,6 @@ export default function ProfileTab() {
   const [refreshing, setRefreshing] = useState(false)
   const [follow, setFollow] = useState<FollowKind | null>(null)
   const [selected, setSelected] = useState<ProfileBadge | null>(null)
-  const [gridWidth, setGridWidth] = useState(0)
 
   const load = useCallback(async () => {
     const dash = useDashboardStore.getState().data
@@ -85,7 +125,6 @@ export default function ProfileTab() {
   const badges = allBadges(groups, level, LEVEL_TITLES)
   const counts = summary(badges)
   const preview = topEarned(badges, BADGE_PREVIEW)
-  const cell = gridWidth > 0 ? (gridWidth - space.sm * (BADGE_COLS - 1)) / BADGE_COLS : 0
   const teacher = teacherRow(authUser?.role ?? '', authUser?.status ?? 'active')
   const name = uzText(p?.first_name ?? authUser?.first_name ?? '')
 
@@ -100,7 +139,7 @@ export default function ProfileTab() {
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <View style={[styles.bar, { paddingTop: insets.top }]}>
         <IconButton icon={ChevronLeft} accessibilityLabel="Orqaga" onPress={back} />
-        <Text style={[typeScale.headline, styles.flex, styles.center, { color: colors.text }]} accessibilityRole="header">Profil</Text>
+        <Text style={[typeScale.headline, styles.flex, styles.center, styles.bold, { color: colors.text }]} accessibilityRole="header">Profil</Text>
         <IconButton icon={Share2} accessibilityLabel="Profilni ulashish" onPress={share} />
         <IconButton icon={Settings} accessibilityLabel="Sozlamalar" onPress={() => router.push('/(screens)/settings' as any)} />
       </View>
@@ -119,21 +158,24 @@ export default function ProfileTab() {
       >
         {/* Identity */}
         <View style={styles.identity}>
-          <Avatar name={name || '?'} id={authUser?.telegram_id} uri={p?.photo_url ?? authUser?.photo_url} size="lg" level={level} />
+          <View style={[styles.ring, { borderColor: colors.accent }]}>
+            <Avatar name={name || '?'} id={authUser?.telegram_id} uri={p?.photo_url ?? authUser?.photo_url} diameter={AVATAR - AVATAR_RING * 2} />
+          </View>
           <View style={styles.flex}>
             {p || authUser ? (
               <>
-                <Text style={[typeScale.title2, { color: colors.text }]} numberOfLines={1}>{name}</Text>
-                {p?.username ? <Text style={[typeScale.callout, { color: colors.accentText }]}>@{p.username}</Text> : null}
+                <Text style={[typeScale.profileName, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+                {p?.username ? <Text style={[typeScale.label, { color: colors.accentText }]}>@{p.username}</Text> : null}
                 <View style={styles.counts}>
                   <Pressable noFeedback onPress={() => setFollow('followers')} accessibilityLabel={`${p?.followers_count ?? 0} kuzatuvchi`}>
                     <Text style={[typeScale.callout, { color: colors.textMuted }]}>
-                      <Text style={{ color: colors.text }}>{p?.followers_count ?? 0}</Text> kuzatuvchi
+                      <Text style={[styles.bold, { color: colors.text }]}>{p?.followers_count ?? 0}</Text> kuzatuvchi
                     </Text>
                   </Pressable>
+                  <Text style={[typeScale.callout, { color: colors.textMuted }]}>·</Text>
                   <Pressable noFeedback onPress={() => setFollow('following')} accessibilityLabel={`${p?.following_count ?? 0} kuzatilmoqda`}>
                     <Text style={[typeScale.callout, { color: colors.textMuted }]}>
-                      <Text style={{ color: colors.text }}>{p?.following_count ?? 0}</Text> kuzatilmoqda
+                      <Text style={[styles.bold, { color: colors.text }]}>{p?.following_count ?? 0}</Text> kuzatilmoqda
                     </Text>
                   </Pressable>
                 </View>
@@ -142,41 +184,50 @@ export default function ProfileTab() {
               <SkeletonRow />
             )}
           </View>
-          <IconButton icon={Pencil} accessibilityLabel="Profilni tahrirlash" onPress={() => router.push('/(screens)/edit-profile' as any)} />
+          <Button label="Tahrirlash" variant="secondary" size="sm" onPress={() => router.push('/(screens)/edit-profile' as any)} />
         </View>
 
         <LevelHeroCard level={level} xp={p?.total_xp ?? authUser?.total_xp ?? 0} nextXp={p?.next_level_xp ?? 0} />
 
         <View style={styles.stats}>
-          <StatTile value={focusHours(focusMinutes)} label="soat" />
-          <StatTile value={streak} label="seriya" />
-          <StatTile value={rank ?? 0} label="reyting" format={n => (rank == null ? '0' : `#${n}`)} />
+          <ProfileStat icon={Clock} tint="orange" value={String(focusHours(focusMinutes))} label="soat oʻqish" />
+          <ProfileStat icon={Flame} tint="orange" value={String(streak)} label="kunlik seriya" />
+          <ProfileStat icon={Trophy} tint="gold" value={rank == null ? '—' : `#${rank}`} label="haftalik" />
         </View>
 
         {/* Nishonlar */}
         <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <SectionTitle
-              title="Nishonlar"
-              link={{ label: `Hammasi · ${counts.label}`, onPress: () => router.push('/(screens)/badges' as any) }}
-              style={styles.flex}
-            />
-          </View>
-          <View style={styles.grid} onLayout={(e: LayoutChangeEvent) => setGridWidth(e.nativeEvent.layout.width)}>
-            {!badgesLoaded && cell > 0
-              ? Array.from({ length: BADGE_COLS }, (_, i) => <SkeletonBlock key={i} width={cell} height={cell} />)
-              : cell > 0 && preview.map(b => <BadgeCell key={b.key} badge={b} width={cell} onPress={() => setSelected(b)} />)}
+          <SectionTitle
+            title="Nishonlar"
+            link={{ label: `Hammasi · ${counts.earned}/${counts.total}`, onPress: () => router.push('/(screens)/badges' as any) }}
+          />
+          <View style={styles.grid}>
+            {!badgesLoaded
+              ? Array.from({ length: BADGE_COLS }, (_, i) => <SkeletonBlock key={i} width={avatarSize.podium} height={avatarSize.podium} />)
+              : preview.map(b => {
+                  const v = badgeVisual(b)
+                  return (
+                    <BadgeTile
+                      key={b.key}
+                      name={uzText(b.name)}
+                      icon={v.Icon}
+                      art={stageArt(b) ?? undefined}
+                      tint={v.tint}
+                      onPress={() => setSelected(b)}
+                    />
+                  )
+                })}
           </View>
           {badgesLoaded && preview.length === 0 && (
             <Text style={[typeScale.callout, { color: colors.textMuted }]}>Birinchi nishoningizni oling — fokusdan boshlang.</Text>
           )}
         </View>
 
-        <Card style={styles.rows}>
-          <ListRow title="Statistika" subtitle="Oʻqish vaqti, kunlar, tendensiya" leading={{ kind: 'icon', icon: BarChart3 }} trailing={{ kind: 'chevron' }} onPress={() => router.push('/(screens)/streak-detail' as any)} />
-          <ListRow title="Seriya va inventar" subtitle={`Joriy: ${streak} kunlik seriya`} leading={{ kind: 'icon', icon: Flame }} trailing={{ kind: 'chevron' }} onPress={() => router.push('/(screens)/streak-detail' as any)} />
-          <ListRow title="Sevimli kurslar" subtitle="Saqlangan kurslaringiz" leading={{ kind: 'icon', icon: Heart }} trailing={{ kind: 'chevron' }} onPress={() => router.push('/(screens)/saved' as any)} />
-          <ListRow title={teacher.title} subtitle={teacher.subtitle} leading={{ kind: 'icon', icon: GraduationCap }} trailing={{ kind: 'chevron' }} onPress={() => router.push(teacher.route as any)} />
+        <Card style={styles.menu}>
+          <MenuRow first icon={BarChart3} title="Statistika" subtitle="Oʻqish vaqti, kunlar, tendensiya" onPress={() => router.push('/(screens)/streak-detail' as any)} />
+          <MenuRow icon={Flame} title="Seriya va inventar" subtitle={`Joriy: ${streak} kunlik seriya`} onPress={() => router.push('/(screens)/streak-detail' as any)} />
+          <MenuRow icon={Heart} title="Sevimli kurslar" subtitle="Saqlangan kurslaringiz" onPress={() => router.push('/(screens)/saved' as any)} />
+          <MenuRow icon={GraduationCap} title={teacher.title} subtitle={teacher.subtitle} onPress={() => router.push(teacher.route as any)} />
         </Card>
       </ScrollView>
 
@@ -194,14 +245,19 @@ export default function ProfileTab() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   bar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.xxs },
-  flex: { flex: 1 },
+  flex: { flex: 1, minWidth: 0 },
   center: { textAlign: 'center' },
-  content: { paddingHorizontal: layout.gutter, paddingTop: space.xs, gap: layout.sectionGap },
-  identity: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  counts: { flexDirection: 'row', gap: space.md, marginTop: space.xxs },
-  stats: { flexDirection: 'row', gap: space.xs },
-  section: { gap: space.xs },
-  sectionHead: { flexDirection: 'row', alignItems: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  rows: { paddingVertical: space.xxs },
+  bold: { fontFamily: fonts.bold },
+  content: { paddingHorizontal: layout.gutter, paddingTop: space.xs, gap: space.md + 2 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 2 },
+  ring: { width: AVATAR, height: AVATAR, borderRadius: radius.full, borderWidth: AVATAR_RING, alignItems: 'center', justifyContent: 'center' },
+  counts: { flexDirection: 'row', alignItems: 'center', gap: space.xxs + 2, marginTop: 2, flexWrap: 'wrap' },
+  stats: { flexDirection: 'row', gap: space.sm - 2 },
+  stat: { flex: 1, borderRadius: radius.lg, borderWidth: 1, padding: space.sm + 2, gap: space.xs },
+  statIcon: { width: STAT_ICON, height: STAT_ICON, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  section: { gap: space.sm },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: space.sm },
+  menu: { padding: 0, overflow: 'hidden', borderRadius: radius.xl },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 2, paddingVertical: space.sm + 2, paddingHorizontal: space.md },
+  menuIcon: { width: MENU_ICON, height: MENU_ICON, borderRadius: radius.sm + 2, alignItems: 'center', justifyContent: 'center' },
 })

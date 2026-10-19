@@ -30,6 +30,14 @@ export const type = {
   streak:   { fontFamily: fonts.extrabold, fontSize: 48, lineHeight: 50, letterSpacing: -1.5 },
   /** Block labels ("Bugungi fokus") and links in cards. */
   label:    { fontFamily: fonts.semibold,  fontSize: 14, lineHeight: 18 },
+  /** Profil: the name, and the level card's title / label / sub / numbers. */
+  profileName: { fontFamily: fonts.extrabold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 },
+  levelTitle: { fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 34, letterSpacing: -0.6 },
+  levelLabel: { fontFamily: fonts.extrabold, fontSize: 12, lineHeight: 16, letterSpacing: 1, textTransform: 'uppercase' },
+  levelSub: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
+  levelNumbers: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 18 },
+  /** Stat tile values (Profil, Bellashuv hero). */
+  statValue: { fontFamily: fonts.extrabold, fontSize: 24, lineHeight: 28 },
   /** Coin amount in the header pill. */
   coin:     { fontFamily: fonts.bold,      fontSize: 15, lineHeight: 20 },
   /** White on the orange accent fill: the large-text minimum (Phase 7.5 B1). */

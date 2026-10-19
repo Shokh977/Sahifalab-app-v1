@@ -232,6 +232,20 @@ export const treeGlow = {
   dark: ['rgba(77,191,126,0.22)', 'rgba(77,191,126,0.04)'],
 } as const
 
+/**
+ * Profil level card (Phase 7.5 D2): a diagonal orange gradient, light in
+ * the top-right (under the decorative rings) and dark bottom-left (under
+ * the text) — white text on it is 3.1:1 or better. The hexagon emblem's
+ * number is `emblemText` on white.
+ */
+export const levelCard = {
+  fill: ['#FF9A4A', '#F26A1F', '#C9430A'],
+  track: 'rgba(255,255,255,0.28)',
+  ringOpacity: 0.18,
+  emblemFill: 'rgba(255,255,255,0.18)',
+  emblemText: '#D2530E',
+} as const
+
 /** Trophy (RivalLadder footer): gradient cup and handles. */
 export const trophy = { cup: ['#FFD66B', '#E9A21A'], handle: '#E9A21A' } as const
 
