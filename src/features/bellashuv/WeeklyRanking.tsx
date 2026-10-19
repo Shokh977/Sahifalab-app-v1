@@ -4,12 +4,11 @@
  * accentSoft background with "#56 gacha 120 XP" inside it.
  */
 import React from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import type { LeaderboardEntry } from '../../../lib/api'
 import { useTheme } from '../../design/ThemeProvider'
 import { space } from '../../design/spacing'
-import { type as typeScale } from '../../design/typography'
-import { Button, Card } from '../../components/ui'
+import { Card, SectionTitle } from '../../components/ui'
 import { rankGap } from '../today/today'
 import { hoursLabel } from './bellashuv'
 import { RankRow } from './RankRow'
@@ -46,12 +45,7 @@ export function WeeklyRanking({ entries, myRank, onAll }: {
 
   return (
     <View style={styles.section}>
-      <View style={styles.header}>
-        <Text style={[typeScale.overline, styles.flex, { color: colors.textMuted }]} accessibilityRole="header">
-          Haftalik reyting
-        </Text>
-        <Button label="Hammasi" variant="ghost" size="sm" onPress={onAll} />
-      </View>
+      <SectionTitle title="Haftalik reyting" link={{ label: 'Hammasi', onPress: onAll }} />
       <Card style={styles.card}>
         {top.map(e => <Row key={e.telegram_id} e={e} mine={meInTop && e.telegram_id === me?.telegram_id} />)}
         {me && !meInTop && (

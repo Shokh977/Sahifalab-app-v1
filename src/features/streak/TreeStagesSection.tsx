@@ -54,8 +54,8 @@ export function TreeStagesSection({ streakDays, onLayout }: { streakDays: number
                 },
               ]}
             >
-              <View style={[styles.num, { backgroundColor: isCurrent ? colors.accent : colors.surfaceRaised }]}>
-                <Text style={[typeScale.caption, tabular, { color: isCurrent ? colors.onAccent : colors.textMuted }]}>{s.id}</Text>
+              <View style={[styles.num, { backgroundColor: isCurrent ? colors.surface : colors.surfaceRaised }]}>
+                <Text style={[typeScale.caption, tabular, { color: isCurrent ? colors.accentText : colors.textMuted }]}>{s.id}</Text>
               </View>
               <View style={styles.tree}>
                 {ready

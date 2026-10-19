@@ -4,24 +4,21 @@
  * Reads Bugun's enrolled list from the dashboard store.
  */
 import React from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { BookOpen } from 'lucide-react-native'
 import type { EnrolledCourse } from '../../../stores/dashboardStore'
-import { useTheme } from '../../design/ThemeProvider'
 import { space } from '../../design/spacing'
-import { type as typeScale } from '../../design/typography'
-import { Card, ListRow, ProgressBar } from '../../components/ui'
+import { Card, ListRow, ProgressBar, SectionTitle } from '../../components/ui'
 import { uzText } from '../today/today'
 import { continueCourses, progressLabel } from './courses'
 
 export function ContinueRow({ enrolled, onOpen }: { enrolled: readonly EnrolledCourse[]; onOpen: (courseId: number) => void }) {
-  const { colors } = useTheme()
   const rows = continueCourses(enrolled)
   if (rows.length === 0) return null
 
   return (
     <View style={styles.root}>
-      <Text style={[typeScale.overline, { color: colors.textMuted }]} accessibilityRole="header">Davom etish</Text>
+      <SectionTitle title="Davom etish" />
       <Card style={styles.card}>
         {rows.map(e => {
           const c = e.courses!

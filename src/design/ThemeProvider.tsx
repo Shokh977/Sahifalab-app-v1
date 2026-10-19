@@ -11,9 +11,9 @@
  */
 import React, { createContext, useContext, useMemo } from 'react'
 import { useThemeStore } from '../../stores/themeStore'
-import { badgeColors, deckColors, palette, type Scheme } from './tokens'
+import { accentFill, badgeColors, deckColors, palette, progressFill, tintOf, type Scheme, type TintName } from './tokens'
 import { tabular, type } from './typography'
-import { iconSize, iconStroke, layout, radius, shadow, space } from './spacing'
+import { accentShadow, iconSize, iconStroke, layout, radius, shadow, space } from './spacing'
 import { durations, easing, press, springs, stagger } from './motion'
 
 const SchemeContext = createContext<Scheme | null>(null)
@@ -39,8 +39,14 @@ export function useTheme() {
     radius,
     iconSize,
     iconStroke,
-    // Depth: a lighter surface in dark mode, one soft shadow in light mode.
+    // Depth: a lighter surface in dark mode, the soft card shadow in light mode.
     elevation: scheme === 'light' ? shadow : null,
+    /** Under accent fills (buttons, the "next" tile): light mode only. */
+    accentShadow: scheme === 'light' ? accentShadow : null,
+    accentFill,
+    progressFill,
+    /** A hue's ink / soft background / line for icon tiles and badges. */
+    tint: (name: TintName) => tintOf(palette[scheme], name, scheme),
     motion: { springs, easing, durations, press, stagger },
   }), [scheme])
 }

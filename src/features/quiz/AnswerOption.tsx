@@ -58,8 +58,9 @@ export function AnswerOption({ index, text, state, onPress, disabled }: {
   const bad = state === 'wrong'
   const bg = good ? badgeColors[GREEN] : bad ? badgeColors[RED] : colors.surface
   const border = good ? colors.success : bad ? colors.danger : state === 'pending' ? colors.accent : colors.border
-  const badgeBg = good ? colors.success : bad ? colors.danger : state === 'pending' ? colors.accent : colors.surfaceRaised
-  const badgeFg = good || bad || state === 'pending' ? colors.onAccent : colors.textMuted
+  // Pending: a soft orange letter badge (no small white text on orange).
+  const badgeBg = good ? colors.success : bad ? colors.danger : state === 'pending' ? colors.accentSoft : colors.surfaceRaised
+  const badgeFg = state === 'pending' ? colors.accentText : colors.textMuted
   const Mark = good ? Check : bad ? X : null
   const label = `${optionLetter(index)}. ${text}${good ? ', toʻgʻri javob' : bad ? ', notoʻgʻri' : ''}`
 

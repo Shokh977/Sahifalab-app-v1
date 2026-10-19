@@ -18,7 +18,7 @@ import { useTheme } from '../../design/ThemeProvider'
 import { avatarSize, iconSize, iconStroke, layout, radius, space } from '../../design/spacing'
 import { imageChip, onImage } from '../../design/tokens'
 import { tabular, type as typeScale } from '../../design/typography'
-import { Avatar, Badge, Button, Card, ListRow, Pressable } from '../../components/ui'
+import { Avatar, Badge, Button, Card, ListRow, Pressable, SectionTitle } from '../../components/ui'
 import { uzText } from '../today/today'
 import { CourseRow } from './CourseRow'
 import { courseMeta, durationLabel, groupDigits, isFree, isPreviewable, priceLabel, socialProof } from './courses'
@@ -169,9 +169,7 @@ export function CourseMarketing(p: CourseMarketingProps) {
 
           {p.lessons.length > 0 && (
             <View style={styles.gapXs}>
-              <Text style={[typeScale.overline, { color: colors.textMuted }]} accessibilityRole="header">
-                Darslar · {p.lessons.length}{durationLabel(totalMin) ? ` · ${durationLabel(totalMin)}` : ''}
-              </Text>
+              <SectionTitle title="Darslar" meta={`${p.lessons.length} ta${durationLabel(totalMin) ? ` · ${durationLabel(totalMin)}` : ''}`} />
               <Card style={styles.lessons}>
                 {groups.map((g, gi) => (
                   <View key={`${g.title ?? ''}-${gi}`}>
@@ -215,9 +213,7 @@ export function CourseMarketing(p: CourseMarketingProps) {
 
           {proof.rating && p.reviews.length > 0 && (
             <View style={styles.gapXs}>
-              <Text style={[typeScale.overline, { color: colors.textMuted }]} accessibilityRole="header">
-                Sharhlar · ★ {proof.rating} · {groupDigits(course.ratings_count ?? 0)} ta baho
-              </Text>
+              <SectionTitle title="Sharhlar" meta={`★ ${proof.rating} · ${groupDigits(course.ratings_count ?? 0)} ta baho`} />
               {p.reviews.slice(0, REVIEWS_SHOWN).map(rv => (
                 <Card key={rv.id} style={styles.gapXs}>
                   <View style={styles.reviewHead}>
@@ -233,7 +229,7 @@ export function CourseMarketing(p: CourseMarketingProps) {
 
           {p.teacherCourses.length > 0 && (
             <View style={styles.gapXs}>
-              <Text style={[typeScale.overline, { color: colors.textMuted }]} accessibilityRole="header">Oʻqituvchining boshqa kurslari</Text>
+              <SectionTitle title="Oʻqituvchining boshqa kurslari" />
               {p.teacherCourses.map(tc => <CourseRow key={tc.id} course={tc} onPress={() => p.onOpenCourse(tc.id)} />)}
             </View>
           )}

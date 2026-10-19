@@ -1,7 +1,8 @@
 /**
- * Button — primary (accent fill), secondary (outline), ghost, destructive;
- * sm 40 / md 48 / lg 54; default, pressed, disabled, loading.
- * Text on filled buttons uses onAccent (white fails contrast on orange).
+ * Button — primary (orange gradient), secondary (outline), ghost,
+ * destructive; sm 40 / md 48 / lg 54; default, pressed, disabled, loading.
+ * Filled buttons carry white 18 px extra bold labels (type.onAccent — the
+ * large-text bar for white on orange) and, in light mode, the accent shadow.
  */
 import React from 'react'
 import { ActivityIndicator, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
@@ -11,6 +12,7 @@ import { controlHeight, iconSize, iconStroke, radius, space } from '../../design
 import { stateOpacity } from '../../design/tokens'
 import { type as typeScale } from '../../design/typography'
 import { Pressable } from './Pressable'
+import { AccentFill } from './AccentFill'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
 export type ButtonSize = 'sm' | 'md' | 'lg'
@@ -31,12 +33,13 @@ export interface ButtonProps {
 export function Button({
   label, onPress, variant = 'primary', size = 'md', icon: Icon, disabled, loading, fullWidth, style, accessibilityLabel,
 }: ButtonProps) {
-  const { colors } = useTheme()
-  const filled = variant === 'primary' || variant === 'destructive'
-  const bg = variant === 'primary' ? colors.accent : variant === 'destructive' ? colors.danger : 'transparent'
+  const { colors, accentShadow } = useTheme()
+  const primary = variant === 'primary'
+  const filled = primary || variant === 'destructive'
+  const bg = variant === 'destructive' ? colors.danger : 'transparent'
   const fg = filled ? colors.onAccent : variant === 'secondary' ? colors.text : colors.accentText
   const inactive = disabled || loading
-  const textStyle = size === 'sm' ? typeScale.callout : typeScale.headline
+  const textStyle = filled ? typeScale.onAccent : size === 'sm' ? typeScale.callout : typeScale.headline
 
   return (
     <Pressable
@@ -54,10 +57,12 @@ export function Button({
           backgroundColor: bg,
           borderColor: variant === 'secondary' ? colors.border : 'transparent',
         },
+        primary && !disabled && accentShadow,
         fullWidth && styles.fullWidth,
         style,
       ]}
     >
+      {primary && <AccentFill radius={radius.md} />}
       {/* Label stays laid out while loading so the button never changes width. */}
       <View style={[styles.content, loading && styles.hidden]}>
         {Icon && <Icon size={iconSize.sm} color={fg} strokeWidth={iconStroke} />}

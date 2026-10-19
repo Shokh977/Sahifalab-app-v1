@@ -11,7 +11,8 @@ import { tabular, type as typeScale } from '../../design/typography'
 export type BadgeStatus = 'success' | 'danger' | 'accent' | 'neutral'
 
 export type BadgeProps =
-  | { kind: 'count'; count: number; max?: number; style?: StyleProp<ViewStyle> }
+  /** onFill: the badge sits on an accent fill — a white pill instead. */
+  | { kind: 'count'; count: number; max?: number; onFill?: boolean; style?: StyleProp<ViewStyle> }
   | { kind: 'pro'; style?: StyleProp<ViewStyle> }
   | { kind: 'status'; status: BadgeStatus; label: string; style?: StyleProp<ViewStyle> }
 
@@ -24,8 +25,10 @@ export function Badge(props: BadgeProps) {
     const max = props.max ?? 99
     const label = props.count > max ? `${max}+` : String(props.count)
     return (
-      <View style={[styles.pill, { backgroundColor: colors.accent }, props.style]} accessibilityLabel={label}>
-        <Text style={[typeScale.overline, tabular, styles.numeric, { color: colors.onAccent }]}>{label}</Text>
+      // No small white text on orange (Phase 7.5 B1): accentText on a soft
+      // pill, or on a white pill when the badge sits on an accent fill.
+      <View style={[styles.pill, { backgroundColor: props.onFill ? colors.onAccent : colors.accentSoft }, props.style]} accessibilityLabel={label}>
+        <Text style={[typeScale.overline, tabular, styles.numeric, { color: colors.accentText }]}>{label}</Text>
       </View>
     )
   }

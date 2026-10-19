@@ -24,6 +24,24 @@ export const type = {
   overline: { fontFamily: fonts.bold,      fontSize: 11, lineHeight: 14, letterSpacing: 0.9, textTransform: 'uppercase' },
   /** Tab bar labels and other tiny non-uppercase text. */
   caption:  { fontFamily: fonts.semibold,  fontSize: 11, lineHeight: 14 },
+  /** White on the orange accent fill: the large-text minimum (Phase 7.5 B1). */
+  onAccent: { fontFamily: fonts.extrabold, fontSize: 18, lineHeight: 22 },
+  /** The level number on an avatar (Phase 7.5 C1: white on accent). */
+  levelBadge: { fontFamily: fonts.extrabold, fontSize: 12, lineHeight: 14 },
+  /** Section titles (B4): sentence case, 20 px extra bold. */
+  section:  { fontFamily: fonts.extrabold, fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
+  /** Text links beside a section title ("Hammasi"). */
+  link:     { fontFamily: fonts.bold,      fontSize: 14, lineHeight: 18 },
+  /** A title over a cover photo (CompetitionHero). */
+  heroTitle: { fontFamily: fonts.extrabold, fontSize: 21, lineHeight: 25, letterSpacing: -0.3 },
+  /** Ranking rows: name and XP (RivalLadder, Podium). */
+  rowTitle: { fontFamily: fonts.bold,      fontSize: 15, lineHeight: 20 },
+  /** Small secondary lines ("#22", "Lv.9 · 33,8 soat"). */
+  small:    { fontFamily: fonts.regular,   fontSize: 12, lineHeight: 16 },
+  /** Tile and row titles (PlanTile, RivalLadder). */
+  tileTitle: { fontFamily: fonts.bold,     fontSize: 16, lineHeight: 20 },
+  /** Big tile numbers ("48 ta", "180 daq"). */
+  tileValue: { fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 32, letterSpacing: -0.6 },
 } as const satisfies Record<string, TypeToken>
 
 export type TypeTokenName = keyof typeof type

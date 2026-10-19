@@ -24,9 +24,7 @@ import { TeamHeadToHeadBar } from '../../../components/study/TeamHeadToHeadBar'
 import { useTheme } from '../../../src/design/ThemeProvider'
 import { layout, space } from '../../../src/design/spacing'
 import { tabular, type as typeScale } from '../../../src/design/typography'
-import {
-  Button, Card, EmptyState, ProgressBar, ScreenHeader, SkeletonBlock, SkeletonRow, ToastHost, showToast,
-} from '../../../src/components/ui'
+import { Button, Card, EmptyState, ProgressBar, ScreenHeader, SkeletonBlock, SkeletonRow, ToastHost, showToast, SectionTitle } from '../../../src/components/ui'
 import { useMinuteClock } from '../../../src/features/today/useMinuteClock'
 import { uzText } from '../../../src/features/today/today'
 import { ChallengeHeader } from '../../../src/features/bellashuv/ChallengeHeader'
@@ -255,7 +253,7 @@ export default function ChallengeDetailScreen() {
             </Card>
           )
         ) : (
-          <Text style={[typeScale.overline, { color: colors.textMuted }]} accessibilityRole="header">Reyting</Text>
+          <SectionTitle title="Reyting" />
         )}
       </View>
     </View>

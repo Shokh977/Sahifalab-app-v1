@@ -41,3 +41,6 @@ export const streakTick = { flamePeak: 1.35, treePeak: 1.08, treeDelay: 380 }
 
 /** Wrong answer: ±6 px, twice, in 240 ms (section 5). */
 export const shake = { distance: 6, duration: 240 }
+
+/** The live dot on a running competition: the one allowed loop (off under reduce motion). */
+export const livePulse = { duration: 900, minOpacity: 0.35 }

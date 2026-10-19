@@ -1,6 +1,12 @@
 import { describe, expect, it } from '@jest/globals'
-import { avatarColors, backgroundTokens, onAvatar, palette, textTokens } from '../src/design/tokens'
+import { accentFill, avatarColors, backgroundTokens, onAvatar, palette, textTokens } from '../src/design/tokens'
 import { contrastRatio, meetsAA } from '../src/design/contrast'
+
+/** Midpoint of two #RRGGBB colours (the gradient's centre). */
+function mix(a: string, b: string): string {
+  const ch = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16)
+  return '#' + [0, 1, 2].map(i => Math.round((ch(a, i) + ch(b, i)) / 2).toString(16).padStart(2, '0')).join('')
+}
 
 describe('contrast helpers', () => {
   it('matches known WCAG values', () => {
@@ -22,8 +28,14 @@ describe.each(['dark', 'light'] as const)('%s palette', scheme => {
     },
   )
 
-  it('onAccent text on the accent fill is at least 4.5:1', () => {
-    expect(contrastRatio(p.onAccent, p.accent)).toBeGreaterThanOrEqual(4.5)
+  // Phase 7.5 B1: white on the orange gradient is large-text only (18 px
+  // extra bold or a 24 px+ number), so the bar is WCAG's 3:1 — met from the
+  // middle of the gradient (where a label sits) to the bottom. The top stop
+  // alone is 2.74:1; nothing is drawn on the top edge.
+  it('white on the accent gradient meets the large-text 3:1 where text sits', () => {
+    expect(contrastRatio(p.onAccent, mix(accentFill[0], accentFill[1]))).toBeGreaterThanOrEqual(3)
+    expect(contrastRatio(p.onAccent, accentFill[1])).toBeGreaterThanOrEqual(3)
+    expect(contrastRatio(p.onAccent, p.accent)).toBeGreaterThanOrEqual(3)
   })
 })
 
