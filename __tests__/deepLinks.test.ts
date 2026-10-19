@@ -49,6 +49,22 @@ const NEW_LINKS: [string, string][] = [
   ['sahifalab://nishonlar', '/(screens)/badges'],
 ]
 
+// Screens removed in Phase 8 (and the AI companion while "pro" is off).
+const RETIRED_LINKS: [string, string][] = [
+  ['sahifalab://tree-test', '/(tabs)'],
+  ['sahifalab://workspace', '/(tabs)'],
+  ['sahifalab://jobs', '/(tabs)'],
+  ['sahifalab://focus-timer', '/(tabs)'],
+  ['sahifalab://connections', '/(tabs)'],
+  ['sahifalab://ai-companion', '/(tabs)'],
+]
+
+describe('deep links: retired screens open Bugun', () => {
+  it.each(RETIRED_LINKS)('%s → %s', (url, route) => {
+    expect(parseDeepLink(url)).toBe(route)
+  })
+})
+
 describe('deep links: redesign names', () => {
   it.each(NEW_LINKS)('%s → %s', (url, route) => {
     expect(parseDeepLink(url)).toBe(route)

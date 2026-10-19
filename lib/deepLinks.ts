@@ -1,3 +1,8 @@
+import { features } from '../src/config/features'
+
+/** Routes removed in redesign Phase 8; their links open Bugun. */
+const RETIRED_TO_BUGUN = ['tree-test', 'workspace', 'jobs', 'focus-timer', 'connections']
+
 /**
  * Deep link URL → in-app route. Moved out of app/_layout.tsx (redesign
  * Phase 4a) so every link can be unit-tested — __tests__/deepLinks.test.ts
@@ -15,6 +20,11 @@ export function parseDeepLink(url: string): string | null {
   const seg1  = parts[1]
   const seg2  = parts[2]
   const seg3  = parts[3]
+
+  // Screens removed in redesign Phase 8 land on Bugun (their routes
+  // redirect too); the AI companion waits behind the "pro" flag.
+  if (RETIRED_TO_BUGUN.includes(seg0)) return '/(tabs)'
+  if (seg0 === 'ai-companion') return features.pro ? '/(screens)/ai-companion' : '/(tabs)'
 
   // Dynamic profile must be checked before tabRoutes swallows bare "profile"
   if (seg0 === 'profile' && seg1) return `/(screens)/profile/${seg1}`
