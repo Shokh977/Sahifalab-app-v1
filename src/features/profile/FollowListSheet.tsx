@@ -50,7 +50,7 @@ export function FollowListSheet({ kind, userId, onClose, onOpenUser }: {
               key={u.telegram_id}
               title={uzText(u.full_name || 'Foydalanuvchi')}
               subtitle={u.username ? `@${u.username} · Lv.${u.level}` : `Lv.${u.level}`}
-              leading={{ kind: 'avatar', name: u.full_name || '?', uri: u.photo_url }}
+              leading={{ kind: 'avatar', name: u.full_name || '?', uri: u.photo_url, id: u.telegram_id }}
               trailing={{ kind: 'chevron' }}
               onPress={() => { onClose(); onOpenUser(u.telegram_id) }}
             />

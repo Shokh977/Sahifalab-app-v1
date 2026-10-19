@@ -166,8 +166,14 @@ export interface FlashcardDeck {
   is_public:      boolean
   course_id:      number | null
   due_count:      number
-  /** Daily new-card limit (migration 104); null/undefined = 10 per session. */
+  /** Daily new-card limit (migration 104); null/undefined = 20 a day. */
   new_per_day?:   number | null
+  /** Today's review queue (Phase 7.5 A1; newer backends). Reviews due by the
+   *  end of the local day, never-studied cards, and how many of those were
+   *  first studied today. Read through src/features/flashcards/queue.ts. */
+  reviews_due_today?: number
+  new_available?:     number
+  introduced_today?:  number
   created_at:     string | null
   updated_at:     string | null
   // Public deck library (step-14-public-flashcard-decks)

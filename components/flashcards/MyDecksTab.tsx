@@ -22,18 +22,21 @@ import { CardsHero } from '../../src/features/cards/CardsHero'
 import { AiCreateCard } from '../../src/features/cards/AiCreateCard'
 import { DeckActionsSheet } from '../../src/features/cards/DeckActionsSheet'
 import { UpgradeSheet } from '../../src/features/pro/UpgradeSheet'
+import { useTodayReviewQueue } from '../../src/features/flashcards/queue'
 
 function deckSubtitle(d: FlashcardDeck): string {
   const pct = d.card_count > 0 ? Math.round((d.mastered_count / d.card_count) * 100) : 0
   return `${d.card_count} ta karta · ${pct}% oʻrganildi`
 }
 
-export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePublic, onStartReview, onOpenAi }: {
+export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePublic, onStartReview, onMoreNew, onOpenAi }: {
   onOpenDeck:     (id: number) => void
   onCreateDeck:   () => void
   onEditDeck:     (deck: FlashcardDeck) => void
   onBrowsePublic: () => void
   onStartReview:  (deckId: number) => void
+  /** "Yana 20 ta yangi karta": a session with 20 new cards past today's limit. */
+  onMoreNew:      (deckId: number) => void
   onOpenAi:       () => void
 }) {
   const { colors } = useTheme()
@@ -48,11 +51,12 @@ export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePubli
   const [deleting, setDeleting] = useState(false)
   const [proOpen, setProOpen] = useState(false)
 
+  // Today's queue (Phase 7.5 A1): the same count Bugun shows.
+  const queue = useTodayReviewQueue()
+  const dueOf = (d: FlashcardDeck) => queue.perDeck[d.id]?.total ?? 0
   // Most due first, then the rest by last change.
   const sorted = useMemo(() => [...decks].sort((a, b) =>
-    b.due_count - a.due_count || (b.updated_at ?? '').localeCompare(a.updated_at ?? '')), [decks])
-  const totalDue = stats?.total_due ?? decks.reduce((s, d) => s + d.due_count, 0)
-  const startDeck = sorted.find(d => d.due_count > 0) ?? null
+    (queue.perDeck[b.id]?.total ?? 0) - (queue.perDeck[a.id]?.total ?? 0) || (b.updated_at ?? '').localeCompare(a.updated_at ?? '')), [decks, queue.perDeck])
 
   async function onRefresh() {
     setRefreshing(true)
@@ -78,11 +82,13 @@ export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePubli
   const header = (
     <View style={styles.header}>
       <CardsHero
-        due={totalDue}
+        due={queue.total}
+        capped={queue.capped}
         mastered={stats?.total_mastered ?? decks.reduce((s, d) => s + d.mastered_count, 0)}
         total={stats?.total_cards ?? decks.reduce((s, d) => s + d.card_count, 0)}
-        onStart={() => { if (startDeck) onStartReview(startDeck.id) }}
+        onStart={() => { if (queue.top) onStartReview(queue.top.id) }}
         onAdd={onCreateDeck}
+        onMoreNew={queue.moreNew != null && queue.newToday === 0 ? () => onMoreNew(queue.moreNew!) : undefined}
       />
       <AiCreateCard onOpen={onOpenAi} onPro={() => setProOpen(true)} />
       {decks.length > 0 && (
@@ -116,7 +122,7 @@ export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePubli
             title={uzText(item.title)}
             subtitle={deckSubtitle(item)}
             leading={{ kind: 'icon', icon: Layers, color: item.color }}
-            trailing={item.due_count > 0 ? { kind: 'count', count: item.due_count } : { kind: 'chevron' }}
+            trailing={dueOf(item) > 0 ? { kind: 'count', count: dueOf(item) } : { kind: 'chevron' }}
             onPress={() => onOpenDeck(item.id)}
             onLongPress={() => setActionsFor(item)}
           />

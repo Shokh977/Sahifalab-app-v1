@@ -30,3 +30,9 @@ export type TypeTokenName = keyof typeof type
 
 /** Every number that changes (timer, XP, scores, ranks, counts). */
 export const tabular: TextStyle = { fontVariant: ['tabular-nums'] }
+
+/** Avatar initials: round(diameter × 0.38), extra bold (Phase 7.5 A5). */
+export function initialsFont(diameter: number): TextStyle {
+  const size = Math.round(diameter * 0.38)
+  return { fontFamily: fonts.extrabold, fontSize: size, lineHeight: Math.round(size * 1.2) }
+}

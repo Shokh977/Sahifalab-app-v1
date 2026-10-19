@@ -980,8 +980,12 @@ export const flashcards = {
   deleteCard: (id: number) =>
     request<void>(`/api/flashcards/cards/${id}`, { method: 'DELETE', auth: true }),
 
-  getStudySession: (deckId: number, practice?: boolean) =>
-    request<StudySession>(`/api/flashcards/decks/${deckId}/study${practice ? '?practice=1' : ''}`, { auth: true }),
+  /** extraNew: new cards beyond today's limit ("Yana 20 ta yangi karta"). */
+  getStudySession: (deckId: number, practice?: boolean, extraNew?: number) =>
+    request<StudySession>(
+      `/api/flashcards/decks/${deckId}/study${practice ? '?practice=1' : extraNew ? `?extra_new=${extraNew}` : ''}`,
+      { auth: true },
+    ),
 
   reviewCard: (id: number, body: { rating: number; time_spent_ms?: number }) =>
     request<ReviewResult>(`/api/flashcards/cards/${id}/review`, {

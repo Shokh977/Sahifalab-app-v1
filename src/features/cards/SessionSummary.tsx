@@ -1,17 +1,19 @@
 /**
  * End of a study session: accuracy, cards and time as StatTiles, how many
  * cards come back tomorrow, the deck's mastery change and XP; then back to
- * Bugun or another deck.
+ * Bugun or another deck — or, when today's new-card limit is used up and
+ * the deck has more, "Yana 20 ta yangi karta" (Phase 7.5).
  */
 import React from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { CalendarClock } from 'lucide-react-native'
+import { CalendarClock, Plus } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
 import { layout, space } from '../../design/spacing'
 import { tabular, type as typeScale } from '../../design/typography'
 import { Button, Card, ListRow, ProgressBar, StatTile } from '../../components/ui'
 import { uzText } from '../today/today'
+import { EXTRA_NEW } from '../flashcards/queueMath'
 
 export interface SessionSummaryProps {
   deckTitle: string
@@ -24,6 +26,8 @@ export interface SessionSummaryProps {
   masteryAfter: number
   onHome: () => void
   onOther: () => void
+  /** Today's new-card limit is reached and the deck has more: +20, today only. */
+  onMoreNew?: () => void
 }
 
 function clock(sec: number): string {
@@ -71,6 +75,9 @@ export function SessionSummary(p: SessionSummaryProps) {
         </Card>
 
         <View style={styles.gap}>
+          {p.onMoreNew && (
+            <Button label={`Yana ${EXTRA_NEW} ta yangi karta`} icon={Plus} variant="secondary" size="lg" fullWidth onPress={p.onMoreNew} />
+          )}
           <Button label="Bugunga qaytish" size="lg" fullWidth onPress={p.onHome} />
           <Button label="Boshqa toʻplam" variant="secondary" size="lg" fullWidth onPress={p.onOther} />
         </View>

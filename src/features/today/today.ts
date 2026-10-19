@@ -2,6 +2,8 @@
  * Pure helpers for Bugun (Home). No React, no I/O — unit-tested in
  * __tests__/today.test.ts.
  */
+import { estMinutes } from '../flashcards/queueMath'
+import { focusLabel } from './focusLabel'
 
 /** Ordinary Uzbek ʻ (U+02BB) in oʻ / gʻ, for server and legacy strings
  *  that still carry an ASCII apostrophe or a curly quote. */
@@ -13,11 +15,6 @@ export function greeting(hour: number): string {
   if (hour >= 5 && hour < 11) return 'Xayrli tong'
   if (hour >= 11 && hour < 17) return 'Xayrli kun'
   return 'Xayrli kech'
-}
-
-/** Rough review time: ~8 s per card, at least one minute. */
-export function reviewMinutes(cards: number): number {
-  return Math.max(1, Math.ceil((cards * 8) / 60))
 }
 
 export function quizClosesIn(seconds: number): string {
@@ -72,13 +69,15 @@ export function rankGap(entries: readonly RankEntry[], myRank: number | null | u
 // ── Today plan ───────────────────────────────────────────────────────────────
 
 export interface PlanInput {
+  /** Always in the plan (Phase 7.5 A6). */
+  focus: { minutes: number; goal: number }
   quiz: { number: number; state: 'not_started' | 'in_progress' | 'submitted'; correct: number | null; secondsLeft: number; answered?: number } | null
   /** null = the user has no decks, so the row is hidden. */
   dueCards: number | null
   course: { id: number; title: string; progress: number } | null
 }
 
-export type PlanRowKey = 'quiz' | 'cards' | 'course'
+export type PlanRowKey = 'focus' | 'quiz' | 'cards' | 'course'
 
 export interface PlanRow {
   key: PlanRowKey
@@ -90,6 +89,14 @@ export interface PlanRow {
 /** Rows in plan order with done rows moved to the bottom, plus the count. */
 export function buildPlanRows(input: PlanInput): { rows: PlanRow[]; done: number; total: number } {
   const rows: PlanRow[] = []
+
+  const f = focusLabel(input.focus.minutes, input.focus.goal)
+  rows.push({
+    key: 'focus',
+    title: 'Fokus',
+    subtitle: f.done ? `${f.value} · maqsad bajarildi` : f.right,
+    done: f.done,
+  })
 
   if (input.quiz) {
     const q = input.quiz
@@ -111,7 +118,7 @@ export function buildPlanRows(input: PlanInput): { rows: PlanRow[]; done: number
     rows.push({
       key: 'cards',
       title: 'Kartalar',
-      subtitle: n > 0 ? `${n} ta · ~${reviewMinutes(n)} daq` : 'Bugun takrorlash yoʻq',
+      subtitle: n > 0 ? `${n} ta · ~${estMinutes(n)} daq` : 'Bugun takrorlash yoʻq',
       done: n === 0,
     })
   }
@@ -139,11 +146,4 @@ export function pickCurrentCourse<T extends { progress: number }>(enrolled: read
     if (!best || e.progress > best.progress) best = e
   }
   return best
-}
-
-/** The deck with the most due cards, or null when nothing is due. */
-export function pickTopDueDeck<T extends { id: number; due_count: number }>(decks: readonly T[]): { id: number; due: number } | null {
-  let best: T | null = null
-  for (const d of decks) if (d.due_count > 0 && (!best || d.due_count > best.due_count)) best = d
-  return best ? { id: best.id, due: best.due_count } : null
 }

@@ -6,7 +6,8 @@ import {
   type DailyQuizStatus, type StreakCalendarDay,
 } from '../lib/api'
 import { useAuthStore } from './authStore'
-import { pickTopDueDeck } from '../src/features/today/today'
+import { useFlashcardStore } from './flashcardStore'
+import { getTodayReviewQueue } from '../src/features/flashcards/queue'
 
 const CACHE_KEY = 'sahifalab_dashboard_cache'
 const CACHE_TTL = 300_000 // 5 min
@@ -54,17 +55,26 @@ export interface DashboardData {
 type TodayExtras = Pick<DashboardData, 'quiz' | 'quizFetchedAt' | 'topDueDeck' | 'hasDecks' | 'flashcardDueCount'>
 
 async function fetchTodayExtras(): Promise<Partial<TodayExtras>> {
-  const [quizRes, decksRes] = await Promise.allSettled([dailyQuiz.status(), flashcardsApi.listDecks()])
+  const [quizRes, decksRes, statsRes] = await Promise.allSettled([
+    dailyQuiz.status(), flashcardsApi.listDecks(), flashcardsApi.getStats(),
+  ])
   const out: Partial<TodayExtras> = {}
   if (quizRes.status === 'fulfilled') {
     out.quiz = quizRes.value.quiz
     out.quizFetchedAt = Date.now()
   }
   if (decksRes.status === 'fulfilled' && Array.isArray(decksRes.value)) {
-    out.topDueDeck = pickTopDueDeck(decksRes.value)
+    // Into the flashcard store, so Bugun and Kartalar count from the same
+    // decks through the one queue selector (Phase 7.5 A1).
+    useFlashcardStore.setState({
+      decks: decksRes.value,
+      decksFetchedAt: Date.now(),
+      ...(statsRes.status === 'fulfilled' ? { stats: statsRes.value } : {}),
+    })
+    const queue = getTodayReviewQueue(useAuthStore.getState().user?.telegram_id)
+    out.topDueDeck = queue.top
     out.hasDecks = decksRes.value.length > 0
-    // Kartalar due count for Bugun's plan, fresh after every study session.
-    out.flashcardDueCount = decksRes.value.reduce((n, d) => n + (d.due_count ?? 0), 0)
+    out.flashcardDueCount = queue.total
   }
   return out
 }
@@ -157,16 +167,14 @@ async function fetchAll(): Promise<DashboardData> {
     courses.list({ limit: 20, ordering: '-created_at', ...(savedLevel ? { level: savedLevel } : {}) }),
     leaderboard.weekly(),
     focusStats.get(),
-    flashcardsApi.getStats(),
     streaks.detail(),
   ]), fetchTodayExtras()])
-  const [meRes, enrollRes, coursesRes, leaderRes, statsRes, flashRes, streakRes] = settled
+  const [meRes, enrollRes, coursesRes, leaderRes, statsRes, streakRes] = settled
 
   const user       = meRes.status       === 'fulfilled' ? meRes.value              : null
   const enrolled   = enrollRes.status   === 'fulfilled' ? enrollRes.value           : []
   const recCourses = coursesRes.status  === 'fulfilled' ? coursesRes.value.courses  : []
   const lbRaw      = leaderRes.status   === 'fulfilled' ? leaderRes.value           : { entries: [] as import('../lib/api').LeaderboardEntry[], my_rank: null as number | null }
-  const flashStats = flashRes.status    === 'fulfilled' ? flashRes.value            : null
 
   // Use streak detail's streak_state to correct the lazy-reset streak_days in
   // focusStats. The backend doesn't reset streak_days to 0 immediately when a
@@ -194,7 +202,6 @@ async function fetchAll(): Promise<DashboardData> {
   if (streakJustLost) {
     stats = { ...stats, streak_days: 0 }
   }
-  const flashcardDueCount = flashStats?.total_due ?? 0
 
   // Patch is_me using caller's telegram_id (fallback endpoint sets is_me: false)
   const callerId = user?.telegram_id ?? null
@@ -241,7 +248,7 @@ async function fetchAll(): Promise<DashboardData> {
     leaderboard:            lbEntries,
     myLeaderRank:           myLeaderRank,
     focusStats:             stats,
-    flashcardDueCount,
+    flashcardDueCount:      0,   // replaced by extras' queue total
     fetchedAt:              Date.now(),
     streakState,
     streakJustLost,

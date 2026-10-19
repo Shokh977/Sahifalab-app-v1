@@ -146,7 +146,7 @@ export default function HomeTab() {
     freezeCount: data.focusStats.freeze_count ?? 0,
     hour: new Date(now).getHours(),
     quiz: quiz ? { state: quiz.state, theme: quiz.theme || null, answered: quiz.answered_count ?? 0 } : null,
-    dueCards: topDeck?.due ?? 0,
+    dueCards: data.hasDecks ? data.flashcardDueCount : 0,
     course: currentCourse,
   })
 
@@ -160,15 +160,16 @@ export default function HomeTab() {
   }
   const openCourse = (id: number) => router.push(`/(screens)/course/${id}` as any)
 
+  // Preset the timer to what's left of the goal (only when idle).
+  const openFocus = () => {
+    useTimerStore.getState().selectMinutes(Math.max(MIN_FOCUS_PRESET, Math.max(0, goalMinutes - todayMinutes) || goalMinutes))
+    router.push('/(tabs)/study' as any)
+  }
+
   function onPrimary() {
     track('today_primary_action_tap', { action: action.target })
     switch (action.target) {
-      case 'focus': {
-        // Preset the timer to what's left of the goal (only when idle).
-        useTimerStore.getState().selectMinutes(Math.max(MIN_FOCUS_PRESET, action.minutesLeft ?? goalMinutes))
-        router.push('/(tabs)/study' as any)
-        break
-      }
+      case 'focus': openFocus(); break
       case 'quiz': openQuiz(); break
       case 'review': openReview(); break
       case 'course': if (currentCourse) openCourse(currentCourse.id); break
@@ -177,7 +178,8 @@ export default function HomeTab() {
   }
 
   function onPlanRow(key: PlanRowKey) {
-    if (key === 'quiz') openQuiz()
+    if (key === 'focus') openFocus()
+    else if (key === 'quiz') openQuiz()
     else if (key === 'cards') openReview()
     else if (currentCourse) openCourse(currentCourse.id)
   }
@@ -212,6 +214,7 @@ export default function HomeTab() {
 
         <TodayPlan
           input={{
+            focus: { minutes: todayMinutes, goal: goalMinutes },
             quiz: quiz ? { number: quiz.quiz_number, state: quiz.state, correct: quiz.correct_count, secondsLeft: quizSecondsLeft, answered: quiz.answered_count ?? 0 } : null,
             dueCards: data.hasDecks === undefined ? null : data.hasDecks ? data.flashcardDueCount : null,
             course: currentCourse,

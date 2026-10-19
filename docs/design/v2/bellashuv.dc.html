@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Bellashuv v2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+button{font-family:inherit;cursor:pointer}
+.tap{transition:transform 200ms cubic-bezier(.32,.72,0,1)}
+.tap:active{transform:scale(.97)}
+@keyframes live{0%,100%{opacity:1}50%{opacity:.35}}
+.live{animation:live 1.6s ease-in-out infinite}
+</style>
+</helmet>
+<div style="width: 390px; height: 1500px; position: relative; box-sizing: border-box; background: {{c.bg}}; color: {{c.text}}; font-family: 'Onest', system-ui, sans-serif; overflow: hidden;">
+<div style="padding: 18px 20px 120px; display: flex; flex-direction: column; gap: 16px;">
+
+<header style="display: flex; align-items: center; justify-content: space-between; height: 48px;">
+<h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 800; letter-spacing: -0.5px;">Bellashuv</h1>
+<span style="width: 44px; height: 44px; border-radius: 50%; background: #2A211C; border: 2px solid #EE5A12; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; font-style: italic; color: #F7782C; box-sizing: border-box;">Sahifalab</span>
+</header>
+
+<div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 2px;">
+<h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.2px;">Bellashuvlar</h2>
+<span style="font-size: 13px; color: {{c.muted}};">1 ta faol</span>
+</div>
+
+<article style="border-radius: 28px; overflow: hidden; background: {{c.surface}}; border: 1px solid {{c.border}}; box-shadow: {{c.shadow}};">
+<div style="position: relative; height: 168px; overflow: hidden; background: #1B1410;">
+<img src="/_blob/c0b4fafab16c6c99f48fd0de70fb6dac" alt="" style="position: absolute; inset: -30px; width: calc(100% + 60px); height: calc(100% + 60px); object-fit: cover; filter: blur(18px) saturate(1.3); opacity: .9;">
+<div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,8,6,0.15) 0%, rgba(10,8,6,0.72) 100%);"></div>
+<div style="position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; align-items: flex-end; gap: 14px;">
+<img src="/_blob/c0b4fafab16c6c99f48fd0de70fb6dac" alt="Fokus Marafoni muqovasi" style="width: 92px; height: 92px; border-radius: 20px; object-fit: cover; border: 2px solid rgba(255,255,255,0.85); box-shadow: 0 8px 20px rgba(0,0,0,0.35); flex-shrink: 0;">
+<div style="display: flex; flex-direction: column; gap: 8px; min-width: 0; color: #FFFFFF;">
+<span style="align-self: flex-start; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.7px; background: rgba(255,255,255,0.18); padding: 5px 9px; border-radius: 999px;">
+<span class="live" style="width: 7px; height: 7px; border-radius: 50%; background: #4ADE80;"></span>
+FAOL · 5 KUN QOLDI
+</span>
+<span style="font-size: 21px; line-height: 25px; font-weight: 800; letter-spacing: -0.3px;">Sahifalab: Fokus Marafoni</span>
+</div>
+</div>
+</div>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+<div style="background: {{c.raised}}; border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; color: {{c.accentText}};">#14</span><span style="font-size: 12px; color: {{c.muted}};">oʻrningiz</span></div>
+<div style="background: {{c.raised}}; border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums;">3 soat</span><span style="font-size: 12px; color: {{c.muted}};">hissangiz</span></div>
+<div style="background: {{c.raised}}; border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums;">128</span><span style="font-size: 12px; color: {{c.muted}};">ishtirokchi</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; justify-content: space-between; font-size: 13px;"><span style="color: {{c.muted}};">Top 10 gacha</span><span style="font-weight: 700; font-variant-numeric: tabular-nums;">1,2 soat qoldi</span></div>
+<div style="height: 8px; border-radius: 4px; background: {{c.track}}; overflow: hidden;"><div style="width: 71%; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #FFB45E, #EE5A12);"></div></div>
+</div>
+<button class="tap" style="height: 54px; border: 0; border-radius: 16px; background: linear-gradient(180deg, #F7782C, #E2560E); color: #FFFFFF; font-size: 19px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 8px 20px rgba(226,86,14,0.25);">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2M10 2h4"></path></svg>
+Fokusni boshlash
+</button>
+</div>
+
+<div style="border-top: 1px solid {{c.border}}; padding: 14px 16px 6px; display: flex; justify-content: space-between; align-items: baseline;">
+<span style="font-size: 12px; font-weight: 800; letter-spacing: 0.9px; color: {{c.muted}};">YAKUNLANGAN</span>
+<a href="Bellashuv2.dc.html" style="font-size: 13px; font-weight: 700; text-decoration: none; color: {{c.accentText}};">Barchasi (14)</a>
+</div>
+<sc-for list="{{past}}" as="p" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 12px; padding: 10px 16px;">
+<img src="{{p.img}}" alt="" style="width: 52px; height: 52px; border-radius: 14px; object-fit: cover; flex-shrink: 0;">
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0;"><span style="font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.title}}</span><span style="font-size: 12px; color: {{c.muted}};">{{p.meta}}</span></span>
+<span style="font-size: 13px; font-weight: 800; padding: 5px 10px; border-radius: 999px; background: {{p.chipBg}}; color: {{p.chipInk}}; font-variant-numeric: tabular-nums;">{{p.place}}</span>
+</div>
+</sc-for>
+<div style="height: 8px;"></div>
+</article>
+
+<div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 10px;">
+<h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.2px;">Haftalik reyting</h2>
+<span style="font-size: 13px; color: {{c.muted}};">XP boʻyicha · 2 kun qoldi</span>
+</div>
+
+<section style="background: {{c.surface}}; border: 1px solid {{c.border}}; border-radius: 28px; padding: 18px 16px 12px; box-shadow: {{c.shadow}}; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 8px; padding-bottom: 8px;">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<span style="position: relative; width: 56px; height: 56px; border-radius: 50%; background: #4C7FE0; color: #FFFFFF; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; border: 3px solid #C9CDD3; box-sizing: border-box;">FZ<span style="position: absolute; bottom: -8px; width: 22px; height: 22px; border-radius: 50%; background: #C9CDD3; color: #3A3F47; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center;">2</span></span>
+<span style="font-size: 13px; font-weight: 700; margin-top: 6px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Feruza</span>
+<span style="font-size: 12px; color: {{c.muted}}; font-variant-numeric: tabular-nums;">3 116 XP</span>
+<span style="width: 100%; height: 44px; border-radius: 14px 14px 6px 6px; background: {{c.podium2}};"></span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<svg width="26" height="18" viewBox="0 0 26 18" aria-hidden="true"><path d="M2 16 4 4l5 5 4-8 4 8 5-5 2 12z" fill="#F2C14E"></path></svg>
+<span style="position: relative; width: 68px; height: 68px; border-radius: 50%; background: #2F8F5B; color: #FFFFFF; font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center; border: 3px solid #F2C14E; box-sizing: border-box;">NI<span style="position: absolute; bottom: -8px; width: 24px; height: 24px; border-radius: 50%; background: #F2C14E; color: #5A3B00; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center;">1</span></span>
+<span style="font-size: 14px; font-weight: 800; margin-top: 6px;">Nigora</span>
+<span style="font-size: 12px; color: {{c.muted}}; font-variant-numeric: tabular-nums;">4 107 XP</span>
+<span style="width: 100%; height: 64px; border-radius: 14px 14px 6px 6px; background: {{c.podium1}};"></span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<span style="position: relative; width: 56px; height: 56px; border-radius: 50%; background: #9A6BE0; color: #FFFFFF; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; border: 3px solid #D08A54; box-sizing: border-box;">AK<span style="position: absolute; bottom: -8px; width: 22px; height: 22px; border-radius: 50%; background: #D08A54; color: #FFFFFF; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center;">3</span></span>
+<span style="font-size: 13px; font-weight: 700; margin-top: 6px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Ali_07_khan</span>
+<span style="font-size: 12px; color: {{c.muted}}; font-variant-numeric: tabular-nums;">3 039 XP</span>
+<span style="width: 100%; height: 32px; border-radius: 14px 14px 6px 6px; background: {{c.podium3}};"></span>
+</div>
+</div>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-top: 1px solid {{c.border}};">
+<span style="width: 30px; font-size: 14px; font-weight: 700; color: {{c.muted}}; font-variant-numeric: tabular-nums; text-align: center;">{{r.rank}}</span>
+<span style="width: 38px; height: 38px; border-radius: 50%; background: {{r.av}}; color: #FFFFFF; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{r.ini}}</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column;"><span style="font-size: 15px; font-weight: 700;">{{r.name}}</span><span style="font-size: 12px; color: {{c.muted}};">{{r.meta}}</span></span>
+<span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">{{r.xp}}</span>
+</div>
+</sc-for>
+<div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 4px; margin-top: 4px; border-radius: 18px; background: {{c.orangeSoft}}; border: 1.5px solid {{c.orangeLine}};">
+<span style="width: 30px; font-size: 14px; font-weight: 800; color: {{c.accentText}}; font-variant-numeric: tabular-nums; text-align: center;">23</span>
+<span style="width: 38px; height: 38px; border-radius: 50%; background: #2A211C; border: 2px solid #EE5A12; color: #F7782C; font-size: 8px; font-style: italic; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box;">Sahifalab</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column;"><span style="font-size: 15px; font-weight: 800;">Siz</span><span style="font-size: 12px; color: {{c.accentText}}; font-weight: 600;">#22 gacha 22 XP</span></span>
+<span style="font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums;">467 XP</span>
+</div>
+<a href="Bellashuv2.dc.html" style="align-self: center; font-size: 14px; font-weight: 700; text-decoration: none; color: {{c.accentText}}; padding: 10px;">Toʻliq reyting</a>
+</section>
+
+<div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 10px;">
+<h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.2px;">5 Savol</h2>
+<span style="font-size: 13px; color: {{c.muted}};">Kunlik viktorina</span>
+</div>
+
+<a href="Savol.dc.html" class="tap" style="text-decoration: none; color: {{c.text}}; background: {{c.surface}}; border: 1px solid {{c.border}}; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: {{c.shadow}};">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span style="width: 48px; height: 48px; border-radius: 14px; background: {{c.blueSoft}}; display: flex; align-items: center; justify-content: center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{c.blue}}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.2 9a3 3 0 0 1 5.6 1c0 2-3 2.5-3 4.5M12 18h.01"></path></svg></span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px; font-weight: 700;">#69 · Pul va iqtisod</span><span style="font-size: 13px; color: {{c.muted}};">Bugun 17 kishi oʻynadi</span></span>
+<span style="font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums;">5/5</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: {{c.raised}};">
+<span style="font-size: 13px; font-weight: 800; color: {{c.accentText}}; font-variant-numeric: tabular-nums;">#10-oʻrin</span>
+<span style="flex-grow: 1; font-size: 13px; color: {{c.muted}};">Ertaga 09:00 da yangi savollar</span>
+<span style="font-size: 13px; font-weight: 700; color: {{c.accentText}};">Natijalar</span>
+</div>
+</a>
+
+</div>
+
+<nav aria-label="Asosiy menyu" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: {{c.tabBar}}; border-top: 1px solid {{c.border}}; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 6px 14px; box-sizing: border-box;">
+<a href="Bugun2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: {{c.tabInk}};">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+<span style="font-size: 12px; font-weight: 500;">Bugun</span>
+</a>
+<a href="Bugun2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: {{c.tabInk}};">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2M10 2h4"></path></svg>
+<span style="font-size: 12px; font-weight: 500;">Fokus</span>
+</a>
+<a href="Bugun2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: {{c.tabInk}};">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5z"></path><path d="M6 12v5c3 2 9 2 12 0v-5"></path></svg>
+<span style="font-size: 12px; font-weight: 500;">Kurslar</span>
+</a>
+<a href="Bugun2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: {{c.tabInk}};">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"></path><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"></path></svg>
+<span style="font-size: 12px; font-weight: 500;">Kartalar</span>
+</a>
+<a href="Bellashuv2.dc.html" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: {{c.accentText}}; position: relative;">
+<span style="position: absolute; top: 0; width: 64px; height: 34px; border-radius: 12px; background: {{c.orangeSoft}};"></span>
+<svg style="position: relative;" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg>
+<span style="font-size: 12px; font-weight: 700; margin-top: 6px;">Bellashuv</span>
+</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var dark = (this.props.theme || 'light') === 'dark';
+    var c = dark ? {
+      bg: '#0D0D0F', surface: '#17171B', raised: '#202026', border: '#2B2B32', track: '#2B2B32',
+      text: '#F4F2EE', muted: '#A3A1A8', tabBar: '#121215', tabInk: '#A3A1A8',
+      accentText: '#FF8A4C', orangeSoft: 'rgba(238,90,18,0.16)', orangeLine: 'rgba(238,90,18,0.45)',
+      blue: '#6FB2F0', blueSoft: 'rgba(76,158,235,0.16)',
+      podium1: 'linear-gradient(180deg, rgba(242,193,78,0.35), rgba(242,193,78,0.08))',
+      podium2: 'linear-gradient(180deg, rgba(201,205,211,0.28), rgba(201,205,211,0.06))',
+      podium3: 'linear-gradient(180deg, rgba(208,138,84,0.32), rgba(208,138,84,0.06))',
+      shadow: 'none'
+    } : {
+      bg: '#F7F3EC', surface: '#FFFFFF', raised: '#F4EFE6', border: '#ECE5D8', track: '#EEE7DB',
+      text: '#1C2530', muted: '#5B6573', tabBar: '#FFFFFF', tabInk: '#5B6573',
+      accentText: '#C2410C', orangeSoft: 'rgba(238,90,18,0.09)', orangeLine: 'rgba(238,90,18,0.35)',
+      blue: '#2F7DD3', blueSoft: 'rgba(47,125,211,0.10)',
+      podium1: 'linear-gradient(180deg, #FCE7B0, #FFF6DE)',
+      podium2: 'linear-gradient(180deg, #E6E9EE, #F6F7F9)',
+      podium3: 'linear-gradient(180deg, #F2D3BC, #FBF0E7)',
+      shadow: '0 1px 2px rgba(28,37,48,0.04), 0 6px 18px rgba(28,37,48,0.05)'
+    };
+    var gold = dark ? { bg: 'rgba(242,193,78,0.18)', ink: '#F2C14E' } : { bg: '#FFF3D1', ink: '#8A5A00' };
+    var plain = { bg: c.raised, ink: c.muted };
+    var past = [
+      { img: '/_blob/c0b4fafab16c6c99f48fd0de70fb6dac', title: 'Study Battle', meta: 'Jamoaviy · 99 ishtirokchi', place: 'Jamoa 2-oʻrin', top: false },
+      { img: '/_blob/b28258e6ef8ac4d23ae73bdd653f6364', title: 'Pomodoro bilan birga oʻqiymiz', meta: '80 ishtirokchi', place: '#8', top: false },
+      { img: '/_blob/362ddd4be61052503697811c038237d8', title: 'Flashcards Challenge', meta: '64 ishtirokchi', place: '#3', top: true }
+    ].map(function (p) { var s = p.top ? gold : plain; return Object.assign({}, p, { chipBg: s.bg, chipInk: s.ink }); });
+    var rows = [
+      { rank: '4', ini: 'SA', name: 'Sanjar', meta: 'Lv.9 · 33,8 soat', xp: '2 680', av: '#3BA7A0' },
+      { rank: '5', ini: 'SH', name: 'Shaxrizoda', meta: 'Lv.6 · 30,6 soat', xp: '2 366', av: '#D06A8A' }
+    ];
+    return { c: c, past: past, rows: rows };
+  }
+}
+</script>
+</body>
+</html>

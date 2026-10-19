@@ -1,14 +1,14 @@
 /**
  * "HAFTALIK REYTING": top 5 (fixed rank column, medal colours for 1–3,
  * initials, name, level and hours, XP), then your row pinned on an
- * accentSoft background with "#56 gacha 120 XP".
+ * accentSoft background with "#56 gacha 120 XP" inside it.
  */
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import type { LeaderboardEntry } from '../../../lib/api'
 import { useTheme } from '../../design/ThemeProvider'
 import { space } from '../../design/spacing'
-import { tabular, type as typeScale } from '../../design/typography'
+import { type as typeScale } from '../../design/typography'
 import { Button, Card } from '../../components/ui'
 import { rankGap } from '../today/today'
 import { hoursLabel } from './bellashuv'
@@ -16,15 +16,17 @@ import { RankRow } from './RankRow'
 
 const TOP = 5
 
-function Row({ e, mine }: { e: LeaderboardEntry; mine?: boolean }) {
+function Row({ e, mine, note }: { e: LeaderboardEntry; mine?: boolean; note?: string }) {
   return (
     <RankRow
       rank={e.rank}
       name={e.first_name || e.username || ''}
       photoUrl={e.photo_url}
       subtitle={`Lv.${e.level} · ${hoursLabel(e.minutes)}`}
+      note={note}
       value={`${e.score} XP`}
       mine={mine}
+      userId={e.telegram_id}
     />
   )
 }
@@ -54,12 +56,7 @@ export function WeeklyRanking({ entries, myRank, onAll }: {
         {top.map(e => <Row key={e.telegram_id} e={e} mine={meInTop && e.telegram_id === me?.telegram_id} />)}
         {me && !meInTop && (
           <View style={[styles.pinned, { borderTopColor: colors.border }]}>
-            <Row e={me} mine />
-            {gap.kind === 'gap' && (
-              <Text style={[typeScale.callout, tabular, styles.gapLine, { color: colors.accentText }]}>
-                #{gap.target} gacha {gap.xp} XP
-              </Text>
-            )}
+            <Row e={me} mine note={gap.kind === 'gap' ? `#${gap.target} gacha ${gap.xp} XP` : undefined} />
           </View>
         )}
       </Card>
@@ -73,5 +70,4 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   card: { paddingVertical: space.xs, paddingHorizontal: space.xs },
   pinned: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: space.xs, paddingTop: space.xs },
-  gapLine: { paddingHorizontal: space.xs, paddingBottom: space.xs },
 })

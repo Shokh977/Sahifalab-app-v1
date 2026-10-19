@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { backgroundTokens, palette, textTokens } from '../src/design/tokens'
+import { avatarColors, backgroundTokens, onAvatar, palette, textTokens } from '../src/design/tokens'
 import { contrastRatio, meetsAA } from '../src/design/contrast'
 
 describe('contrast helpers', () => {
@@ -24,5 +24,11 @@ describe.each(['dark', 'light'] as const)('%s palette', scheme => {
 
   it('onAccent text on the accent fill is at least 4.5:1', () => {
     expect(contrastRatio(p.onAccent, p.accent)).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+describe('avatar initials', () => {
+  it.each(avatarColors.map(c => [c]))('white on %s is at least 4.5:1', bg => {
+    expect(contrastRatio(onAvatar, bg)).toBeGreaterThanOrEqual(4.5)
   })
 })

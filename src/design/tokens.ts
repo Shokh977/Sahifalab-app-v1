@@ -99,6 +99,23 @@ export const deckColors = [
 ] as const
 
 /**
+ * Initials avatars (Phase 7.5 A5): white initials on one of these, picked by
+ * a hash of the user id (avatarColor). Same in both themes; each is at least
+ * 4.5:1 against white (contrast.test.ts).
+ */
+export const avatarColors = [
+  '#C2410C', // orange
+  '#B91C1C', // red
+  '#BE185D', // pink
+  '#7E22CE', // violet
+  '#4338CA', // indigo
+  '#1D4ED8', // blue
+  '#0F766E', // teal
+  '#15803D', // green
+] as const
+export const onAvatar = '#FFFFFF'
+
+/**
  * Text and icons laid over photos (cover headers) sit on imageScrim — a
  * bottom-up dark gradient — so white stays readable on any image.
  * Same in both themes: the photo, not the theme, sets the background.

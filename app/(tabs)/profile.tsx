@@ -121,7 +121,7 @@ export default function ProfileTab() {
       >
         {/* Identity */}
         <View style={styles.identity}>
-          <Avatar name={name || '?'} uri={p?.photo_url ?? authUser?.photo_url} size="lg" level={level} />
+          <Avatar name={name || '?'} id={authUser?.telegram_id} uri={p?.photo_url ?? authUser?.photo_url} size="lg" level={level} />
           <View style={styles.flex}>
             {p || authUser ? (
               <>
