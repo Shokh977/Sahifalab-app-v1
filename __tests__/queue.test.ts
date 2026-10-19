@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import {
-  DEFAULT_NEW_PER_DAY, REVIEW_CAP, estMinutes, reviewsDoneToday, todayReviewQueue, trimSession, type QueueDeck,
+  DEFAULT_NEW_PER_DAY, REVIEW_CAP, estMinutes, FALLBACK_TIMEZONE, forToday, localDayKey, moreNewDeck, newLimitReached, reviewsDoneToday, todayReviewQueue, trimSession, type QueueDeck,
 } from '../src/features/flashcards/queueMath'
 
 
@@ -87,5 +87,46 @@ describe('trimSession', () => {
   })
   it('leaves the session alone when the allowance is unknown', () => {
     expect(trimSession(cards, undefined)).toHaveLength(5)
+  })
+})
+
+describe('more new cards', () => {
+  it('offers more once the daily limit is used and unseen cards remain', () => {
+    expect(newLimitReached(deck(1, { new_available: 300, introduced_today: 20 }))).toBe(true)
+    expect(newLimitReached(deck(1, { new_available: 300, introduced_today: 40 }))).toBe(true)   // after a "Yana 20"
+    expect(newLimitReached(deck(1, { new_available: 300, introduced_today: 12 }))).toBe(false)  // still 8 left today
+    expect(newLimitReached(deck(1, { new_available: 0, introduced_today: 20 }))).toBe(false)    // nothing left to learn
+    expect(newLimitReached(deck(1, { new_per_day: 10, new_available: 5, introduced_today: 10 }))).toBe(true)
+    expect(newLimitReached({ id: 1, due_count: 50 })).toBe(false)                               // older backend
+  })
+  it('picks the deck with the most unseen cards', () => {
+    expect(moreNewDeck([
+      deck(1, { new_available: 40, introduced_today: 20 }),
+      deck(2, { new_available: 900, introduced_today: 20 }),
+      deck(3, { new_available: 5000, introduced_today: 3 }),
+    ])).toBe(2)
+    expect(moreNewDeck([deck(1)])).toBeNull()
+  })
+})
+
+describe('local day', () => {
+  // 2026-10-19 19:30 UTC = 2026-10-20 00:30 in Tashkent (UTC+5).
+  const t = Date.UTC(2026, 9, 19, 19, 30)
+  it('uses Asia/Tashkent when the timezone is missing or unknown', () => {
+    expect(FALLBACK_TIMEZONE).toBe('Asia/Tashkent')
+    expect(localDayKey(t, null)).toBe('2026-10-20')
+    expect(localDayKey(t, undefined)).toBe('2026-10-20')
+    expect(localDayKey(t, '')).toBe('2026-10-20')
+    expect(localDayKey(t, 'Mars/Olympus')).toBe('2026-10-20')
+    expect(localDayKey(t, 'Europe/London')).toBe('2026-10-19')
+  })
+  it('resets "introduced today" for counts fetched on an earlier day', () => {
+    const decks = [deck(1, { introduced_today: 20, new_available: 300 })]
+    const yesterday = t - 3 * 3600_000                                   // 21:30 Tashkent, the 19th
+    expect(forToday(decks, t - 60_000, t, null)[0].introduced_today).toBe(20)
+    expect(forToday(decks, yesterday, t, null)[0].introduced_today).toBe(0)
+    expect(forToday(decks, null, t, null)[0].introduced_today).toBe(0)
+    // A new day brings back 20 new cards.
+    expect(todayReviewQueue(forToday(decks, yesterday, t, null)).newToday).toBe(20)
   })
 })

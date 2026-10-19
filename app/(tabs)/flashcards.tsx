@@ -28,6 +28,7 @@ import { useTheme as useDesignTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
 import { type as typeScale } from '../../src/design/typography'
 import { IconButton, SegmentedControl } from '../../src/components/ui'
+import { EXTRA_NEW } from '../../src/features/flashcards/queueMath'
 import { Plus as PlusIcon, Search } from 'lucide-react-native'
 
 // Eight distinct deck colours (the old list had two oranges and two greens).
@@ -250,6 +251,7 @@ export default function FlashcardsScreen() {
           onEditDeck={openEdit}
           onBrowsePublic={() => setActiveTab('public')}
           onStartReview={id => router.push(`/(screens)/flashcard-study/${id}` as any)}
+          onMoreNew={id => router.push(`/(screens)/flashcard-study/${id}?extraNew=${EXTRA_NEW}` as any)}
           onOpenAi={() => router.push('/(screens)/ai-flashcard-generate' as any)}
         />
       ) : (

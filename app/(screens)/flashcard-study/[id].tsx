@@ -33,7 +33,7 @@ import { haptics } from '../../../src/lib/haptics'
 import { GradeButtons, GradePlaceholder } from '../../../src/features/cards/GradeButtons'
 import { SessionSummary } from '../../../src/features/cards/SessionSummary'
 import { sessionSummary, type ReviewOutcome } from '../../../src/features/cards/cards'
-import { allowedReviewsFor, trimSession } from '../../../src/features/flashcards/queue'
+import { EXTRA_NEW, allowedReviewsFor, newLimitReached, trimSession } from '../../../src/features/flashcards/queue'
 
 const { width: SW } = Dimensions.get('window')
 const CARD_W = SW - 32
@@ -91,13 +91,15 @@ function XPFloat({ xp, color }: { xp: number; color: string }) {
 // ── Main study screen ─────────────────────────────────────────────────────────
 
 export default function FlashcardStudyScreen() {
-  const { id, practice } = useLocalSearchParams<{ id: string; practice?: string }>()
+  const { id, practice, extraNew } = useLocalSearchParams<{ id: string; practice?: string; extraNew?: string }>()
   const deckId   = Number(id)
   const { c }    = useTheme()
   const insets   = useSafeAreaInsets()
   const router   = useRouter()
 
   const { patchDeckCard, fetchDecks } = useFlashcardStore()
+  // The deck as last fetched (refreshed when the session completes).
+  const storeDeck = useFlashcardStore(s => s.decks.find(d => d.id === Number(id)))
   const patchUser         = useAuthStore(s => s.patchUser)
 
   // ── Session state ──────────────────────────────────────────────────────────
@@ -166,7 +168,7 @@ export default function FlashcardStudyScreen() {
       try {
         const [d, session] = await Promise.all([
           flashcardsApi.getDeck(deckId),
-          flashcardsApi.getStudySession(deckId, practice === '1'),
+          flashcardsApi.getStudySession(deckId, practice === '1', Number(extraNew) || undefined),
         ])
         setDeck(d)
         const before = d.card_count > 0 ? d.mastered_count / d.card_count : 0
@@ -375,6 +377,9 @@ export default function FlashcardStudyScreen() {
           masteryAfter={masteryAfter}
           onHome={() => router.push('/(tabs)' as any)}
           onOther={() => router.push('/(tabs)/flashcards' as any)}
+          onMoreNew={practice !== '1' && storeDeck && newLimitReached(storeDeck)
+            ? () => router.replace(`/(screens)/flashcard-study/${deckId}?extraNew=${EXTRA_NEW}&at=${Date.now()}` as any)
+            : undefined}
         />
         <EvolutionModal
           visible={milestoneVisible}

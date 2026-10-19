@@ -7,6 +7,9 @@ const DECKS_CACHE_KEY = 'sahifalab_my_decks_v1'
 
 interface FlashcardState {
   decks:        FlashcardDeck[]
+  /** When `decks` came from the server (null: from the device cache). Their
+   *  "today" counts only hold for that local day (queue.ts forToday). */
+  decksFetchedAt: number | null
   stats:        FlashcardStats | null
   loading:      boolean
   statsLoading: boolean
@@ -23,6 +26,7 @@ interface FlashcardState {
 
 export const useFlashcardStore = create<FlashcardState>((set, get) => ({
   decks:        [],
+  decksFetchedAt: null,
   stats:        null,
   loading:      false,
   statsLoading: false,
@@ -45,7 +49,7 @@ export const useFlashcardStore = create<FlashcardState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const decks = await flashcardsApi.listDecks()
-      set({ decks })
+      set({ decks, decksFetchedAt: Date.now() })
       AsyncStorage.setItem(DECKS_CACHE_KEY, JSON.stringify(decks)).catch(() => {})
     } catch (e: any) {
       set({ error: e?.message ?? 'Xatolik yuz berdi' })

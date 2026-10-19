@@ -1,18 +1,20 @@
 /**
  * Kartalar hero: "{n} ta karta bugun · ~{m} daqiqa" and one primary
  * "Takrorlashni boshlash". With nothing due: "Bugun takrorlash yoʻq" and
- * a secondary action to add cards.
+ * a secondary action to add cards. When today's new-card limit is used up
+ * and a deck still has unseen cards: "Yana 20 ta yangi karta" (Phase 7.5).
  */
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { Layers } from 'lucide-react-native'
+import { Layers, Plus } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
 import { space } from '../../design/spacing'
 import { type as typeScale } from '../../design/typography'
 import { Button, Card } from '../../components/ui'
 import { heroCopy } from './cards'
+import { EXTRA_NEW } from '../flashcards/queueMath'
 
-export function CardsHero({ due, capped, mastered, total, onStart, onAdd }: {
+export function CardsHero({ due, capped, mastered, total, onStart, onAdd, onMoreNew }: {
   due: number
   /** Today's review cap bit: "Bugun 150 ta · qolganlari ertaga". */
   capped?: boolean
@@ -20,7 +22,12 @@ export function CardsHero({ due, capped, mastered, total, onStart, onAdd }: {
   total: number
   onStart: () => void
   onAdd: () => void
+  /** Set when a deck's new-card limit for today is reached (today only, +20). */
+  onMoreNew?: () => void
 }) {
+  const more = onMoreNew ? (
+    <Button label={`Yana ${EXTRA_NEW} ta yangi karta`} icon={Plus} variant={due > 0 ? 'ghost' : 'primary'} size="lg" fullWidth onPress={onMoreNew} />
+  ) : null
   const { colors } = useTheme()
   return (
     <Card variant="hero">
@@ -33,14 +40,19 @@ export function CardsHero({ due, capped, mastered, total, onStart, onAdd }: {
               {mastered} / {total} karta oʻrganildi
             </Text>
             <Button label="Takrorlashni boshlash" icon={Layers} size="lg" fullWidth onPress={onStart} style={styles.cta} />
+            {more}
           </>
         ) : (
           <>
             <Text style={[typeScale.title2, { color: colors.text }]}>Bugun takrorlash yoʻq</Text>
             <Text style={[typeScale.callout, { color: colors.textMuted }]}>
-              Yangi kartalar qoʻshing yoki ommaviy toʻplamdan nusxa oling.
+              {more
+                ? 'Bugungi yangi kartalar tugadi. Xohlasangiz, yana qoʻshing.'
+                : 'Yangi kartalar qoʻshing yoki ommaviy toʻplamdan nusxa oling.'}
             </Text>
-            <Button label="Yangi kartalar" variant="secondary" size="lg" fullWidth onPress={onAdd} style={styles.cta} />
+            {more ? <View style={styles.cta}>{more}</View> : (
+              <Button label="Yangi kartalar" variant="secondary" size="lg" fullWidth onPress={onAdd} style={styles.cta} />
+            )}
           </>
         )}
       </View>

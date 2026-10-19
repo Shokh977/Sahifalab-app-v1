@@ -68,6 +68,7 @@ async function fetchTodayExtras(): Promise<Partial<TodayExtras>> {
     // decks through the one queue selector (Phase 7.5 A1).
     useFlashcardStore.setState({
       decks: decksRes.value,
+      decksFetchedAt: Date.now(),
       ...(statsRes.status === 'fulfilled' ? { stats: statsRes.value } : {}),
     })
     const queue = getTodayReviewQueue(useAuthStore.getState().user?.telegram_id)

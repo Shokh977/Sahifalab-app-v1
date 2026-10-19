@@ -6,11 +6,21 @@
 import { useAuthStore } from '../../../stores/authStore'
 import { useFlashcardStore } from '../../../stores/flashcardStore'
 import type { FlashcardDeck, FlashcardStats } from '../../../lib/types'
-import { EMPTY_QUEUE, reviewsDoneToday, todayReviewQueue, type TodayQueue } from './queueMath'
+import { EMPTY_QUEUE, FALLBACK_TIMEZONE, forToday, reviewsDoneToday, todayReviewQueue, type TodayQueue } from './queueMath'
 
 export * from './queueMath'
 
-function queueFor(decks: readonly FlashcardDeck[], stats: FlashcardStats | null): TodayQueue {
+/** The device's IANA zone — the one the app registers as profiles.timezone. */
+export function deviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || FALLBACK_TIMEZONE
+  } catch {
+    return FALLBACK_TIMEZONE
+  }
+}
+
+function queueFor(all: readonly FlashcardDeck[], stats: FlashcardStats | null, fetchedAt: number | null): TodayQueue {
+  const decks = forToday(all, fetchedAt, Date.now(), deviceTimezone())
   return todayReviewQueue(decks, {
     reviewedToday: reviewsDoneToday(decks, stats),
     fallbackReviewsDue: stats?.total_due,
@@ -20,8 +30,8 @@ function queueFor(decks: readonly FlashcardDeck[], stats: FlashcardStats | null)
 /** The signed-in user's queue from the flashcard store (outside React). */
 export function getTodayReviewQueue(userId: number | null | undefined): TodayQueue {
   if (userId == null) return EMPTY_QUEUE
-  const { decks, stats } = useFlashcardStore.getState()
-  return queueFor(decks.filter(d => d.user_id === userId), stats)
+  const { decks, stats, decksFetchedAt } = useFlashcardStore.getState()
+  return queueFor(decks.filter(d => d.user_id === userId), stats, decksFetchedAt)
 }
 
 /** Hook form: re-renders when decks, stats or the user change. */
@@ -29,8 +39,9 @@ export function useTodayReviewQueue(): TodayQueue {
   const userId = useAuthStore(s => s.user?.telegram_id ?? null)
   const decks = useFlashcardStore(s => s.decks)
   const stats = useFlashcardStore(s => s.stats)
+  const fetchedAt = useFlashcardStore(s => s.decksFetchedAt)
   if (userId == null) return EMPTY_QUEUE
-  return queueFor(decks.filter(d => d.user_id === userId), stats)
+  return queueFor(decks.filter(d => d.user_id === userId), stats, fetchedAt)
 }
 
 /** Reviews still allowed today for one deck, when the store can tell. */

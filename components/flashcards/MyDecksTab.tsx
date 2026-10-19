@@ -29,12 +29,14 @@ function deckSubtitle(d: FlashcardDeck): string {
   return `${d.card_count} ta karta · ${pct}% oʻrganildi`
 }
 
-export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePublic, onStartReview, onOpenAi }: {
+export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePublic, onStartReview, onMoreNew, onOpenAi }: {
   onOpenDeck:     (id: number) => void
   onCreateDeck:   () => void
   onEditDeck:     (deck: FlashcardDeck) => void
   onBrowsePublic: () => void
   onStartReview:  (deckId: number) => void
+  /** "Yana 20 ta yangi karta": a session with 20 new cards past today's limit. */
+  onMoreNew:      (deckId: number) => void
   onOpenAi:       () => void
 }) {
   const { colors } = useTheme()
@@ -86,6 +88,7 @@ export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePubli
         total={stats?.total_cards ?? decks.reduce((s, d) => s + d.card_count, 0)}
         onStart={() => { if (queue.top) onStartReview(queue.top.id) }}
         onAdd={onCreateDeck}
+        onMoreNew={queue.moreNew != null && queue.newToday === 0 ? () => onMoreNew(queue.moreNew!) : undefined}
       />
       <AiCreateCard onOpen={onOpenAi} onPro={() => setProOpen(true)} />
       {decks.length > 0 && (

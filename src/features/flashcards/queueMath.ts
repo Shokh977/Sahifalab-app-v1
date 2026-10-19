@@ -38,9 +38,12 @@ export interface TodayQueue {
   perDeck: Record<number, DeckQueue>
   /** The deck with the most cards today, or null when nothing is due. */
   top: { id: number; due: number } | null
+  /** A deck whose new-card limit is used up today but has unseen cards
+   *  ("Yana 20 ta yangi karta"), or null. */
+  moreNew: number | null
 }
 
-export const EMPTY_QUEUE: TodayQueue = { reviewsDue: 0, newToday: 0, total: 0, estMinutes: 0, capped: false, perDeck: {}, top: null }
+export const EMPTY_QUEUE: TodayQueue = { reviewsDue: 0, newToday: 0, total: 0, estMinutes: 0, capped: false, perDeck: {}, top: null, moreNew: null }
 
 export function estMinutes(cards: number): number {
   return cards > 0 ? Math.ceil((cards * SECONDS_PER_CARD) / 60) : 0
@@ -92,7 +95,7 @@ export function todayReviewQueue(
     if (due > 0 && (!top || due > top.due)) top = { id: d.id, due }
   }
 
-  return { reviewsDue, newToday, total, estMinutes: estMinutes(total), capped: rawReviews > capLeft, perDeck, top }
+  return { reviewsDue, newToday, total, estMinutes: estMinutes(total), capped: rawReviews > capLeft, perDeck, top, moreNew: moreNewDeck(decks) }
 }
 
 /** Reviews of learned cards done today = all reviews today minus first reviews. */
@@ -116,4 +119,54 @@ export function trimSession<T extends { status: string }>(cards: readonly T[], a
     left -= 1
     return true
   })
+}
+
+/** "Yana 20 ta yangi karta": new cards one tap adds beyond today's limit. */
+export const EXTRA_NEW = 20
+
+/**
+ * True when today's new-card limit for this deck is used up but it still
+ * has unseen cards — the moment to offer "Yana 20 ta yangi karta".
+ * Needs the newer backend's counts; false without them.
+ */
+export function newLimitReached(d: QueueDeck): boolean {
+  if (d.new_available == null || d.introduced_today == null) return false
+  const limit = d.new_per_day ?? DEFAULT_NEW_PER_DAY
+  return d.new_available > 0 && d.introduced_today >= limit
+}
+
+/** The deck to offer more new cards from: limit reached, most unseen cards left. */
+export function moreNewDeck(decks: readonly QueueDeck[]): number | null {
+  let best: QueueDeck | null = null
+  for (const d of decks) {
+    if (newLimitReached(d) && (!best || (d.new_available ?? 0) > (best.new_available ?? 0))) best = d
+  }
+  return best ? best.id : null
+}
+
+// ── Which day the counts belong to ───────────────────────────────────────────
+
+/** The day boundary when no timezone is known (same default as the server). */
+export const FALLBACK_TIMEZONE = 'Asia/Tashkent'
+
+/** yyyy-mm-dd of `ms` in `timeZone`; a missing or unknown zone → Asia/Tashkent. */
+export function localDayKey(ms: number, timeZone?: string | null): string {
+  const fmt = (tz: string) => new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date(ms))
+  try {
+    return fmt(timeZone || FALLBACK_TIMEZONE)
+  } catch {
+    return fmt(FALLBACK_TIMEZONE)
+  }
+}
+
+/**
+ * Deck counts fetched on an earlier local day (a cache from yesterday):
+ * "introduced today" belongs to that day, so it starts again at 0 until
+ * the next fetch. `fetchedAt` null = unknown age, treated as stale.
+ */
+export function forToday<T extends QueueDeck>(decks: readonly T[], fetchedAt: number | null, now: number, timeZone?: string | null): T[] {
+  if (fetchedAt != null && localDayKey(fetchedAt, timeZone) === localDayKey(now, timeZone)) return [...decks]
+  return decks.map(d => (d.introduced_today ? { ...d, introduced_today: 0 } : d))
 }
