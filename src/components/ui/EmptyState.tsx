@@ -25,7 +25,7 @@ export function EmptyState({ icon: Icon, title, body, action, style }: EmptyStat
       <View style={[styles.tile, { backgroundColor: colors.surfaceRaised }]}>
         <Icon size={iconSize.md} color={colors.textMuted} strokeWidth={iconStroke} />
       </View>
-      <Text style={[typeScale.headline, styles.center, { color: colors.text }]}>{title}</Text>
+      <Text numberOfLines={2} style={[typeScale.headline, styles.center, { color: colors.text }]}>{title}</Text>
       {body ? <Text style={[typeScale.body, styles.center, { color: colors.textMuted }]}>{body}</Text> : null}
       {action ? <Button label={action.label} onPress={action.onPress} style={styles.action} /> : null}
     </View>

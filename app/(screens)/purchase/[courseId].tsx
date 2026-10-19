@@ -117,7 +117,7 @@ export default function PurchaseStatusScreen() {
                 <Clock size={iconSize.md} color={colors.accentText} strokeWidth={iconStroke} />
               </View>
               <View style={styles.flex}>
-                <Text style={[typeScale.headline, { color: colors.text }]} accessibilityRole="header">{copyText.title}</Text>
+                <Text numberOfLines={2} style={[typeScale.headline, { color: colors.text }]} accessibilityRole="header">{copyText.title}</Text>
                 <Text style={[typeScale.body, { color: colors.textMuted }]}>{copyText.body}</Text>
               </View>
             </Card>

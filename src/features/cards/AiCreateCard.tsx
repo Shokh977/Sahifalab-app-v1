@@ -35,7 +35,7 @@ export function AiCreateCard({ onOpen, onPro }: { onOpen: () => void; onPro: () 
           <Sparkles size={iconSize.md} color={colors.accentText} strokeWidth={iconStroke} />
         </View>
         <View style={styles.flex}>
-          <Text style={[typeScale.headline, { color: colors.text }]}>AI bilan karta yaratish</Text>
+          <Text numberOfLines={2} style={[typeScale.headline, { color: colors.text }]}>AI bilan karta yaratish</Text>
           <Text style={[typeScale.callout, { color: colors.textMuted }]}>{sub}</Text>
         </View>
       </View>

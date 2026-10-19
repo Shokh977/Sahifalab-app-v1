@@ -35,7 +35,7 @@ export function CardsHero({ due, capped, mastered, total, onStart, onAdd, onMore
         <Text style={[typeScale.overline, { color: colors.textMuted }]}>Bugungi takrorlash</Text>
         {due > 0 ? (
           <>
-            <Text style={[typeScale.title2, { color: colors.text }]}>{heroCopy(due, capped)}</Text>
+            <Text numberOfLines={2} style={[typeScale.title2, { color: colors.text }]}>{heroCopy(due, capped)}</Text>
             <Text style={[typeScale.callout, { color: colors.textMuted }]}>
               {mastered} / {total} karta oʻrganildi
             </Text>
@@ -44,7 +44,7 @@ export function CardsHero({ due, capped, mastered, total, onStart, onAdd, onMore
           </>
         ) : (
           <>
-            <Text style={[typeScale.title2, { color: colors.text }]}>Bugun takrorlash yoʻq</Text>
+            <Text numberOfLines={2} style={[typeScale.title2, { color: colors.text }]}>Bugun takrorlash yoʻq</Text>
             <Text style={[typeScale.callout, { color: colors.textMuted }]}>
               {more
                 ? 'Bugungi yangi kartalar tugadi. Xohlasangiz, yana qoʻshing.'

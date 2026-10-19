@@ -33,7 +33,7 @@ export function BadgeSheet({ badge, onClose }: { badge: ProfileBadge | null; onC
         <View style={styles.body}>
           <BadgeArt badge={badge} size={avatarSize.xl + space.lg} />
           <Badge kind="status" status={badge.earned ? 'success' : 'neutral'} label={CATEGORY_LABEL[badge.category]} style={styles.center} />
-          <Text style={[typeScale.title2, styles.text, { color: colors.text }]} accessibilityRole="header">{uzText(badge.name)}</Text>
+          <Text numberOfLines={2} style={[typeScale.title2, styles.text, { color: colors.text }]} accessibilityRole="header">{uzText(badge.name)}</Text>
           {badge.description ? (
             <Text style={[typeScale.body, styles.text, { color: colors.textMuted }]}>{uzText(badge.description)}</Text>
           ) : null}

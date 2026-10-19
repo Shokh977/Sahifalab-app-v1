@@ -108,7 +108,7 @@ export function Sheet({ visible, onClose, title, children, style }: SheetProps) 
             <View style={styles.grabberArea}>
               <View style={[styles.grabber, { backgroundColor: colors.border }]} />
             </View>
-            {title ? <Text style={[typeScale.title2, styles.title, { color: colors.text }]} accessibilityRole="header">{title}</Text> : null}
+            {title ? <Text numberOfLines={2} style={[typeScale.title2, styles.title, { color: colors.text }]} accessibilityRole="header">{title}</Text> : null}
             {children}
           </Animated.View>
         </GestureDetector>

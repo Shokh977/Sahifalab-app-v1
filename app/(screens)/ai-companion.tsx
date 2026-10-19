@@ -116,7 +116,7 @@ function AICompanionScreen() {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.border, backgroundColor: c.bgPrimary }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={8}>
           <ChevronLeft size={22} color={c.brand} />
         </Pressable>
         <View style={styles.headerTitle}>
@@ -175,7 +175,7 @@ function AICompanionScreen() {
               fontFamily:      typography.fontFamily.regular,
             }]}
           />
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Yuborish"
             onPress={send}
             disabled={!input.trim() || loading}
             style={[styles.sendBtn, { backgroundColor: input.trim() && !loading ? c.brand : c.bgTertiary }]}

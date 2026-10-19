@@ -136,7 +136,7 @@ export default function ChallengeDetailScreen() {
     if (data.challenge_type === 'team') {
       return (
         <Card style={styles.gap}>
-          <Text style={[typeScale.headline, { color: colors.text }]}>Guruhlar jangi</Text>
+          <Text numberOfLines={2} style={[typeScale.headline, { color: colors.text }]}>Guruhlar jangi</Text>
           <TeamHeadToHeadBar
             teamAName={data.team_a_name ?? 'Guruh A'} teamAColor={data.team_a_color ?? deckColors[0]} teamATotal={data.team_a_total}
             teamBName={data.team_b_name ?? 'Guruh B'} teamBColor={data.team_b_color ?? deckColors[4]} teamBTotal={data.team_b_total}
@@ -158,7 +158,7 @@ export default function ChallengeDetailScreen() {
     if (data.challenge_type === 'consistency') {
       return (
         <Card style={styles.gap}>
-          <Text style={[typeScale.headline, { color: colors.text }]}>Sizning seriyangiz</Text>
+          <Text numberOfLines={2} style={[typeScale.headline, { color: colors.text }]}>Sizning seriyangiz</Text>
           <ConsistencyDayDots
             days={data.daily_progress.map((d): DayDotState => (d.qualified ? 'filled' : d.value > 0 ? 'grace' : 'hollow'))}
             color={colors.accent}
@@ -177,7 +177,7 @@ export default function ChallengeDetailScreen() {
     if (data.challenge_type === 'sprint') {
       return (
         <Card style={styles.gap}>
-          <Text style={[typeScale.headline, { color: colors.text }]}>Sizning oʻrningiz</Text>
+          <Text numberOfLines={2} style={[typeScale.headline, { color: colors.text }]}>Sizning oʻrningiz</Text>
           <Text style={[typeScale.display, tabular, { color: colors.accentText }]}>{data.rank != null ? `#${data.rank}` : '0'}</Text>
           <Text style={[typeScale.callout, { color: colors.textMuted }]}>{percentileFraming(percentile)}</Text>
           {data.winner_count != null && (
@@ -189,13 +189,13 @@ export default function ChallengeDetailScreen() {
     if (data.completed_at) {
       return (
         <Card>
-          <Text style={[typeScale.headline, { color: colors.successText }]}>Yakunladingiz!</Text>
+          <Text numberOfLines={2} style={[typeScale.headline, { color: colors.successText }]}>Yakunladingiz!</Text>
         </Card>
       )
     }
     return (
       <Card style={styles.gap}>
-        <Text style={[typeScale.headline, { color: colors.text }]}>Sizning progressingiz</Text>
+        <Text numberOfLines={2} style={[typeScale.headline, { color: colors.text }]}>Sizning progressingiz</Text>
         <Text style={[typeScale.title1, tabular, { color: colors.text }]}>
           {fmtMetricValue(data.progress_value, data.metric)} / {fmtMetricGoal(target, data.metric)}
         </Text>
@@ -235,7 +235,7 @@ export default function ChallengeDetailScreen() {
         {data.challenge_type === 'team' ? (
           teamLb && (
             <Card style={styles.gap}>
-              <Text style={[typeScale.headline, { color: colors.text }]}>Faol ishtirokchilar</Text>
+              <Text numberOfLines={2} style={[typeScale.headline, { color: colors.text }]}>Faol ishtirokchilar</Text>
               <View style={styles.teamCols}>
                 {([['a', teamLb.team_a], ['b', teamLb.team_b]] as const).map(([key, team]) => (
                   <View key={key} style={[styles.flex, styles.gapSm]}>
