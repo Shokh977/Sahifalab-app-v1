@@ -64,7 +64,7 @@ export const palette = {
     track: '#EEE7DB',
     accent: '#EE5A12',
     onAccent: '#FFFFFF',
-    accentText: '#C2410C',     // 4.52 on surfaceRaised
+    accentText: '#B53B0A',     // 4.63 on accentSoft over surfaceRaised (Phase 8; was #C2410C)
     accentSoft: 'rgba(238,90,18,0.09)',
     orangeLine: 'rgba(238,90,18,0.35)',
     green: '#1F9D55',          // ink for icons; text uses successText (AA)
@@ -80,7 +80,7 @@ export const palette = {
     teal: '#138A80',
     pink: '#C23B6E',
     success: '#1F8F4A',
-    successText: '#1B7C40',    // spec #1F8F4A: 3.57 on surfaceRaised
+    successText: '#18733B',    // 4.66 on greenSoft over surfaceRaised (Phase 8; spec #1F8F4A: 3.57)
     danger: '#C62F35',
     dangerText: '#C62F35',
     freeze: '#256FB7',         // spec #2775C2: 4.12 on surfaceRaised
