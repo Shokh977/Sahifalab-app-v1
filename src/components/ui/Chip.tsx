@@ -8,7 +8,7 @@ import type { LucideIcon } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
 import { controlHeight, iconSize, iconStroke, layout, radius, space } from '../../design/spacing'
 import { stateOpacity } from '../../design/tokens'
-import { type as typeScale } from '../../design/typography'
+import { fonts, type as typeScale } from '../../design/typography'
 import { Pressable } from './Pressable'
 
 export type ChipVariant = 'filter' | 'choice'
@@ -27,10 +27,12 @@ const SLOP = (layout.minTouch - controlHeight.sm) / 2
 
 export function Chip({ label, selected, onPress, variant = 'filter', icon: Icon, disabled, style }: ChipProps) {
   const { colors } = useTheme()
-  const filled = selected && variant === 'choice'
-  const bg = filled ? colors.accent : selected ? colors.accentSoft : colors.surface
-  const border = selected ? colors.accent : colors.border
-  const fg = filled ? colors.onAccent : selected ? colors.accentText : colors.text
+  // Selected (both variants): orange-soft fill, orange line, accentText — no
+  // small white text on orange (Phase 7.5 B1). Choice chips add weight.
+  const choice = selected && variant === 'choice'
+  const bg = selected ? colors.accentSoft : colors.surface
+  const border = selected ? (choice ? colors.accent : colors.orangeLine) : colors.border
+  const fg = selected ? colors.accentText : colors.text
 
   return (
     <Pressable
@@ -45,7 +47,7 @@ export function Chip({ label, selected, onPress, variant = 'filter', icon: Icon,
       style={[styles.chip, { backgroundColor: bg, borderColor: border }, style]}
     >
       {Icon && <Icon size={iconSize.sm - 4} color={fg} strokeWidth={iconStroke} />}
-      <Text style={[typeScale.callout, { color: fg }]} numberOfLines={1}>{label}</Text>
+      <Text style={[typeScale.callout, choice && styles.strong, { color: fg }]} numberOfLines={1}>{label}</Text>
     </Pressable>
   )
 }
@@ -61,4 +63,5 @@ const styles = StyleSheet.create({
     gap: space.xxs + 2,
     alignSelf: 'flex-start',
   },
+  strong: { fontFamily: fonts.bold },
 })

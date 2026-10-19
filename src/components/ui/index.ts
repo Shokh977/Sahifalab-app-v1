@@ -1,4 +1,5 @@
 export * from './Pressable'
+export * from './AccentFill'
 export * from './Button'
 export * from './Card'
 export * from './ListRow'

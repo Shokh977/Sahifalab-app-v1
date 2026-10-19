@@ -1,6 +1,8 @@
 /**
  * ProgressBar and ProgressRing — thin / thick; value changes animate on the
  * UI thread (durations.slow, easing.standard), instantly under reduce motion.
+ * The bar's default fill is the v2 orange gradient (progressFill) on the
+ * track colour; pass `color` for a flat semantic fill.
  */
 import React, { useEffect } from 'react'
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
@@ -8,9 +10,11 @@ import Animated, {
   useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming,
 } from 'react-native-reanimated'
 import Svg, { Circle } from 'react-native-svg'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../../design/ThemeProvider'
 import { durations, easing } from '../../design/motion'
 import { avatarSize, progressThickness, radius } from '../../design/spacing'
+import { progressFill } from '../../design/tokens'
 
 export type ProgressThickness = keyof typeof progressThickness
 
@@ -46,9 +50,13 @@ export function ProgressBar({ value, thickness = 'thin', color, accessibilityLab
       accessibilityRole="progressbar"
       accessibilityLabel={accessibilityLabel}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(clamp01(value) * 100) }}
-      style={[styles.track, { height: h, backgroundColor: colors.surfaceRaised }, style]}
+      style={[styles.track, { height: h, backgroundColor: colors.track }, style]}
     >
-      <Animated.View style={[styles.fill, { backgroundColor: color ?? colors.accent }, fill]} />
+      <Animated.View style={[styles.fill, color ? { backgroundColor: color } : null, fill]}>
+        {!color && (
+          <LinearGradient colors={progressFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+        )}
+      </Animated.View>
     </View>
   )
 }
@@ -79,7 +87,7 @@ export function ProgressRing({
       style={[{ width: size, height: size }, styles.center, style]}
     >
       <Svg width={size} height={size} style={[StyleSheet.absoluteFill, styles.rotate]}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.surfaceRaised} strokeWidth={stroke} fill="none" />
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.track} strokeWidth={stroke} fill="none" />
         <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
@@ -99,7 +107,7 @@ export function ProgressRing({
 
 const styles = StyleSheet.create({
   track: { width: '100%', borderRadius: radius.full, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: radius.full },
+  fill: { height: '100%', borderRadius: radius.full, overflow: 'hidden' },
   center: { alignItems: 'center', justifyContent: 'center' },
   rotate: { transform: [{ rotate: '-90deg' }] },
 })

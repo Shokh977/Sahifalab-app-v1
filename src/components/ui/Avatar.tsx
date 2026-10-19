@@ -63,7 +63,7 @@ export function Avatar({ name, id, uri, size = 'md', level, style }: AvatarProps
       </View>
       {ringed && size !== 'sm' && (
         <View style={[styles.level, { backgroundColor: colors.accent, borderColor: colors.bg }]}>
-          <Text style={[typeScale.overline, tabular, styles.numeric, { color: colors.onAccent }]}>{level}</Text>
+          <Text style={[typeScale.levelBadge, tabular, { color: colors.onAccent }]}>{level}</Text>
         </View>
       )}
     </View>
@@ -81,5 +81,4 @@ const styles = StyleSheet.create({
     borderWidth: RING,
     alignItems: 'center',
   },
-  numeric: { letterSpacing: 0 },
 })
