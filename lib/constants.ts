@@ -1,10 +1,7 @@
 export const API_URL =
   (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
 
-export const SUPABASE_URL  = process.env.EXPO_PUBLIC_SUPABASE_URL  ?? ''
-export const SUPABASE_ANON = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? ''
 export const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? ''
-export const BOT_USERNAME = process.env.EXPO_PUBLIC_BOT_USERNAME ?? 'Sahifalab_hub_bot'
 export const EXPO_PROJECT_ID = process.env.EXPO_PUBLIC_PROJECT_ID ?? ''
 export const WEB_URL = 'https://sahifalab.uz'
 

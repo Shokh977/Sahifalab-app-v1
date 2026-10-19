@@ -1,6 +1,6 @@
 /**
  * Focus timer store — unified store supporting both study.tsx (rich multi-session UI)
- * and focus-timer.tsx (simple auto-break pomodoro).
+ * and the Fokus auto-break pomodoro.
  * Time derived from Date.now() vs targetEndTime — no drift across pauses/backgrounding.
  */
 import { create } from 'zustand'
@@ -79,15 +79,9 @@ interface TimerStore {
   /** Award XP for a completed session block (total minutes may span multiple rounds). */
   completeSession: (actualMinutes: number) => Promise<CompletionResult>
 
-  // ── Auto-break API (focus-timer.tsx) ─────────────────────────────────────────
-  /** Called every second; returns true when the current phase timer hits 0. */
-  tick:              () => boolean
+  // ── Auto-break API (Fokus) ──────────────────────────────────────────────────
   /** Switch to break phase automatically after a focus session ends. */
   startBreak:        () => void
-  /** Start the next focus session after break ends. */
-  completeBreak:     () => void
-  /** Award XP using plannedMinutes (for focus-timer.tsx single-session use). */
-  onSessionComplete: () => Promise<CompletionResult>
 
   // ── Sounds ───────────────────────────────────────────────────────────────────
   toggleSound:    (id: string) => void
@@ -235,19 +229,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
     }
   },
 
-  // ── Auto-break (focus-timer.tsx / study.tsx) ─────────────────────────────────
-
-  tick: () => {
-    const { _targetEnd } = get()
-    if (!_targetEnd) return false
-    const newSecs = Math.max(0, Math.ceil((_targetEnd - Date.now()) / 1000))
-    if (newSecs !== get().secondsLeft) set({ secondsLeft: newSecs })
-    if (newSecs === 0) {
-      set({ status: 'idle', _targetEnd: null })
-      return true
-    }
-    return false
-  },
+  // ── Auto-break (Fokus) ──────────────────────────────────────────────────────
 
   startBreak: () => {
     const secs = get().breakSeconds()
@@ -258,23 +240,6 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       _targetEnd:  Date.now() + secs * 1000,
       _pauseLeft:  0,
     })
-  },
-
-  completeBreak: () => {
-    const { plannedMinutes } = get()
-    const secs = plannedMinutes * 60
-    set({
-      phase:       'focus',
-      status:      'active',
-      secondsLeft: secs,
-      _targetEnd:  Date.now() + secs * 1000,
-      _pauseLeft:  0,
-    })
-  },
-
-  onSessionComplete: async () => {
-    const { plannedMinutes } = get()
-    return get().completeSession(plannedMinutes)
   },
 
   // ── Sounds ───────────────────────────────────────────────────────────────────

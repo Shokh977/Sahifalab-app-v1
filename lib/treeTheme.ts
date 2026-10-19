@@ -3,22 +3,6 @@
    Mirrors tokens.css exactly — keep CSS variable names traceable.
    ============================================================ */
 
-// ── Brand accents (theme-independent) ────────────────────────────────────────
-// --brand / --brand-soft / --magic / --gold / --gold-soft / --blossom / --violet
-export const treeColors = {
-  brand:      '#46c08a',
-  brandSoft:  '#6fd6a8',
-  magic:      '#58b6ff',
-  gold:       '#f0b53f',
-  goldSoft:   '#ffd47a',
-  blossom:    '#ff8fc0',
-  violet:     '#9d7bff',
-} as const
-
-// ── Radius ────────────────────────────────────────────────────────────────────
-// --r-xs / --r-sm / --r-md / --r-lg / --r-xl
-export const treeRadius = { xs: 8, sm: 12, md: 18, lg: 26, xl: 36 } as const
-
 // ── App sky moods (inside phone screens) ─────────────────────────────────────
 // mirrors [data-mood="night|dusk|day"] block in tokens.css
 export const skyMoods = {
@@ -54,33 +38,6 @@ export const skyMoods = {
     skyInk2: '#4a6886',
     orb:     '#fff6d8',
     orbRing: 'rgba(255,240,180,0.55)',
-  },
-} as const
-
-// ── Doc chrome themes ─────────────────────────────────────────────────────────
-// mirrors :root[data-theme="dark|light"] in tokens.css
-export const docThemes = {
-  dark: {
-    bg:    '#0a1120',
-    bg2:   '#0f1a2e',
-    bg3:   '#15243d',
-    bg4:   '#1c2f4d',
-    line:  'rgba(150,180,225,0.12)',
-    line2: 'rgba(150,180,225,0.20)',
-    ink:   '#eaf1ff',
-    ink2:  '#9fb2cf',
-    ink3:  '#64789a',
-  },
-  light: {
-    bg:    '#eef3fb',
-    bg2:   '#ffffff',
-    bg3:   '#f4f8ff',
-    bg4:   '#e9f1fc',
-    line:  'rgba(28,52,92,0.12)',
-    line2: 'rgba(28,52,92,0.20)',
-    ink:   '#14233c',
-    ink2:  '#46597a',
-    ink3:  '#8094b4',
   },
 } as const
 
