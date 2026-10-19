@@ -144,7 +144,7 @@ export default function BellashuvScreen() {
             action={{ label: 'Qayta urinish', onPress: load }}
           />
         ) : main ? (
-          <CompetitionCard main={main} now={now} onOpen={() => openChallenge(main.challenge)} />
+          <CompetitionCard main={main} now={now} onOpen={() => openChallenge(main.challenge)} onJoined={load} />
         ) : (
           <EmptyState icon={Trophy} title="Hozircha bellashuv yoʻq" body="Tez orada yangi bellashuv qoʻshiladi." />
         )}
