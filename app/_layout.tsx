@@ -10,12 +10,13 @@ import { registerWidgetTaskHandler } from 'react-native-android-widget'
 import { widgetTaskHandler } from '../widgets/widgetTaskHandler'
 import { useCourseStore } from '../stores/courseStore'
 import { settlePurchase } from '../src/features/courses/purchase'
+import { useReducedMotion } from 'react-native-reanimated'
+import { pushAnimation } from '../src/design/motion'
 
 if (Platform.OS === 'android') {
   registerWidgetTaskHandler(widgetTaskHandler)
 }
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { useReducedMotion } from 'react-native-reanimated'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../stores/authStore'
 import { useDashboardStore } from '../stores/dashboardStore'
@@ -40,7 +41,6 @@ import { useRewardStore } from '../stores/rewardStore'
 import { RewardModal } from '../components/rewards/RewardModal'
 import { track, trackOnce } from '../lib/analytics'
 import { ThemeProvider } from '../src/design'
-import { pushAnimation } from '../src/design/motion'
 
 
 const APP_INTRO_KEY = 'sahifalab_app_intro_v1'
