@@ -102,7 +102,7 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
             <ProgressBar value={progress} color={t.ink} accessibilityLabel={title} style={styles.bar} />
           ) : sub ? (
             next ? (
-              <View style={[styles.pill, styles.subPill, { backgroundColor: colors.onAccent }]}>
+              <View style={[styles.pill, styles.subPill, styles.pillClear, { backgroundColor: colors.onAccent }]}>
                 <Text style={[typeScale.callout, tabular, { color: colors.accentText }]} numberOfLines={1}>{sub}</Text>
               </View>
             ) : (
@@ -111,6 +111,7 @@ export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progres
           ) : null}
         </View>
         {next && (
+          // Bottom-right corner, so the title can use the full width.
           <View style={[styles.play, { backgroundColor: colors.onAccent }]}>
             <Play size={iconSize.sm - 4} color={colors.accent} fill={colors.accent} strokeWidth={iconStroke} />
           </View>
@@ -134,11 +135,12 @@ const styles = StyleSheet.create({
   iconTile: { width: ICON_TILE, height: ICON_TILE, borderRadius: radius.sm + 2, alignItems: 'center', justifyContent: 'center' },
   pill: { borderRadius: radius.full, paddingHorizontal: space.xs, paddingVertical: space.xxs, alignSelf: 'flex-start' },
   subPill: { marginTop: space.xxs },
+  pillClear: { maxWidth: '75%' },
   check: { width: CHECK, height: CHECK, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   bottom: { flexDirection: 'row', alignItems: 'flex-end', gap: space.xs },
   flex: { flex: 1, gap: 2 },
   bar: { marginTop: space.xs },
-  play: { width: PLAY, height: PLAY, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+  play: { position: 'absolute', right: 0, bottom: 0, width: PLAY, height: PLAY, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
 })
 
 /** Grid gap for the 2×2 plan. */

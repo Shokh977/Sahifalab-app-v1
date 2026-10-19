@@ -17,6 +17,14 @@ export function quizClosesIn(seconds: number): string {
   return `Yopilishiga ${h} s ${m} d`
 }
 
+/** "3 s 25 d qoldi" — the tile-sized countdown. */
+export function quizClosesShort(seconds: number): string {
+  if (seconds <= 0) return 'Yopildi'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  return `${h} s ${m} d qoldi`
+}
+
 export function isMonday(d: Date): boolean {
   return d.getDay() === 1
 }
@@ -162,7 +170,11 @@ export function planTiles(input: PlanInput, next: PlanKey | null): { tiles: Plan
   }
 
   const nextTile = tiles.find(t => t.key === next && !t.done)
-  if (nextTile) nextTile.next = true
+  if (nextTile) {
+    nextTile.next = true
+    // The KEYINGI tile's sub-line sits in a narrower pill: the short countdown.
+    if (nextTile.key === 'quiz' && input.quiz && input.quiz.state !== 'submitted') nextTile.sub = quizClosesShort(input.quiz.secondsLeft)
+  }
   const ordered = [
     ...tiles.filter(t => t.next),
     ...tiles.filter(t => !t.next && !t.done),

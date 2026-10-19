@@ -83,7 +83,7 @@ describe('planTiles', () => {
 
   it('shows quiz progress and falls back when the rank is unknown', () => {
     const inProgress = planTiles({ focus, quiz: { ...quiz, state: 'in_progress', answered: 3 }, cards: null, course: null }, 'quiz')
-    expect(inProgress.tiles[0]).toMatchObject({ key: 'quiz', value: '3/5', next: true })
+    expect(inProgress.tiles[0]).toMatchObject({ key: 'quiz', value: '3/5', next: true, sub: '1 s 1 d qoldi' })
     const noRank = planTiles({ focus, quiz: { ...quiz, state: 'submitted', correct: 4 }, cards: null, course: null }, null)
     expect(noRank.tiles.find(t => t.key === 'quiz')?.sub).toBe('Bajarildi')
     const empty = planTiles({ focus, quiz: null, cards: { total: 0, estMinutes: 0 }, course: null }, null)
