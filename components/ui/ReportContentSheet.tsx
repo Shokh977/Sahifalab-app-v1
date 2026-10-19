@@ -74,7 +74,7 @@ export function ReportContentSheet({ visible, targetType, targetId, onClose }: P
   return (
     <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       <View style={styles.overlay}>
         <Animated.View style={[

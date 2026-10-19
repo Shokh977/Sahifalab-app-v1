@@ -150,7 +150,7 @@ export function CourseMarketing(p: CourseMarketingProps) {
                 {course.description}
               </Text>
               {course.description.length > 180 && (
-                <Button label={descOpen ? 'Kamroq' : 'Koʻproq'} variant="ghost" size="sm" onPress={() => setDescOpen(v => !v)} style={styles.start} />
+                <Button label={descOpen ? 'Kamroq' : 'Koʻproq'} variant="ghost" size="sm" expanded={descOpen} onPress={() => setDescOpen(v => !v)} style={styles.start} />
               )}
             </View>
           ) : null}
@@ -196,6 +196,7 @@ export function CourseMarketing(p: CourseMarketingProps) {
                   label={allLessons ? 'Kamroq koʻrsatish' : `Barcha darslar (${p.lessons.length})`}
                   variant="secondary"
                   fullWidth
+                  expanded={allLessons}
                   onPress={() => setAllLessons(v => !v)}
                 />
               )}

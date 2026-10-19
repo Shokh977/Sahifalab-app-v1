@@ -492,7 +492,7 @@ export default function StreakDetailScreen() {
                 {/* Floating header — replaces the old separate top bar so the
                     background can extend edge-to-edge under the status bar. */}
                 <View style={styles.heroTopRow}>
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel="Orqaga"
                     style={styles.backBtn}
                     onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)' as any)}
                     hitSlop={10}
@@ -503,7 +503,7 @@ export default function StreakDetailScreen() {
                     Seriya
                   </Text>
                   <View style={styles.topRight}>
-                    <Pressable
+                    <Pressable accessibilityRole="button" accessibilityLabel="Jonli daraxt haqida"
                       style={[styles.topIconBtn, { backgroundColor: hc.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(22,50,31,0.08)', borderColor: 'transparent' }]}
                       onPress={() => setShowTreeInfo(true)}
                       hitSlop={8}
@@ -518,7 +518,7 @@ export default function StreakDetailScreen() {
                     >
                       <Map size={15} color={hc.secondary} />
                     </Pressable>
-                    <Pressable
+                    <Pressable accessibilityRole="button" accessibilityLabel="Ulashish"
                       style={[styles.topIconBtn, { backgroundColor: hc.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(22,50,31,0.08)', borderColor: 'transparent', opacity: sharing ? 0.5 : 1 }]}
                       onPress={shareCard}
                       disabled={sharing}
@@ -865,7 +865,7 @@ function TreeInfoModal({ visible, onClose, c, goalMinutes }: {
       <View style={{ flex: 1 }}>
         {/* Backdrop fades in independently */}
         <Animated.View style={[ti.backdrop, { opacity: backdropAnim }]}>
-          <Pressable style={{ flex: 1 }} onPress={onClose} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={{ flex: 1 }} onPress={onClose} />
         </Animated.View>
 
         {/* Sheet slides up via spring */}
@@ -879,7 +879,7 @@ function TreeInfoModal({ visible, onClose, c, goalMinutes }: {
             <Text style={[ti.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
               🌳 Jonli Daraxt nima?
             </Text>
-            <Pressable onPress={onClose} hitSlop={10}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={10}>
               <X size={20} color={c.textMuted} />
             </Pressable>
           </View>

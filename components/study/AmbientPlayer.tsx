@@ -300,7 +300,7 @@ function VolumeBar({ value, onChange, c }: { value: number; onChange: (v: number
       <VolumeX size={12} color={c.textDisabled} strokeWidth={1.5} />
       <View style={styles.volBars}>
         {VOL_STEPS.map((v, i) => (
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel={`Ovoz balandligi ${i + 1}`} accessibilityState={{ selected: i <= activeIdx }}
             key={v}
             onPress={() => onChange(v)}
             hitSlop={6}

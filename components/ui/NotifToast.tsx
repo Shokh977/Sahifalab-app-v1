@@ -103,7 +103,7 @@ export function NotifToast() {
             {toast.body}
           </Text>
         </View>
-        <Pressable onPress={dismiss} hitSlop={8} style={styles.closeBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={dismiss} hitSlop={8} style={styles.closeBtn}>
           <X size={16} color={c.textDisabled} />
         </Pressable>
       </Pressable>

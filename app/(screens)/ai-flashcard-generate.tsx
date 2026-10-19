@@ -186,7 +186,7 @@ export default function AiFlashcardGenerateScreen() {
   return (
     <SafeAreaView style={[s.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
       <View style={[s.navBar, { borderBottomColor: c.border }]}>
-        <Pressable onPress={backTarget} hitSlop={12} style={s.navBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={backTarget} hitSlop={12} style={s.navBtn}>
           <ChevronLeft size={24} color={accent} />
         </Pressable>
         <Text style={[s.navTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
@@ -253,7 +253,7 @@ export default function AiFlashcardGenerateScreen() {
             ) : imageUri ? (
               <View style={s.imagePreviewWrap}>
                 <Image source={{ uri: imageUri }} style={s.imagePreview} resizeMode="cover" />
-                <Pressable style={[s.imageRemoveBtn, { backgroundColor: c.bgPrimary }]} onPress={() => setImageUri(null)}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Rasmni olib tashlash" style={[s.imageRemoveBtn, { backgroundColor: c.bgPrimary }]} onPress={() => setImageUri(null)}>
                   <X size={16} color={c.textPrimary} />
                 </Pressable>
               </View>
@@ -314,7 +314,7 @@ export default function AiFlashcardGenerateScreen() {
                 <View key={i} style={[s.cardEdit, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
                   <View style={s.cardEditHeader}>
                     <Text style={[s.cardEditNum, { color: c.textMuted }]}>Karta {i + 1}</Text>
-                    <Pressable onPress={() => deleteCard(i)} hitSlop={8}>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Kartani oʻchirish" onPress={() => deleteCard(i)} hitSlop={8}>
                       <Trash2 size={16} color={c.error} />
                     </Pressable>
                   </View>

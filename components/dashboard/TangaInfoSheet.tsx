@@ -60,7 +60,7 @@ export function TangaInfoSheet({ visible, tangaBalance, onClose }: Props) {
     <Modal transparent visible={modalVisible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <View style={StyleSheet.absoluteFill}>
         <Animated.View style={[styles.backdrop, { opacity: backdrop }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>
 
         <Animated.View

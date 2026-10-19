@@ -213,7 +213,7 @@ function PostCardComponent({ post, onCommentPress }: Props) {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.push(`/(screens)/profile/${author.telegram_id}` as any)} hitSlop={4}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Muallif profili" onPress={() => router.push(`/(screens)/profile/${author.telegram_id}` as any)} hitSlop={4}>
           <Avatar uri={author.photo_url} name={author.full_name} />
         </Pressable>
         <Pressable style={styles.headerText} onPress={() => router.push(`/(screens)/profile/${author.telegram_id}` as any)}>
@@ -241,7 +241,7 @@ function PostCardComponent({ post, onCommentPress }: Props) {
           <Text style={[styles.time, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
             {formatTime(post.created_at)}
           </Text>
-          <Pressable onPress={() => setShowMenu(true)} hitSlop={8} style={styles.menuBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Boshqa amallar" onPress={() => setShowMenu(true)} hitSlop={8} style={styles.menuBtn}>
             <MoreHorizontal size={16} color={c.textMuted} />
           </Pressable>
         </View>

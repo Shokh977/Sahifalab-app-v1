@@ -106,7 +106,7 @@ function DeckSheet({ visible, editing, onClose, onSaved }: DeckSheetProps) {
   return (
     <Modal transparent visible={rendered} onRequestClose={onClose} statusBarTranslucent>
       <RNAnimated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </RNAnimated.View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetKav}>
@@ -125,7 +125,7 @@ function DeckSheet({ visible, editing, onClose, onSaved }: DeckSheetProps) {
             <Text style={[styles.sheetTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
               {editing ? "To'plamni tahrirlash" : "Yangi to'plam"}
             </Text>
-            <Pressable onPress={onClose} hitSlop={12}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={12}>
               <X size={22} color={c.textSecondary} />
             </Pressable>
           </View>
@@ -169,7 +169,7 @@ function DeckSheet({ visible, editing, onClose, onSaved }: DeckSheetProps) {
                 {PRESET_COLORS.map(col => {
                   const sel = col === color
                   return (
-                    <Pressable
+                    <Pressable accessibilityRole="radio" accessibilityLabel="Rang" accessibilityState={{ selected: sel }}
                       key={col}
                       onPress={() => setColor(col)}
                       style={[

@@ -178,7 +178,7 @@ function CommentRow({ thread, myId, onLike, onReply, onDelete, c }: {
               {formatTime(comment.created_at)}
             </Text>
             {isOwn && (
-              <Pressable onPress={() => onDelete(comment.id)} hitSlop={10} style={styles.trashBtn}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Izohni oʻchirish" onPress={() => onDelete(comment.id)} hitSlop={10} style={styles.trashBtn}>
                 <Trash2 size={13} color={c.textMuted} />
               </Pressable>
             )}
@@ -232,7 +232,7 @@ function CommentRow({ thread, myId, onLike, onReply, onDelete, c }: {
                       {formatTime(r.created_at)}
                     </Text>
                     {isReplyOwn && (
-                      <Pressable onPress={() => onDelete(r.id)} hitSlop={10} style={styles.trashBtn}>
+                      <Pressable accessibilityRole="button" accessibilityLabel="Javobni oʻchirish" onPress={() => onDelete(r.id)} hitSlop={10} style={styles.trashBtn}>
                         <Trash2 size={11} color={c.textMuted} />
                       </Pressable>
                     )}
@@ -409,7 +409,7 @@ export function CommentsSheet({ post, visible, onClose }: Props) {
         >
           {/* ── Header ──────────────────────────────────────────────────── */}
           <View style={[styles.header, { paddingTop: insets.top + 4, borderBottomColor: c.border, backgroundColor: c.bgPrimary }]}>
-            <Pressable onPress={onClose} hitSlop={12} style={styles.headerBack}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={onClose} hitSlop={12} style={styles.headerBack}>
               <ArrowLeft size={22} color={c.textPrimary} />
             </Pressable>
             <Text style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
@@ -476,7 +476,7 @@ export function CommentsSheet({ post, visible, onClose }: Props) {
                 <Text style={[styles.replyContextText, { color: c.brand, fontFamily: typography.fontFamily.regular }]}>
                   {replyingTo.authorName}ga javob
                 </Text>
-                <Pressable onPress={() => setReplyingTo(null)} hitSlop={10} style={{ marginLeft: 'auto' }}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Javob berishni bekor qilish" onPress={() => setReplyingTo(null)} hitSlop={10} style={{ marginLeft: 'auto' }}>
                   <X size={13} color={c.textMuted} />
                 </Pressable>
               </View>
@@ -499,7 +499,7 @@ export function CommentsSheet({ post, visible, onClose }: Props) {
                 maxLength={500}
                 returnKeyType="default"
               />
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Yuborish"
                 onPress={handleSend}
                 disabled={!hasInput || sending}
                 style={[styles.sendBtn, { backgroundColor: hasInput ? c.brand : c.bgSecondary, borderColor: hasInput ? c.brand : c.border }]}

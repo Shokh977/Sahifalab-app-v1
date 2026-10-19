@@ -47,7 +47,7 @@ export function BadgeDetailSheet({ badge, onClose }: Props) {
   return (
     <Modal transparent visible={!!badge} animationType="none" onRequestClose={onClose}>
       <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       <View style={styles.wrap} pointerEvents="box-none">
         <Animated.View
@@ -57,7 +57,7 @@ export function BadgeDetailSheet({ badge, onClose }: Props) {
           ]}
         >
           <View style={styles.handle} />
-          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={12} style={styles.closeBtn}>
             <X size={20} color={c.textSecondary} />
           </Pressable>
 

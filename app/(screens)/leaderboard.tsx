@@ -309,13 +309,13 @@ export default function LeaderboardScreen() {
 
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + spacing.xs, borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.topBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={styles.topBtn}>
           <ArrowLeft size={24} color={c.textPrimary} />
         </Pressable>
         <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
           Reyting
         </Text>
-        <Pressable onPress={handleInfoPress} hitSlop={12} style={styles.topBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Reyting haqida" onPress={handleInfoPress} hitSlop={12} style={styles.topBtn}>
           <Info size={20} color={c.textSecondary} />
         </Pressable>
       </View>

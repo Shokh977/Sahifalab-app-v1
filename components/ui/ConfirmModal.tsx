@@ -41,7 +41,7 @@ export function ConfirmModal({
   return (
     <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onCancel}>
       <Animated.View style={[styles.backdrop, { opacity }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Bekor qilish" style={StyleSheet.absoluteFill} onPress={onCancel} />
       </Animated.View>
       <Animated.View style={[styles.overlay, { opacity }]} pointerEvents="box-none">
         <Animated.View style={[

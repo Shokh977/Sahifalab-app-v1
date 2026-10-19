@@ -112,7 +112,7 @@ export function FreezeSheet({
   return (
     <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
       <View style={styles.overlay}>
@@ -136,7 +136,7 @@ export function FreezeSheet({
             </View>
 
             {/* Info toggle */}
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Muzlatish haqida" accessibilityState={{ expanded: showInfo }}
               style={[styles.infoBtn, { backgroundColor: showInfo ? '#60a5fa22' : c.bgTertiary, borderColor: showInfo ? '#60a5fa66' : c.border }]}
               onPress={() => setShowInfo(v => !v)}
               hitSlop={8}

@@ -990,7 +990,7 @@ export default function LessonPlayerScreen() {
 function NavBar({ onBack, title, c }: { onBack: () => void; title: string; c: any }) {
   return (
     <View style={[styles.navBar, { borderBottomColor: c.border, backgroundColor: c.bgSecondary }]}>
-      <Pressable onPress={onBack} hitSlop={12} style={styles.navBack}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={onBack} hitSlop={12} style={styles.navBack}>
         <ChevronLeft size={22} color={c.accentPrimary} />
       </Pressable>
       <Text numberOfLines={1} style={[styles.navTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>

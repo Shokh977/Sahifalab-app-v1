@@ -147,7 +147,7 @@ export default function SavedScreen() {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={8}>
           <ChevronLeft size={22} color={c.brand} />
         </Pressable>
         <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>

@@ -46,7 +46,7 @@ export function CompletionSheet({ visible, minutes, xpEarned, onSave, onSkip, sa
   return (
     <Modal transparent animationType="none" visible={visible} statusBarTranslucent>
       <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(180)} style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onSkip} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Oʻtkazib yuborish" style={StyleSheet.absoluteFill} onPress={onSkip} />
       </Animated.View>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

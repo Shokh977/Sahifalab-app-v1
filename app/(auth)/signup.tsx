@@ -132,7 +132,7 @@ export default function SignupScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Back button */}
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga"
           onPress={() => router.back()}
           style={[styles.backBtn, { backgroundColor: c.bgTertiary }]}
           hitSlop={8}
@@ -226,7 +226,7 @@ export default function SignupScreen() {
               placeholderTextColor={c.textMuted}
               secureTextEntry={!showPw}
             />
-            <Pressable onPress={() => setShowPw(v => !v)} style={styles.eyeBtn} hitSlop={8}>
+            <Pressable accessibilityRole="button" accessibilityLabel={showPw ? 'Parolni yashirish' : 'Parolni koʻrsatish'} onPress={() => setShowPw(v => !v)} style={styles.eyeBtn} hitSlop={8}>
               {showPw
                 ? <EyeOff size={16} color={c.textMuted} />
                 : <Eye    size={16} color={c.textMuted} />

@@ -49,7 +49,7 @@ export function AvatarPickerModal({ visible, onClose, onCamera, onGallery }: Pro
     <Modal transparent visible={rendered} onRequestClose={onClose} statusBarTranslucent>
       {/* Backdrop — tappable to dismiss */}
       <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
       {/* Bottom sheet */}

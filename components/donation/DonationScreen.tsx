@@ -92,7 +92,7 @@ export default function DonationScreen() {
     <SafeAreaView style={s.root} edges={['top', 'bottom']}>
       {/* Nav row */}
       <View style={s.navRow}>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga"
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)' as any))}
           hitSlop={10}
           style={s.backBtn}

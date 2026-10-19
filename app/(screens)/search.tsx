@@ -337,7 +337,7 @@ export default function SearchScreen() {
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgPrimary }]} edges={['top']}>
       {/* Search bar */}
       <View style={[styles.searchBar, { borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
           <ChevronLeft size={24} color={c.brand} />
         </Pressable>
         <View style={[styles.inputWrap, { backgroundColor: c.bgTertiary }]}>
@@ -353,7 +353,7 @@ export default function SearchScreen() {
             style={[styles.input, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}
           />
           {query.length > 0 && (
-            <Pressable onPress={() => { setQuery(''); setResults({}) }} hitSlop={8}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Qidiruvni tozalash" onPress={() => { setQuery(''); setResults({}) }} hitSlop={8}>
               <X size={16} color={c.textMuted} />
             </Pressable>
           )}
@@ -394,7 +394,7 @@ export default function SearchScreen() {
               <Text numberOfLines={1} style={[styles.historyText, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}>
                 {item}
               </Text>
-              <Pressable onPress={() => removeHistoryItem(item)} hitSlop={10} style={styles.historyRemove}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Tarixdan oʻchirish" onPress={() => removeHistoryItem(item)} hitSlop={10} style={styles.historyRemove}>
                 <X size={14} color={c.textMuted} />
               </Pressable>
             </Pressable>

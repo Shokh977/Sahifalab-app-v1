@@ -28,10 +28,12 @@ export interface ButtonProps {
   fullWidth?: boolean
   style?: StyleProp<ViewStyle>
   accessibilityLabel?: string
+  /** For show-more toggles: read out as expanded or collapsed. */
+  expanded?: boolean
 }
 
 export function Button({
-  label, onPress, variant = 'primary', size = 'md', icon: Icon, disabled, loading, fullWidth, style, accessibilityLabel,
+  label, onPress, variant = 'primary', size = 'md', icon: Icon, disabled, loading, fullWidth, style, accessibilityLabel, expanded,
 }: ButtonProps) {
   const { colors, accentShadow } = useTheme()
   const primary = variant === 'primary'
@@ -48,7 +50,7 @@ export function Button({
       haptic={variant === 'primary' ? 'light' : undefined}
       baseOpacity={disabled ? stateOpacity.disabled : 1}
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ busy: !!loading, disabled: !!inactive }}
+      accessibilityState={{ busy: !!loading, disabled: !!inactive, expanded }}
       style={[
         styles.base,
         {

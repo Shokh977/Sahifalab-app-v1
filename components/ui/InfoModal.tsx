@@ -48,7 +48,7 @@ export function InfoModal({ visible, title, body, buttonLabel = 'Tushunarli', on
     <Modal transparent visible={rendered} onRequestClose={onClose} statusBarTranslucent>
       {/* Backdrop — tappable to dismiss */}
       <Animated.View style={[styles.backdrop, { opacity: backdropAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
       {/* Centered card */}

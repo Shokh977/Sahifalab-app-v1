@@ -126,7 +126,7 @@ export default function BecomeTeacherScreen() {
     return (
       <View style={[s.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
         {/* Back */}
-        <Pressable onPress={() => router.back()} hitSlop={12} style={[s.backBtn, { paddingLeft: spacing.base }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={[s.backBtn, { paddingLeft: spacing.base }]}>
           <ArrowLeft size={22} color={c.accentPrimary} />
         </Pressable>
 
@@ -181,7 +181,7 @@ export default function BecomeTeacherScreen() {
 
       {/* Fixed top bar */}
       <View style={[s.topBar, { paddingTop: insets.top + 8, borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
           <ArrowLeft size={22} color={c.textPrimary} />
         </Pressable>
         <Text style={[s.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>

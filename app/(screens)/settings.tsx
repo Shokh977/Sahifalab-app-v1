@@ -112,7 +112,7 @@ function GoalPickerModal({
   return (
     <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[s.sheetBackdrop, { opacity: backdropAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       <View style={s.sheetWrap} pointerEvents="box-none">
         <Animated.View style={[s.modalSheet, { backgroundColor: c.bgSecondary, paddingBottom: (insets.bottom || 0) + 24, transform: [{ translateY: slideAnim }] }]}>
@@ -182,7 +182,7 @@ function QualityPickerModal({
   return (
     <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[s.sheetBackdrop, { opacity: backdropAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       <View style={s.sheetWrap} pointerEvents="box-none">
         <Animated.View style={[s.modalSheet, { backgroundColor: c.bgSecondary, paddingBottom: (insets.bottom || 0) + 24, transform: [{ translateY: slideAnim }] }]}>
@@ -331,7 +331,7 @@ function LinkEmailModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <Pressable style={s.modalOverlay} onPress={handleClose} />
+      <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={s.modalOverlay} onPress={handleClose} />
       <View style={[s.modalSheet, { backgroundColor: c.bgSecondary }]}>
         <View style={[s.modalHandle, { backgroundColor: c.border }]} />
         <Text style={[s.modalTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
@@ -454,7 +454,7 @@ function TelegramLinkModal({
   return (
     <Modal visible={tgMounted} transparent animationType="none" statusBarTranslucent onRequestClose={handleClose}>
       <Animated.View style={[s.sheetBackdrop, { opacity: tgBackdropAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={handleClose} />
       </Animated.View>
       <View style={s.sheetWrap} pointerEvents="box-none">
       <Animated.View style={[s.modalSheet, { backgroundColor: c.bgSecondary, paddingBottom: (tgInsets.bottom || 0) + 24, transform: [{ translateY: tgSlideAnim }] }]}>
@@ -656,7 +656,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={[s.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
       {/* Nav */}
       <View style={[s.navBar, { borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={s.navBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={s.navBtn}>
           <ChevronLeft size={24} color={c.accentPrimary} />
         </Pressable>
         <Text style={[s.navTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>

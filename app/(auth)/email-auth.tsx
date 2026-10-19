@@ -174,7 +174,7 @@ export default function EmailAuthScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={handleBack} style={[styles.backBtn, { backgroundColor: c.bgSecondary }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={handleBack} style={[styles.backBtn, { backgroundColor: c.bgSecondary }]}>
             <ArrowLeft size={20} color={c.textPrimary} weight="regular" />
           </Pressable>
           <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
@@ -248,7 +248,7 @@ export default function EmailAuthScreen() {
                 onSubmitEditing={step === 'password' ? handleLogin : handleRegister}
                 style={[styles.input, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}
               />
-              <Pressable onPress={() => setShowPw(v => !v)} hitSlop={10}>
+              <Pressable accessibilityRole="button" accessibilityLabel={showPw ? 'Parolni yashirish' : 'Parolni koʻrsatish'} onPress={() => setShowPw(v => !v)} hitSlop={10}>
                 {showPw
                   ? <EyeSlash size={20} color={c.textDisabled} weight="regular" />
                   : <Eye size={20} color={c.textDisabled} weight="regular" />

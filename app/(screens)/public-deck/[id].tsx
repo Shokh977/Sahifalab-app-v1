@@ -102,10 +102,10 @@ export default function PublicDeckPreviewScreen() {
     <View style={[styles.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
       {/* Top bar */}
       <View style={[styles.topBar, { borderBottomColor: c.borderSubtle }]}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/flashcards' as any)} hitSlop={12}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/flashcards' as any)} hitSlop={12}>
           <ArrowLeft size={24} color={c.textPrimary} />
         </Pressable>
-        <Pressable onPress={() => shareFlashcardDeck({ id: deck.id, title: deck.title })} hitSlop={12}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Ulashish" onPress={() => shareFlashcardDeck({ id: deck.id, title: deck.title })} hitSlop={12}>
           <ShareNetwork size={22} color={c.textPrimary} />
         </Pressable>
       </View>
@@ -294,7 +294,7 @@ export default function PublicDeckPreviewScreen() {
               </Text>
           }
         </Pressable>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Ulashish"
           onPress={() => shareFlashcardDeck({ id: deck.id, title: deck.title })}
           style={[styles.shareBtn, { backgroundColor: c.bgSecondary, borderColor: c.border }]}
         >

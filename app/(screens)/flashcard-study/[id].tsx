@@ -424,7 +424,7 @@ export default function FlashcardStudyScreen() {
     <View style={[styles.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
       {/* ── Top bar ────────────────────────────────────────────────────────── */}
       <View style={styles.topBar}>
-        <Pressable onPress={() => setShowConfirm(true)} hitSlop={12}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Mashgʻulotni tugatish" onPress={() => setShowConfirm(true)} hitSlop={12}>
           <X size={24} color={c.textPrimary} />
         </Pressable>
         <Text style={[styles.progressText, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>

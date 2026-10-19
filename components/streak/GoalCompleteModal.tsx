@@ -52,7 +52,7 @@ export function GoalCompleteModal({ visible, streakDays, xpEarned, tangaEarned =
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
       <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       <Animated.View style={[styles.overlay, { opacity: opacityAnim }]} pointerEvents="box-none">
         <Animated.View style={[

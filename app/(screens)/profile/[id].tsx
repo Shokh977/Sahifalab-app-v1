@@ -150,7 +150,7 @@ function MutualModal({
           <Text style={[mmStyles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
             Umumiy aloqalar
           </Text>
-          <Pressable onPress={onClose} hitSlop={12} style={mmStyles.closeBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={12} style={mmStyles.closeBtn}>
             <X size={20} color={c.textSecondary} />
           </Pressable>
         </View>
@@ -494,7 +494,7 @@ function FollowListModal({
           <Text style={[flStyles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
             {type === 'followers' ? 'Kuzatuvchilar' : 'Kuzatilayotganlar'}
           </Text>
-          <Pressable onPress={onClose} hitSlop={12} style={flStyles.closeBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={12} style={flStyles.closeBtn}>
             <X size={20} color={c.textSecondary} />
           </Pressable>
         </View>
@@ -773,15 +773,15 @@ export default function PublicProfileScreen() {
           isTeacher && { borderBottomColor: 'rgba(52,199,89,0.2)', borderBottomWidth: 1 },
         ]}>
           <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
-            <Pressable onPress={() => router.back()} hitSlop={12} style={[styles.iconBtn, { backgroundColor: c.bgTertiary }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={[styles.iconBtn, { backgroundColor: c.bgTertiary }]}>
               <ArrowLeft size={18} color={c.textPrimary} />
             </Pressable>
             <View style={{ flex: 1 }} />
-            <Pressable onPress={handleShare} hitSlop={12} style={[styles.iconBtn, { backgroundColor: c.bgTertiary }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Profilni ulashish" onPress={handleShare} hitSlop={12} style={[styles.iconBtn, { backgroundColor: c.bgTertiary }]}>
               <Share2 size={18} color={c.textSecondary} />
             </Pressable>
             {!isOwn && (
-              <Pressable onPress={() => setShowMoreMenu(true)} hitSlop={12} style={[styles.iconBtn, { backgroundColor: c.bgTertiary, marginLeft: spacing.xs }]}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Boshqa amallar" onPress={() => setShowMoreMenu(true)} hitSlop={12} style={[styles.iconBtn, { backgroundColor: c.bgTertiary, marginLeft: spacing.xs }]}>
                 <MoreHorizontal size={18} color={c.textSecondary} />
               </Pressable>
             )}

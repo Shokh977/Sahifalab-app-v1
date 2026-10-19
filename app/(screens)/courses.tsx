@@ -227,7 +227,7 @@ export default function CourseCatalogScreen() {
 
       {/* Header row */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
           <ChevronLeft size={22} color={c.textPrimary} />
         </Pressable>
 
@@ -241,7 +241,7 @@ export default function CourseCatalogScreen() {
             style={[styles.searchInput, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}
           />
           {query.length > 0 && (
-            <Pressable onPress={() => { setQuery(''); fetchCourses({ q: '', off: 0 }) }} hitSlop={8}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Qidiruvni tozalash" onPress={() => { setQuery(''); fetchCourses({ q: '', off: 0 }) }} hitSlop={8}>
               <X size={14} color={c.textMuted} />
             </Pressable>
           )}
@@ -320,7 +320,7 @@ export default function CourseCatalogScreen() {
 
       {/* Filter bottom sheet */}
       <Modal visible={filterOpen} transparent animationType="fade" onRequestClose={() => setFilterOpen(false)}>
-        <TouchableWithoutFeedback onPress={() => setFilterOpen(false)}>
+        <TouchableWithoutFeedback accessible={false} onPress={() => setFilterOpen(false)}>
           <View style={styles.overlay} />
         </TouchableWithoutFeedback>
 

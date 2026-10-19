@@ -260,7 +260,7 @@ export default function TermsScreen() {
     <View style={[styles.root, { backgroundColor: c.bgPrimary }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: c.border, backgroundColor: c.bgPrimary }]}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: c.bgSecondary }]} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: c.bgSecondary }]} hitSlop={8}>
           <ChevronLeft size={20} color={c.textPrimary} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>

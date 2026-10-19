@@ -125,7 +125,7 @@ function WithdrawModal({
     <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       {/* Backdrop */}
       <Animated.View style={[modal.backdrop, { opacity: backdropAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
       {/* Sheet */}
@@ -143,7 +143,7 @@ function WithdrawModal({
               <Text style={[modal.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
                 Pul yechish
               </Text>
-              <Pressable onPress={onClose} hitSlop={12}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={12}>
                 <X size={20} color={c.textMuted} />
               </Pressable>
             </View>
@@ -257,7 +257,7 @@ export default function TeacherEarningsScreen() {
     <View style={[s.root, { backgroundColor: c.bgPrimary }]}>
       {/* ── Header ── */}
       <View style={[s.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
           <ArrowLeft size={22} color={c.textPrimary} />
         </Pressable>
         <Text style={[s.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>

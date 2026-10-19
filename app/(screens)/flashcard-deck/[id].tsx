@@ -96,7 +96,7 @@ function CardSheet({ visible, deckId, deckColor, editing, onClose, onSaved }: Ca
           <Text style={[styles.sheetTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
             {editing ? 'Kartani tahrirlash' : quickAdd && addedCount > 0 ? `${addedCount} ta qo'shildi` : 'Yangi karta'}
           </Text>
-          <Pressable onPress={onClose} hitSlop={12}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={12}>
             <X size={22} color={c.textSecondary} />
           </Pressable>
         </View>
@@ -237,7 +237,7 @@ function DeckEditSheet({ visible, deck, onClose, onSaved }: DeckEditSheetProps) 
   return (
     <Modal transparent visible={rendered} onRequestClose={onClose} statusBarTranslucent>
       <RNAnimated.View style={[deckEditStyles.backdrop, { opacity: backdropAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </RNAnimated.View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={deckEditStyles.kav}>
@@ -256,7 +256,7 @@ function DeckEditSheet({ visible, deck, onClose, onSaved }: DeckEditSheetProps) 
             <Text style={[styles.sheetTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
               To'plamni tahrirlash
             </Text>
-            <Pressable onPress={onClose} hitSlop={12}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={12}>
               <X size={22} color={c.textSecondary} />
             </Pressable>
           </View>
@@ -298,7 +298,7 @@ function DeckEditSheet({ visible, deck, onClose, onSaved }: DeckEditSheetProps) 
               </Text>
               <View style={deckEditStyles.colorRow}>
                 {PRESET_COLORS.map(hex => (
-                  <Pressable
+                  <Pressable accessibilityRole="radio" accessibilityLabel="Rang" accessibilityState={{ selected: color === hex }}
                     key={hex}
                     onPress={() => setColor(hex)}
                     style={[deckEditStyles.colorSwatch, { backgroundColor: hex, borderColor: color === hex ? c.textPrimary : 'transparent' }]}
@@ -389,7 +389,7 @@ function CardRow({ card, onEdit, onDelete }: CardRowProps) {
           {card.back_text}
         </Text>
       </View>
-      <Pressable onPress={() => setMenuOpen(true)} hitSlop={10}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Boshqa amallar" onPress={() => setMenuOpen(true)} hitSlop={10}>
         <DotsThreeVertical size={18} color={c.textDisabled} />
       </Pressable>
 
@@ -562,13 +562,13 @@ export default function DeckDetailScreen() {
     <View style={[styles.root, { backgroundColor: c.bgPrimary, paddingTop: insets.top }]}>
       {/* Top bar */}
       <View style={[styles.topBar, { borderBottomColor: c.borderSubtle }]}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/flashcards' as any)} hitSlop={12}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/flashcards' as any)} hitSlop={12}>
           <ArrowLeft size={24} color={c.textPrimary} />
         </Pressable>
         <Text style={[styles.topTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]} numberOfLines={1}>
           {deck.title}
         </Text>
-        <Pressable onPress={() => setMenuOpen(true)} hitSlop={12}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Boshqa amallar" onPress={() => setMenuOpen(true)} hitSlop={12}>
           <DotsThreeVertical size={24} color={c.textPrimary} />
         </Pressable>
       </View>

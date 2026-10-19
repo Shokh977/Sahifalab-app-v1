@@ -59,7 +59,7 @@ export default function DailyQuizResultsScreen() {
   return (
     <SafeAreaView style={[s.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
       <View style={[s.navBar, { borderBottomColor: c.border }]}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)' as any))} hitSlop={12} style={s.navBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)' as any))} hitSlop={12} style={s.navBtn}>
           <ChevronLeft size={24} color={c.accentPrimary} />
         </Pressable>
         <Text style={[s.navTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>Natijalar</Text>
@@ -137,7 +137,7 @@ export default function DailyQuizResultsScreen() {
             <View key={q.question_id} style={[s.qCard, { backgroundColor: c.bgSecondary, borderColor: c.border }]}>
               <View style={s.qHeader}>
                 <Text style={[s.qNum, { color: c.textMuted }]}>{i + 1}-savol{q.voided ? ' · bekor qilindi' : ''}</Text>
-                <Pressable onPress={() => setReportTarget(q.question_id)} hitSlop={8}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Savoldagi xato haqida xabar berish" onPress={() => setReportTarget(q.question_id)} hitSlop={8}>
                   <Flag size={14} color={c.textMuted} />
                 </Pressable>
               </View>

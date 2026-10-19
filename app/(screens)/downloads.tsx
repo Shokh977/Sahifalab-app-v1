@@ -143,7 +143,7 @@ export default function DownloadsScreen() {
             </View>
           )}
         </View>
-        <Pressable onPress={() => handleActiveAction(item)} hitSlop={10} style={[styles.trashBtn, { borderColor: c.borderStrong }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={item.status === 'downloading' || item.status === 'queued' ? 'Pauza' : item.status === 'paused' ? 'Davom ettirish' : 'Qayta urinish'} onPress={() => handleActiveAction(item)} hitSlop={10} style={[styles.trashBtn, { borderColor: c.borderStrong }]}>
           {item.status === 'downloading' || item.status === 'queued'
             ? <Pause size={14} color={c.textSecondary} />
             : item.status === 'paused'
@@ -151,7 +151,7 @@ export default function DownloadsScreen() {
             : <RotateCcw size={14} color={c.brand} />
           }
         </Pressable>
-        <Pressable onPress={() => confirmDelete(item)} hitSlop={10} style={[styles.trashBtn, { borderColor: c.borderStrong }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Oʻchirish" onPress={() => confirmDelete(item)} hitSlop={10} style={[styles.trashBtn, { borderColor: c.borderStrong }]}>
           <Trash2 size={14} color="#ef4444" />
         </Pressable>
       </View>
@@ -203,14 +203,14 @@ export default function DownloadsScreen() {
             </Text>
           </View>
           <View style={styles.lessonActions}>
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Ijro etish"
               onPress={() => handlePlay(entry)}
               style={[styles.playBtn, { backgroundColor: c.brand }]}
               hitSlop={8}
             >
               <Play size={13} color="#fff" fill="#fff" />
             </Pressable>
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Oʻchirish"
               onPress={() => confirmDelete(entry)}
               hitSlop={10}
               style={[styles.trashBtn, { borderColor: c.borderStrong }]}
@@ -227,7 +227,7 @@ export default function DownloadsScreen() {
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgPrimary }]} edges={['top']}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
           <ChevronLeft size={24} color={c.brand} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>

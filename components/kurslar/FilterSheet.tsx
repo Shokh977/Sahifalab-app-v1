@@ -76,11 +76,11 @@ export function FilterSheet({ visible, filters, availableLanguages, t, onApply, 
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
+      <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={styles.backdrop} onPress={onClose} />
       <View style={[styles.sheet, { backgroundColor: t.bg, paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: t.textPrimary }]}>{s.filterTitle}</Text>
-          <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={10} style={styles.closeBtn}>
             <X size={18} color={t.textSecondary} strokeWidth={2} />
           </Pressable>
         </View>

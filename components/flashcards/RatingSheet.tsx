@@ -63,7 +63,7 @@ export function RatingSheet({ visible, originalDeckId, onClose, onRated }: Props
   return (
     <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       <View style={styles.overlay}>
         <Animated.View style={[
@@ -77,7 +77,7 @@ export function RatingSheet({ visible, originalDeckId, onClose, onRated }: Props
 
           <View style={styles.starsRow}>
             {[1, 2, 3, 4, 5].map(n => (
-              <Pressable key={n} onPress={() => setRating(n)} hitSlop={6}>
+              <Pressable accessibilityRole="radio" accessibilityLabel={`${n} yulduz`} accessibilityState={{ selected: rating === n }} key={n} onPress={() => setRating(n)} hitSlop={6}>
                 <Star size={36} color={n <= rating ? '#FFB830' : c.border} weight={n <= rating ? 'fill' : 'regular'} />
               </Pressable>
             ))}

@@ -211,7 +211,7 @@ export function TermsModal({ visible, onClose }: Props) {
           <Text style={[st.headerTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
             Foydalanish shartlari
           </Text>
-          <Pressable onPress={onClose} hitSlop={12} style={[st.closeBtn, { backgroundColor: c.bgTertiary }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Yopish" onPress={onClose} hitSlop={12} style={[st.closeBtn, { backgroundColor: c.bgTertiary }]}>
             <X size={18} color={c.textSecondary} />
           </Pressable>
         </View>

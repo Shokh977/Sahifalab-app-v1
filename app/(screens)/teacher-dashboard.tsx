@@ -306,7 +306,7 @@ export default function TeacherDashboardScreen() {
             </View>
           </View>
         </View>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Sozlamalar"
           onPress={() => router.push('/(screens)/settings' as any)}
           style={({ pressed }) => [styles.settingsBtn, { backgroundColor: c.bgTertiary, opacity: pressed ? 0.7 : 1 }]}
         >

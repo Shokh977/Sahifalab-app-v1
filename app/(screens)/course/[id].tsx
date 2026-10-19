@@ -136,7 +136,7 @@ function DownloadBtn({
 
   if (status === 'completed') {
     return (
-      <Pressable onPress={onPress} hitSlop={12} style={styles.dlBtn}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Yuklab olingan" onPress={onPress} hitSlop={12} style={styles.dlBtn}>
         <Animated.View style={{ transform: [{ scale: checkScale }] }}>
           <CheckCircle size={DL_SIZE - 4} color={color} fill={color} />
         </Animated.View>
@@ -174,7 +174,7 @@ function DownloadBtn({
 
   if (status === 'paused') {
     return (
-      <Pressable onPress={onPress} hitSlop={12} style={styles.dlBtn}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Yuklashni davom ettirish" onPress={onPress} hitSlop={12} style={styles.dlBtn}>
         <Play size={15} color={color} fill={color} />
       </Pressable>
     )
@@ -182,14 +182,14 @@ function DownloadBtn({
 
   if (status === 'failed') {
     return (
-      <Pressable onPress={onPress} hitSlop={12} style={styles.dlBtn}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Qayta yuklab olish" onPress={onPress} hitSlop={12} style={styles.dlBtn}>
         <AlertCircle size={15} color="#ef4444" />
       </Pressable>
     )
   }
 
   return (
-    <Pressable onPress={onPress} hitSlop={12} style={styles.dlBtn}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Yuklab olish" onPress={onPress} hitSlop={12} style={styles.dlBtn}>
       <Download size={15} color={color} />
     </Pressable>
   )
@@ -416,7 +416,7 @@ function DownloadAllSheet({
   return (
     <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.52)', opacity: backdropAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       <View style={{ flex: 1, justifyContent: 'flex-end' }} pointerEvents="box-none">
         <Animated.View style={{
@@ -519,7 +519,7 @@ function ReviewForm({ courseId, onSubmitted, c, onFocused }: { courseId: number;
       </Text>
       <View style={styles.starRow}>
         {[1, 2, 3, 4, 5].map(i => (
-          <Pressable key={i} onPress={() => setRating(i)} hitSlop={8}>
+          <Pressable accessibilityRole="radio" accessibilityLabel={`${i} yulduz`} accessibilityState={{ selected: rating === i }} key={i} onPress={() => setRating(i)} hitSlop={8}>
             <Star size={30} color="#f59e0b" strokeWidth={1.5} fill={i <= rating ? '#f59e0b' : 'transparent'} />
           </Pressable>
         ))}
@@ -648,7 +648,7 @@ function ReviewCard({ rv, courseId, myUserId, myUsername, onChanged, c }: {
           </View>
         </View>
         {isOwner && !editing && (
-          <Pressable onPress={openEdit} hitSlop={12}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Sharhni tahrirlash" onPress={openEdit} hitSlop={12}>
             <Pencil size={14} color={c.brand} />
           </Pressable>
         )}
@@ -658,7 +658,7 @@ function ReviewCard({ rv, courseId, myUserId, myUsername, onChanged, c }: {
         <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             {[1, 2, 3, 4, 5].map(i => (
-              <Pressable key={i} onPress={() => setEditRating(i)} hitSlop={8}>
+              <Pressable accessibilityRole="radio" accessibilityLabel={`${i} yulduz`} accessibilityState={{ selected: editRating === i }} key={i} onPress={() => setEditRating(i)} hitSlop={8}>
                 <Star size={26} color="#f59e0b" strokeWidth={1.5} fill={i <= editRating ? '#f59e0b' : 'transparent'} />
               </Pressable>
             ))}
@@ -1268,7 +1268,7 @@ export default function CourseDetailScreen() {
   if (!course) return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
       <View style={[styles.navBar, { borderBottomColor: c.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.navBack}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={styles.navBack}>
           <ChevronLeft size={22} color={c.textPrimary} />
         </Pressable>
       </View>
@@ -1335,7 +1335,7 @@ export default function CourseDetailScreen() {
               <Text style={styles.playerStatusText}>Video mavjud emas</Text>
             </View>
           )}
-          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.playerBack}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Orqaga" onPress={() => router.back()} hitSlop={12} style={styles.playerBack}>
             <View style={styles.playerBackBubble}>
               <ChevronLeft size={20} color="#fff" />
             </View>
@@ -1344,16 +1344,16 @@ export default function CourseDetailScreen() {
 
         {/* Lesson title + prev/next + downloads link */}
         <View style={[styles.lessonTitleBar, { backgroundColor: c.bgSecondary, borderBottomColor: c.border }]}>
-          <Pressable onPress={goPrev} disabled={!hasPrev} hitSlop={8} style={styles.navArrow}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Oldingi dars" onPress={goPrev} disabled={!hasPrev} hitSlop={8} style={styles.navArrow}>
             <ChevronLeft size={18} color={hasPrev ? c.textPrimary : c.textMuted} />
           </Pressable>
           <Text numberOfLines={1} style={[styles.lessonTitleText, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
             {currentLesson?.title ?? course.title}
           </Text>
-          <Pressable onPress={goNext} disabled={!hasNext} hitSlop={8} style={styles.navArrow}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Keyingi dars" onPress={goNext} disabled={!hasNext} hitSlop={8} style={styles.navArrow}>
             <ChevronRight size={18} color={hasNext ? c.textPrimary : c.textMuted} />
           </Pressable>
-          <Pressable onPress={() => router.push('/(screens)/downloads' as any)} hitSlop={8} style={styles.navArrow}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Yuklab olinganlar" onPress={() => router.push('/(screens)/downloads' as any)} hitSlop={8} style={styles.navArrow}>
             <Download size={16} color={c.brand} />
           </Pressable>
         </View>

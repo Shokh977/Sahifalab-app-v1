@@ -120,7 +120,7 @@ export function PublicSetsTab() {
             style={[styles.searchInput, { color: kc.textPrimary, fontFamily: typography.fontFamily.medium }]}
           />
           {!!search && (
-            <Pressable onPress={() => setFilters({ search: '' })} hitSlop={8}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Qidiruvni tozalash" onPress={() => setFilters({ search: '' })} hitSlop={8}>
               <X size={14} color={kc.textMuted} />
             </Pressable>
           )}
@@ -286,7 +286,7 @@ function SortSheet({ visible, active, onSelect, onClose }: {
   if (!visible) return null
   return (
     <Modal transparent visible={visible} onRequestClose={onClose} statusBarTranslucent animationType="fade">
-      <Pressable style={styles.sheetBackdrop} onPress={onClose} />
+      <Pressable accessibilityRole="button" accessibilityLabel="Yopish" style={styles.sheetBackdrop} onPress={onClose} />
       <View style={[styles.sheet, { backgroundColor: kc.surface, paddingBottom: insets.bottom + spacing.base }]}>
         <View style={[styles.sheetHandle, { backgroundColor: kc.hairline }]} />
         {SORT_OPTIONS.map(opt => (
