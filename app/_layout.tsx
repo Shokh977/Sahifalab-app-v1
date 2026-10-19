@@ -12,6 +12,7 @@ import { useCourseStore } from '../stores/courseStore'
 import { settlePurchase } from '../src/features/courses/purchase'
 import { useReducedMotion } from 'react-native-reanimated'
 import { pushAnimation } from '../src/design/motion'
+import { startPerfProbe } from '../src/dev/perfProbe'
 
 if (Platform.OS === 'android') {
   registerWidgetTaskHandler(widgetTaskHandler)
@@ -179,6 +180,7 @@ async function registerTimezone() {
 
 export default function RootLayout() {
   const reduceMotion = useReducedMotion()
+  useEffect(() => { startPerfProbe() }, [])  // preview builds only
   const { isLoading, isAuthenticated, needsOnboarding, initAuth } = useAuthStore()
   const { loadTheme, theme, c } = useThemeStore()
   const { fetchUnreadCount } = useNotificationStore()

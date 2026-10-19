@@ -47,6 +47,8 @@ const NEW_LINKS: [string, string][] = [
   ['sahifalab://read/12', '/(screens)/book-reader/12'],
   ['sahifalab://badges', '/(screens)/badges'],
   ['sahifalab://nishonlar', '/(screens)/badges'],
+  // The preview build's own scheme (installs next to the store app).
+  ['sahifalab-preview://course/7', '/(screens)/course/7'],
 ]
 
 // Screens removed in Phase 8 (and the AI companion while "pro" is off).

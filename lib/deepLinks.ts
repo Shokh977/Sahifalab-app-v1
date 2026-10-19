@@ -9,11 +9,12 @@ const RETIRED_TO_BUGUN = ['tree-test', 'workspace', 'jobs', 'focus-timer', 'conn
  * is the old-link → destination table. Rule: never drop an entry; add
  * aliases and redirect instead.
  *
- * Handles sahifalab://… and https://(www.)sahifalab.uz/… alike.
+ * Handles sahifalab://… (sahifalab-preview://… in the preview build) and
+ * https://(www.)sahifalab.uz/… alike.
  */
 export function parseDeepLink(url: string): string | null {
   const path  = url
-    .replace(/^sahifalab:\/\//, '')
+    .replace(/^sahifalab(-preview)?:\/\//, '')  // -preview: the side-by-side preview build
     .replace(/^https?:\/\/(www\.)?sahifalab\.uz\/?/, '')
   const parts = path.split('/')
   const seg0  = parts[0] ?? ''
