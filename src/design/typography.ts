@@ -27,7 +27,7 @@ export const type = {
   /** Bugun's header name (Phase 7.5 C1). */
   screenTitle: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 34, letterSpacing: -0.5 },
   /** The streak number on Bugun's hero. */
-  streak:   { fontFamily: fonts.extrabold, fontSize: 48, lineHeight: 50, letterSpacing: -1.5 },
+  streak:   { fontFamily: fonts.extrabold, fontSize: 42, lineHeight: 44, letterSpacing: -1.2 },
   /** Block labels ("Bugungi fokus") and links in cards. */
   label:    { fontFamily: fonts.semibold,  fontSize: 14, lineHeight: 18 },
   /** Profil: the name, and the level card's title / label / sub / numbers. */

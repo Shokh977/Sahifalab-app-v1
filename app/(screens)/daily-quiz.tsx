@@ -65,6 +65,7 @@ export default function DailyQuizScreen() {
   const [result, setResult] = useState<SubmitResult | null>(null)
   const [rank, setRank] = useState<number | null>(null)
   const [friends, setFriends] = useState<QuizFriend[]>([])
+  const [contributors, setContributors] = useState<string[]>([])
   const [fresh, setFresh] = useState(false)   // submitted in this visit → reveal moment
   const legacyRef = useRef(false)
 
@@ -123,6 +124,7 @@ export default function DailyQuizScreen() {
       const res = await dailyQuiz.results(quizId)
       setRank(res.caller?.rank ?? null)
       setFriends(res.friends ?? [])
+      setContributors(res.contributors ?? [])
     } catch {
       setRank(null)
     }
@@ -305,7 +307,7 @@ export default function DailyQuizScreen() {
       <EmptyState icon={CalendarClock} title="Bugungi savollar hali tayyor emas" body="Birozdan soʻng qayta tekshiring." />
     )
   } else if (result) {
-    body = <QuizResultView quiz={quiz} result={result} rank={rank} friends={friends} fresh={fresh} />
+    body = <QuizResultView quiz={quiz} result={result} rank={rank} friends={friends} fresh={fresh} contributors={contributors} />
   } else {
     const q = quiz.questions[index]
     const ids = quiz.questions.map(x => x.question_id)

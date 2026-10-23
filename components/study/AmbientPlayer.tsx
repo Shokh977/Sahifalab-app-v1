@@ -12,6 +12,7 @@ import {
 
 import { create } from 'zustand'
 import { ambientSounds, type AmbientSound } from '../../lib/api'
+import { ensureCached, getCached, pruneBucket } from '../../lib/mediaCache'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, radius } from '../../lib/constants'
 
@@ -119,7 +120,12 @@ export function AmbientPlayer({ visible = true }: { visible?: boolean }) {
 
   useEffect(() => {
     ambientSounds.list()
-      .then(setSounds)
+      .then(list => {
+        setSounds(list)
+        // Drop stored loops the admin replaced or removed. Only on a real
+        // list: list() turns a failure into [], which must not wipe the cache.
+        if (list.length > 0) pruneBucket('ambient', list.map(s => s.url))
+      })
       .finally(() => setFetching(false))
   }, [])
 
@@ -152,7 +158,11 @@ export function AmbientPlayer({ visible = true }: { visible?: boolean }) {
 
     let ok = false
     try {
-      ok = await _playUrl(s.url, volumeRef.current)
+      // From the phone's storage when we have it; otherwise stream it now
+      // and keep a copy for next time (never makes the first play wait).
+      const local = await getCached(s.url, 'ambient')
+      ok = await _playUrl(local ?? s.url, volumeRef.current)
+      if (!local) ensureCached(s.url, 'ambient')
     } finally {
       // Always release the lock, even if _playUrl throws for any reason
       _switching = false

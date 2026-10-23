@@ -29,7 +29,7 @@ import { useMinuteClock } from '../../../src/features/today/useMinuteClock'
 import { uzText } from '../../../src/features/today/today'
 import { ChallengeHeader } from '../../../src/features/bellashuv/ChallengeHeader'
 import { RankRow } from '../../../src/features/bellashuv/RankRow'
-import { isOutsideList, progressFraction, showPinnedRow, statusLine } from '../../../src/features/bellashuv/challengeDetail'
+import { bandColor, isOutsideList, progressFraction, showPinnedRow, statusLine } from '../../../src/features/bellashuv/challengeDetail'
 
 const VIEWABILITY = { itemVisiblePercentThreshold: 60 }
 
@@ -199,7 +199,7 @@ export default function ChallengeDetailScreen() {
         <Text style={[typeScale.title1, tabular, { color: colors.text }]}>
           {fmtMetricValue(data.progress_value, data.metric)} / {fmtMetricGoal(target, data.metric)}
         </Text>
-        {fraction != null && <ProgressBar value={fraction} thickness="thick" accessibilityLabel="Bellashuvdagi taraqqiyot" />}
+        {fraction != null && <ProgressBar value={fraction} thickness="thick" color={bandColor(data.color)} accessibilityLabel="Bellashuvdagi taraqqiyot" />}
         <Text style={[typeScale.callout, { color: colors.textMuted }]}>
           {fraction != null ? `${Math.round(fraction * 100)}% · ` : ''}{paceHint(data)}
         </Text>
@@ -211,7 +211,7 @@ export default function ChallengeDetailScreen() {
     <View>
       <ChallengeHeader
         title={data.title}
-        coverUrl={data.cover_image_url}
+        color={data.color}
         status={statusLine(data, now)}
         participants={data.participant_count}
         onBack={back}

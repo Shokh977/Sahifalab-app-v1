@@ -134,8 +134,8 @@ export const typography = {
     bold:      'Onest-Bold',
     extrabold: 'Onest-ExtraBold',
     mono:      'Onest-Regular', // fallback until JetBrains Mono is added
-    serifDisplay: 'InstrumentSerif-Regular',
-    monoMedium:   'JetBrainsMono-Medium',
+    serifDisplay: 'Onest-ExtraBold', // the serif/mono faces are no longer loaded
+    monoMedium:   'Onest-Medium',
   },
   size: {
     xs:   11,

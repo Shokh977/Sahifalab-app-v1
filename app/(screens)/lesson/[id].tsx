@@ -11,7 +11,6 @@ import Animated, {
 } from 'react-native-reanimated'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import * as FileSystem from 'expo-file-system/legacy'
 import {
   ChevronLeft, Download, FileText, Paperclip, BookOpen,
   Calendar, ExternalLink, Video,
@@ -21,6 +20,7 @@ import { useCourseStore } from '../../../stores/courseStore'
 import { useDownloadStore } from '../../../stores/downloadStore'
 import { lessons as lessonsApi, courses as coursesApi } from '../../../lib/api'
 import { VideoPlayer } from '../../../components/courses/VideoPlayer'
+import { ensureCached } from '../../../lib/mediaCache'
 import { typography, spacing, radius } from '../../../lib/constants'
 import type { Lesson, Course } from '../../../lib/api'
 import { ChallengeCompletionModal, type CompletedChallenge } from '../../../components/study/ChallengeCompletionModal'
@@ -364,14 +364,15 @@ function MaterialsContent({ lesson, c }: { lesson: Lesson; c: any }) {
 
   const handleDownload = useCallback(async () => {
     if (!lesson.material_url) return
-    const rawName   = lesson.material_name || 'material'
-    const ext       = getFileExt(lesson.material_url, lesson.material_name)
-    const fileName  = rawName.includes('.') ? rawName : `${rawName}.${ext || 'pdf'}`
-    const localUri  = (FileSystem.documentDirectory ?? '') + fileName
+    const guessed = getFileExt(lesson.material_url, lesson.material_name)
+    const ext = /^[a-z0-9]{1,5}$/.test(guessed) ? guessed : 'pdf'
 
     try {
       setDownloading(true)
-      const { uri } = await FileSystem.downloadAsync(lesson.material_url, localUri)
+      // Downloaded once, then opened from the phone's storage every time
+      // after (it used to be fetched again on every tap).
+      const uri = await ensureCached(lesson.material_url, 'materials', `.${ext}`)
+      if (!uri) throw new Error('not stored')
       await Linking.openURL(uri)
     } catch {
       // Fall back to opening in browser

@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { BarChart3, ChevronLeft, ChevronRight, Clock, Flame, GraduationCap, Heart, Settings, Share2, Trophy, type LucideIcon } from 'lucide-react-native'
+import { BarChart3, ChevronLeft, ChevronRight, Clock, Flame, GraduationCap, Heart, Lightbulb, Settings, Share2, Trophy, type LucideIcon } from 'lucide-react-native'
 import { shareProfile } from '../../lib/share'
 import { useProfileStore } from '../../stores/profileStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -19,9 +19,8 @@ import { LEVEL_TITLES } from '../../lib/levelTitles'
 import type { ProfileData } from '../../lib/types'
 import { useTheme } from '../../src/design/ThemeProvider'
 import { avatarSize, iconSize, iconStroke, layout, radius, space } from '../../src/design/spacing'
-import type { TintName } from '../../src/design/tokens'
-import { fonts, tabular, type as typeScale } from '../../src/design/typography'
-import { Avatar, BadgeTile, Button, Card, IconButton, Pressable, SkeletonBlock, SkeletonRow, SectionTitle } from '../../src/components/ui'
+import { fonts, type as typeScale } from '../../src/design/typography'
+import { BadgeTile, Button, Card, IconButton, Pressable, SkeletonBlock, SkeletonRow, SectionTitle } from '../../src/components/ui'
 import { uzText } from '../../src/features/today/today'
 import { allBadges, summary, topEarned, type ProfileBadge } from '../../src/features/profile/badges'
 import { badgeVisual, stageArt } from '../../src/features/profile/BadgeCell'
@@ -29,28 +28,11 @@ import { BadgeSheet } from '../../src/features/profile/BadgeSheet'
 import { FollowListSheet, type FollowKind } from '../../src/features/profile/FollowListSheet'
 import { LevelHeroCard } from '../../src/features/profile/LevelHeroCard'
 import { focusHours } from '../../src/features/profile/profileFormat'
+import { ProfileAvatar, ProfileStat } from '../../src/features/profile/ProfileStat'
 
 const BADGE_COLS = 4
 const BADGE_PREVIEW = 8
-const AVATAR = 72
-const AVATAR_RING = 3
-const STAT_ICON = 32
 const MENU_ICON = 40
-
-/** A stat tile: tinted icon square, the value, a label (Phase 7.5 D2). */
-function ProfileStat({ icon: Icon, tint, value, label }: { icon: LucideIcon; tint: TintName; value: string; label: string }) {
-  const { colors, tint: tintOf, elevation } = useTheme()
-  const t = tintOf(tint)
-  return (
-    <View style={[styles.stat, { backgroundColor: colors.surface, borderColor: colors.border }, elevation]} accessible accessibilityLabel={`${value} ${label}`}>
-      <View style={[styles.statIcon, { backgroundColor: t.soft }]}>
-        <Icon size={iconSize.sm - 2} color={t.ink} strokeWidth={iconStroke + 0.2} />
-      </View>
-      <Text style={[typeScale.statValue, tabular, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{value}</Text>
-      <Text style={[typeScale.small, { color: colors.textMuted }]} numberOfLines={2}>{label}</Text>
-    </View>
-  )
-}
 
 /** A menu row: a raised 40 px icon square, title 16/700, subtitle, chevron. */
 function MenuRow({ icon: Icon, title, subtitle, first, onPress }: {
@@ -158,9 +140,7 @@ export default function ProfileTab() {
       >
         {/* Identity */}
         <View style={styles.identity}>
-          <View style={[styles.ring, { borderColor: colors.accent }]}>
-            <Avatar name={name || '?'} id={authUser?.telegram_id} uri={p?.photo_url ?? authUser?.photo_url} diameter={AVATAR - AVATAR_RING * 2} />
-          </View>
+          <ProfileAvatar name={name} id={authUser?.telegram_id} uri={p?.photo_url ?? authUser?.photo_url} />
           <View style={styles.flex}>
             {p || authUser ? (
               <>
@@ -227,6 +207,7 @@ export default function ProfileTab() {
           <MenuRow first icon={BarChart3} title="Statistika" subtitle="Oʻqish vaqti, kunlar, tendensiya" onPress={() => router.push('/(screens)/streak-detail' as any)} />
           <MenuRow icon={Flame} title="Seriya va inventar" subtitle={`Joriy: ${streak} kunlik seriya`} onPress={() => router.push('/(screens)/streak-detail' as any)} />
           <MenuRow icon={Heart} title="Sevimli kurslar" subtitle="Saqlangan kurslaringiz" onPress={() => router.push('/(screens)/saved' as any)} />
+          <MenuRow icon={Lightbulb} title="Mening savollarim" subtitle="5 SAVOLGA savol yuboring" onPress={() => router.push('/(screens)/my-questions' as any)} />
           <MenuRow icon={GraduationCap} title={teacher.title} subtitle={teacher.subtitle} onPress={() => router.push(teacher.route as any)} />
         </Card>
       </ScrollView>
@@ -250,12 +231,9 @@ const styles = StyleSheet.create({
   bold: { fontFamily: fonts.bold },
   content: { paddingHorizontal: layout.gutter, paddingTop: space.xs, gap: space.md + 2 },
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 2 },
-  ring: { width: AVATAR, height: AVATAR, borderRadius: radius.full, borderWidth: AVATAR_RING, alignItems: 'center', justifyContent: 'center' },
   counts: { flexDirection: 'row', alignItems: 'center', gap: space.xxs + 2, marginTop: 2, flexWrap: 'wrap' },
   edit: { marginTop: space.xs },
   stats: { flexDirection: 'row', gap: space.sm - 2 },
-  stat: { flex: 1, borderRadius: radius.lg, borderWidth: 1, padding: space.sm + 2, gap: space.xs },
-  statIcon: { width: STAT_ICON, height: STAT_ICON, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   section: { gap: space.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: space.sm },
   menu: { padding: 0, overflow: 'hidden', borderRadius: radius.xl },

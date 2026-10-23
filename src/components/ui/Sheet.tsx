@@ -7,9 +7,13 @@
  * `scaleBehind` is the iOS sheet preset: the screen behind scales to 0.93
  * with 22 px corners (SheetBehindProvider at the root), tracking the
  * sheet's position. Not under reduce motion.
+ *
+ * `scroll` is for long content: the children scroll inside the sheet (up to
+ * its max height) and only the grabber and title drag it, so the drag never
+ * fights the scroll.
  */
 import React, { useCallback, useEffect, useState } from 'react'
-import { Modal, Pressable as RNPressable, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native'
+import { Modal, Pressable as RNPressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native'
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
 import Animated, {
   interpolate, useAnimatedReaction, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming,
@@ -30,11 +34,13 @@ export interface SheetProps {
   style?: StyleProp<ViewStyle>
   /** iOS sheet preset: scale the screen behind to 0.93. */
   scaleBehind?: boolean
+  /** Long content: scroll it, and drag the sheet by its grabber and title only. */
+  scroll?: boolean
 }
 
 const GRABBER = { width: 36, height: 5 }
 
-export function Sheet({ visible, onClose, title, children, style, scaleBehind }: SheetProps) {
+export function Sheet({ visible, onClose, title, children, style, scaleBehind, scroll }: SheetProps) {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const { height: screenH } = useWindowDimensions()
@@ -43,18 +49,22 @@ export function Sheet({ visible, onClose, title, children, style, scaleBehind }:
   const [sheetH, setSheetH] = useState(0)
   const y = useSharedValue(screenH)          // 0 = open, sheetH = closed
   const start = useSharedValue(0)
+  // The closed position on the UI thread. Set together with y on the first
+  // layout: when it lagged as React state (screenH for one frame while y was
+  // already the sheet's height), the scrim and the scaled screen behind
+  // jumped part-way open and back before the spring — a visible flick.
+  const offscreen = useSharedValue(screenH)
 
   const unmount = useCallback(() => setMounted(false), [])
-  const offscreen = sheetH || screenH
   const behind = useSheetBehind()
   const shrink = !!scaleBehind && !reduceMotion && behind != null
 
   // The screen behind follows the sheet: fully open = fully scaled.
   useAnimatedReaction(
-    () => (shrink ? interpolate(y.get(), [0, offscreen], [1, 0], 'clamp') : 0),
+    () => (shrink ? interpolate(y.get(), [0, offscreen.get()], [1, 0], 'clamp') : 0),
     // Only a scaleBehind sheet writes, so other (hidden) sheets never reset it.
     p => { if (behind && shrink) behind.set(p) },
-    [shrink, offscreen],
+    [shrink],
   )
   useEffect(() => () => { if (shrink) behind?.set(0) }, [behind, shrink])
 
@@ -94,7 +104,7 @@ export function Sheet({ visible, onClose, title, children, style, scaleBehind }:
 
   const panel = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }))
   const scrim = useAnimatedStyle(() => ({
-    opacity: interpolate(y.get(), [0, offscreen], [1, 0], 'clamp'),
+    opacity: interpolate(y.get(), [0, offscreen.get()], [1, 0], 'clamp'),
   }))
 
   if (!mounted) return null
@@ -105,11 +115,12 @@ export function Sheet({ visible, onClose, title, children, style, scaleBehind }:
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }, scrim]}>
           <RNPressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Yopish" accessibilityRole="button" />
         </Animated.View>
-        <GestureDetector gesture={pan}>
+        <MaybeDrag gesture={pan} on={!scroll}>
           <Animated.View
             accessibilityViewIsModal
             onLayout={e => {
               const h = e.nativeEvent.layout.height
+              offscreen.set(h)
               if (!sheetH) y.set(h)
               setSheetH(h)
             }}
@@ -120,16 +131,27 @@ export function Sheet({ visible, onClose, title, children, style, scaleBehind }:
               style,
             ]}
           >
-            <View style={styles.grabberArea}>
-              <View style={[styles.grabber, { backgroundColor: colors.border }]} />
-            </View>
-            {title ? <Text numberOfLines={2} style={[typeScale.title2, styles.title, { color: colors.text }]} accessibilityRole="header">{title}</Text> : null}
-            {children}
+            <MaybeDrag gesture={pan} on={!!scroll}>
+              <View>
+                <View style={styles.grabberArea}>
+                  <View style={[styles.grabber, { backgroundColor: colors.border }]} />
+                </View>
+                {title ? <Text numberOfLines={2} style={[typeScale.title2, styles.title, { color: colors.text }]} accessibilityRole="header">{title}</Text> : null}
+              </View>
+            </MaybeDrag>
+            {scroll ? (
+              <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>{children}</ScrollView>
+            ) : children}
           </Animated.View>
-        </GestureDetector>
+        </MaybeDrag>
       </GestureHandlerRootView>
     </Modal>
   )
+}
+
+/** The drag gesture on the whole sheet, or (scroll sheets) on the header only. */
+function MaybeDrag({ gesture, on, children }: { gesture: ReturnType<typeof Gesture.Pan>; on: boolean; children: React.ReactElement }) {
+  return on ? <GestureDetector gesture={gesture}>{children}</GestureDetector> : children
 }
 
 const styles = StyleSheet.create({
@@ -142,4 +164,5 @@ const styles = StyleSheet.create({
   grabberArea: { alignItems: 'center', paddingVertical: space.xs },
   grabber: { ...GRABBER, borderRadius: radius.full },
   title: { marginBottom: space.sm },
+  scroll: { flexShrink: 1 },
 })

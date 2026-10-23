@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import * as SecureStore from 'expo-secure-store'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { auth, TOKEN_KEY, type AuthResponse, type MeResponse } from '../lib/api'
+import { auth, setCachedToken, TOKEN_KEY, type AuthResponse, type MeResponse } from '../lib/api'
 
 const ONBOARDING_KEY = 'sahifalab_onboarding_done'
 const USER_CACHE_KEY  = 'sahifalab_user_cache_v1'
@@ -103,6 +103,7 @@ function mapToUser(r: AuthResponse | MeResponse): AppUser {
 }
 
 async function saveToken(token: string) {
+  setCachedToken(token)
   try { await SecureStore.setItemAsync(TOKEN_KEY, token) }
   catch { try { localStorage.setItem(TOKEN_KEY, token) } catch {} }
 }
@@ -113,6 +114,7 @@ async function getToken(): Promise<string | null> {
 }
 
 async function clearToken() {
+  setCachedToken(null)
   try { await SecureStore.deleteItemAsync(TOKEN_KEY) }
   catch { try { localStorage.removeItem(TOKEN_KEY) } catch {} }
 }
@@ -158,7 +160,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Keep cached user alive on transient network failures.
       // Only force-logout on explicit auth rejection (401/403).
       const msg: string = err?.message ?? ''
-      const isAuthError  = /HTTP 40[13]/.test(msg)
+      // request() puts the backend's detail text in the message, so a 401
+      // rarely reads "HTTP 401" — check the status it attaches too.
+      const isAuthError  = err?.status === 401 || err?.status === 403 || /HTTP 40[13]/.test(msg)
       if (isAuthError || !get().isAuthenticated) {
         await clearToken()
         AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {})
@@ -230,7 +234,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   patchUser: (patch) => {
     const { user } = get()
-    if (user) set({ user: { ...user, ...patch } })
+    if (!user) return
+    const next = { ...user, ...patch }
+    set({ user: next })
+    // Keep the cold-start cache in step too (name/photo live there), or the
+    // next launch shows the old avatar until auth.me() answers.
+    AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(toIdentityCache(next))).catch(() => {})
   },
 
   completeOnboarding: async () => {

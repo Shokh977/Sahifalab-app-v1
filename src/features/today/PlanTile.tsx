@@ -1,138 +1,250 @@
 /**
- * PlanTile (Phase 7.5 B5, reworked in Phase 8) — one item of "Bugungi
- * reja". Every variant has the same layout and height, so the grid is
- * even: a 32 px tinted icon and a status on top, a 24 px value ("48 ta",
- * "180 daq", "5/5", "#14"), a 14 px title, and a 12 px sub-line (or a thin
- * bar) on one row with the play button.
- *   next    — the one action: the deep orange gradient (white text passes
- *             AA at any size there), a white "KEYINGI" pill and a white
- *             play circle beside the sub-line.
- *   default — surface card.
- *   done    — surface card with a green check badge.
- * When "next" moves to another tile the orange layer crossfades (220 ms;
- * instant under reduce motion).
+ * PlanTile — one "Bugungi reja" card (plan redesign). Same anatomy and size
+ * for every task, top to bottom:
+ *   1. identity: tinted 32 px icon tile + uppercase type label; status slot
+ *      on the right (done ✓ · new dot · the next card's play button)
+ *   2. metric: one number + unit ("25 daq", "2/5 toʻgʻri", "93 kishi")
+ *   3. caption: what it is, one line
+ *   4. signal (bar / segments / week bars, pinned to the bottom) + meta line
+ * The one "next" card: solid orange with white content in dark mode;
+ * bright orange with near-black content in light mode (planNext). No
+ * decorative backgrounds. Light: soft shadow; dark: none.
+ *
+ * PlanReviewWide is Tahlil's full-width layout (below an even grid).
  */
-import React, { useEffect } from 'react'
+import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated'
-import { Check, Play, type LucideIcon } from 'lucide-react-native'
+import { ChartColumn, Check, ChevronRight, CircleHelp, GraduationCap, Layers, Play, Timer, Trophy, type LucideIcon } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
-import { durations, easing } from '../../design/motion'
-import { iconSize, iconStroke, radius, space } from '../../design/spacing'
-import { onAccentTile, type TintName } from '../../design/tokens'
-import { fonts, tabular, type as typeScale } from '../../design/typography'
-import { AccentFill, Pressable, ProgressBar } from '../../components/ui'
+import { planNext, planReviewSoftBar, planTypeColors, type PlanType } from '../../design/tokens'
+import { fonts } from '../../design/typography'
+import { Pressable } from '../../components/ui'
+import { WEEKDAYS_SHORT, peakDay, type PlanCard, type PlanSignal } from './planCards'
 
-export type PlanTileVariant = 'next' | 'default' | 'done'
-
-export const PLAN_TILE_MIN_HEIGHT = 140
-const TILE_RADIUS = 22
-const ICON_TILE = 32
+export const PLAN_CARD_HEIGHT = 172
+const RADIUS = 22
+const PAD = 14
+const TILE = 32
+const TILE_RADIUS = 10
+const PLAY = 32
 const CHECK = 22
-const PLAY = 28
+const DOT = 8
+const BAR_H = 6
+const BAR_R = 3
+const SEG_GAP = 4
+const SIGNAL_H = 16
+/** Big text may grow with the system font size, but not past this. */
+const MAX_SCALE = 1.3
 
-export interface PlanTileProps {
-  variant: PlanTileVariant
-  icon: LucideIcon
-  tint: TintName
-  value: string
-  title: string
-  sub?: string
-  /** 0–1: a thin bar instead of the sub-line (the course tile). */
-  progress?: number
-  /** Top-right on a default tile: "30%", "Yangi"… */
-  status?: React.ReactNode
-  onPress?: () => void
+const ICONS: Record<PlanType, LucideIcon> = {
+  cards: Layers, focus: Timer, quiz: CircleHelp, course: GraduationCap, competition: Trophy, review: ChartColumn,
 }
 
-export function PlanTile({ variant, icon: Icon, tint, value, title, sub, progress, status, onPress }: PlanTileProps) {
-  const { colors, elevation, accentShadow, tint: tintOf } = useTheme()
-  const next = variant === 'next'
-  const t = tintOf(tint)
-  const reduceMotion = useReducedMotion()
-  const fill = useSharedValue(next ? 1 : 0)
-  useEffect(() => {
-    fill.set(reduceMotion ? (next ? 1 : 0) : withTiming(next ? 1 : 0, { duration: durations.fade, easing: easing.standard }))
-  }, [next, reduceMotion, fill])
-  const fillStyle = useAnimatedStyle(() => ({ opacity: fill.get() }))
-  const a11y = `${title}: ${value}${sub ? `, ${sub}` : ''}${next ? ', keyingi' : variant === 'done' ? ', bajarildi' : ''}`
-  const ink = next ? colors.onAccent : colors.text
-  const muted = next ? colors.onAccent : colors.textMuted
+interface Ink { label: string; text: string; muted: string; fill: string; track: string; tile: string; icon: string }
 
+function useInk(type: PlanType, next: boolean): Ink {
+  const { colors, scheme } = useTheme()
+  const t = planTypeColors[scheme][type]
+  if (next) {
+    const n = planNext[scheme]
+    return { label: n.ink, text: n.ink, muted: n.ink, fill: n.fill, track: n.track, tile: n.tile, icon: n.ink }
+  }
+  return { label: t.ink, text: colors.text, muted: colors.textMuted, fill: t.fill, track: colors.track, tile: t.tile, icon: t.ink }
+}
+
+function Bar({ value, ink }: { value: number; ink: Ink }) {
+  return (
+    <View style={[styles.bar, { backgroundColor: ink.track }]}>
+      <View style={[styles.barFill, { width: `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`, backgroundColor: ink.fill }]} />
+    </View>
+  )
+}
+
+function Segments({ total, filled, ink }: { total: number; filled: number; ink: Ink }) {
+  return (
+    <View style={styles.segments}>
+      {Array.from({ length: total }, (_, i) => (
+        <View key={i} style={[styles.segment, { backgroundColor: i < filled ? ink.fill : ink.track }]} />
+      ))}
+    </View>
+  )
+}
+
+function WeekBars({ minutes, height, gap, ink, soft }: { minutes: number[]; height: number; gap: number; ink: Ink; soft: string }) {
+  const max = Math.max(1, ...minutes)
+  const peak = peakDay(minutes)
+  return (
+    <View style={[styles.week, { height, gap }]}>
+      {minutes.map((m, i) => (
+        <View key={i} style={styles.weekCol}>
+          <View
+            style={{
+              height: Math.max(BAR_H / 2, Math.round((m / max) * height)),
+              borderRadius: BAR_R,
+              backgroundColor: m === 0 ? ink.track : i === peak ? ink.fill : soft,
+            }}
+          />
+        </View>
+      ))}
+    </View>
+  )
+}
+
+function Signal({ signal, ink, soft }: { signal: PlanSignal; ink: Ink; soft: string }) {
+  if (signal.kind === 'bar') return <Bar value={signal.value} ink={ink} />
+  if (signal.kind === 'segments') return <Segments total={signal.total} filled={signal.filled} ink={ink} />
+  return <WeekBars minutes={signal.minutes} height={SIGNAL_H} gap={3} ink={ink} soft={soft} />
+}
+
+function StatusSlot({ card, ink, onPress }: { card: PlanCard; ink: Ink; onPress: () => void }) {
+  const { colors, scheme } = useTheme()
+  if (card.status === 'next') {
+    const n = planNext[scheme]
+    return (
+      <Pressable onPress={onPress} accessibilityLabel="Boshlash" hitSlop={6} style={[styles.play, { backgroundColor: n.playBg }]}>
+        <Play size={14} color={n.playIcon} fill={n.playIcon} strokeWidth={2} />
+      </Pressable>
+    )
+  }
+  if (card.status === 'done') {
+    return (
+      <View style={[styles.check, { backgroundColor: colors.green }]} accessible accessibilityLabel="Bajarildi">
+        <Check size={13} color="#FFFFFF" strokeWidth={3.2} />
+      </View>
+    )
+  }
+  if (card.status === 'new') {
+    return <View style={[styles.dot, { backgroundColor: ink.fill }]} accessible accessibilityLabel="Yangi" />
+  }
+  return null
+}
+
+function Identity({ card, ink, onPress }: { card: PlanCard; ink: Ink; onPress: () => void }) {
+  const Icon = ICONS[card.type]
+  return (
+    <View style={styles.identity}>
+      <View style={[styles.tile, { backgroundColor: ink.tile }]}>
+        <Icon size={18} color={ink.icon} strokeWidth={2.2} />
+      </View>
+      <Text style={[styles.label, { color: ink.label }]} numberOfLines={1} maxFontSizeMultiplier={MAX_SCALE}>
+        {card.label}
+      </Text>
+      <View style={styles.flex} />
+      <StatusSlot card={card} ink={ink} onPress={onPress} />
+    </View>
+  )
+}
+
+function Metric({ card, ink }: { card: PlanCard; ink: Ink }) {
+  return (
+    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} maxFontSizeMultiplier={MAX_SCALE}>
+      <Text style={[styles.metric, { color: ink.text }]}>{card.metric}</Text>
+      <Text style={[styles.unit, { color: ink.muted }]}>{` ${card.unit}`}</Text>
+    </Text>
+  )
+}
+
+export function PlanTile({ card, onPress }: { card: PlanCard; onPress: () => void }) {
+  const { colors, scheme, elevation } = useTheme()
+  const ink = useInk(card.type, card.next)
   return (
     <Pressable
       onPress={onPress}
-      accessibilityLabel={a11y}
+      accessibilityLabel={card.a11y}
       style={[
-        styles.tile,
-        { backgroundColor: colors.surface, borderColor: next ? 'transparent' : colors.border },
-        next ? accentShadow : elevation,
+        styles.card,
+        card.next
+          ? { backgroundColor: planNext[scheme].bg, borderColor: planNext[scheme].border }
+          : { backgroundColor: colors.surface, borderColor: colors.border },
+        elevation,
       ]}
     >
-      {/* Over the 1 px border too, so the orange reaches the edge. */}
-      <Animated.View style={[styles.fill, fillStyle]} pointerEvents="none">
-        <AccentFill radius={TILE_RADIUS} deep />
-      </Animated.View>
+      <Identity card={card} ink={ink} onPress={onPress} />
+      <View style={styles.body}>
+        <Metric card={card} ink={ink} />
+        <Text style={[styles.caption, { color: ink.text }]} numberOfLines={1} maxFontSizeMultiplier={MAX_SCALE}>{card.caption}</Text>
+      </View>
+      <View style={styles.flex} />
+      <View style={styles.signal} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        <Signal signal={card.signal} ink={ink} soft={planReviewSoftBar[scheme]} />
+      </View>
+      <Text style={[styles.meta, { color: ink.muted }]} numberOfLines={1} maxFontSizeMultiplier={MAX_SCALE}>{card.meta}</Text>
+    </Pressable>
+  )
+}
 
-      <View style={styles.top}>
-        <View style={[styles.iconTile, { backgroundColor: next ? onAccentTile : t.soft }]}>
-          <Icon size={iconSize.sm - 2} color={next ? colors.onAccent : t.ink} strokeWidth={iconStroke + 0.1} />
+/** Tahlil at full width: tile + label over the title, chevron; then the
+ *  week's total on the left and a 7-bar chart with day labels on the right. */
+export function PlanReviewWide({ card, onPress }: { card: PlanCard; onPress: () => void }) {
+  const { colors, scheme, elevation } = useTheme()
+  const ink = useInk('review', false)
+  const minutes = card.signal.kind === 'week' ? card.signal.minutes : []
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityLabel={card.a11y}
+      accessibilityRole="link"
+      style={[styles.wide, { backgroundColor: colors.surface, borderColor: colors.border }, elevation]}
+    >
+      <View style={styles.wideTop}>
+        <View style={[styles.wideTile, { backgroundColor: ink.tile }]}>
+          <ChartColumn size={22} color={ink.icon} strokeWidth={2.2} />
         </View>
-        {next ? (
-          <View style={[styles.pill, { backgroundColor: colors.onAccent }]}>
-            <Text style={[typeScale.overline, { color: colors.accentText }]}>Keyingi</Text>
+        <View style={styles.flex}>
+          <View style={styles.wideLabelRow}>
+            <Text style={[styles.label, { color: ink.label }]} maxFontSizeMultiplier={MAX_SCALE}>{card.label}</Text>
+            {card.status === 'new' && <View style={[styles.dot, { backgroundColor: ink.fill }]} accessibilityLabel="Yangi" />}
           </View>
-        ) : variant === 'done' ? (
-          <View style={[styles.check, { backgroundColor: colors.green }]}>
-            <Check size={iconSize.sm - 8} color={colors.onAccent} strokeWidth={3.2} />
-          </View>
-        ) : status}
+          <Text style={[styles.wideTitle, { color: colors.text }]} numberOfLines={1} maxFontSizeMultiplier={MAX_SCALE}>{card.caption}</Text>
+        </View>
+        <ChevronRight size={20} color={colors.textMuted} strokeWidth={2.2} />
       </View>
-
-      <View style={styles.text}>
-        <Text style={[typeScale.statValue, tabular, { color: ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} maxFontSizeMultiplier={1.15}>
-          {value}
-        </Text>
-        <Text style={[typeScale.label, styles.bold, { color: ink }]} numberOfLines={1}>{title}</Text>
-      </View>
-
-      <View style={styles.bottom}>
-        {progress != null ? (
-          <ProgressBar value={progress} color={t.ink} accessibilityLabel={title} style={styles.flex} />
-        ) : (
-          <Text style={[typeScale.small, styles.flex, { color: muted }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-            {sub ?? ''}
-          </Text>
-        )}
-        {next && (
-          <View style={[styles.play, { backgroundColor: colors.onAccent }]}>
-            <Play size={iconSize.sm - 8} color={colors.accent} fill={colors.accent} strokeWidth={iconStroke} />
+      <View style={styles.wideBottom}>
+        <View style={styles.flex}>
+          <Metric card={card} ink={ink} />
+          <Text style={[styles.meta, { color: colors.textMuted }]} numberOfLines={1} maxFontSizeMultiplier={MAX_SCALE}>{card.meta}</Text>
+        </View>
+        <View style={styles.chart} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+          <WeekBars minutes={minutes} height={40} gap={6} ink={ink} soft={planReviewSoftBar[scheme]} />
+          <View style={styles.dayRow}>
+            {WEEKDAYS_SHORT.map(d => (
+              <Text key={d} style={[styles.day, { color: colors.textMuted }]} maxFontSizeMultiplier={1.1}>{d}</Text>
+            ))}
           </View>
-        )}
+        </View>
       </View>
     </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
-  tile: {
-    minHeight: PLAN_TILE_MIN_HEIGHT,
-    borderRadius: TILE_RADIUS,
-    borderWidth: 1,
-    paddingHorizontal: space.md,
-    paddingVertical: space.md - 2,
-    gap: space.sm,
-    justifyContent: 'space-between',
-  },
-  fill: { position: 'absolute', top: -1, left: -1, right: -1, bottom: -1 },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: ICON_TILE },
-  iconTile: { width: ICON_TILE, height: ICON_TILE, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  pill: { borderRadius: radius.full, paddingHorizontal: space.xs, paddingVertical: space.xxs / 2 },
-  check: { width: CHECK, height: CHECK, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  text: { gap: space.xxs / 2 },
-  bold: { fontFamily: fonts.bold },
-  // Same height on every tile (the play circle's), so sub-lines and bars line up across the grid.
-  bottom: { flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: PLAY },
-  flex: { flex: 1, minWidth: 0 },
-  play: { width: PLAY, height: PLAY, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+  card: { height: PLAN_CARD_HEIGHT, borderRadius: RADIUS, borderWidth: 1, padding: PAD },
+  flex: { flex: 1 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: PLAY },
+  tile: { width: TILE, height: TILE, borderRadius: TILE_RADIUS, alignItems: 'center', justifyContent: 'center' },
+  label: { fontFamily: fonts.extrabold, fontSize: 11, lineHeight: 14, letterSpacing: 0.77, textTransform: 'uppercase', flexShrink: 1 },
+  play: { width: PLAY, height: PLAY, borderRadius: PLAY / 2, alignItems: 'center', justifyContent: 'center', paddingLeft: 2 },
+  check: { width: CHECK, height: CHECK, borderRadius: CHECK / 2, alignItems: 'center', justifyContent: 'center' },
+  dot: { width: DOT, height: DOT, borderRadius: DOT / 2 },
+  body: { marginTop: 12, gap: 4 },
+  metric: { fontFamily: fonts.extrabold, fontSize: 24, lineHeight: 28, letterSpacing: -0.4 },
+  unit: { fontFamily: fonts.bold, fontSize: 13 },
+  caption: { fontFamily: fonts.bold, fontSize: 13, lineHeight: 17 },
+  signal: { height: SIGNAL_H, justifyContent: 'center' },
+  bar: { height: BAR_H, borderRadius: BAR_R, overflow: 'hidden' },
+  barFill: { height: BAR_H, borderRadius: BAR_R },
+  segments: { flexDirection: 'row', gap: SEG_GAP },
+  segment: { flex: 1, height: BAR_H, borderRadius: BAR_R },
+  week: { flexDirection: 'row', alignItems: 'flex-end' },
+  weekCol: { flex: 1, justifyContent: 'flex-end' },
+  meta: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, marginTop: 4 },
+  wide: { borderRadius: RADIUS, borderWidth: 1, padding: PAD, gap: 14 },
+  wideTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  wideTile: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  wideLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  wideTitle: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 20 },
+  wideBottom: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
+  chart: { width: 176, gap: 4 },
+  dayRow: { flexDirection: 'row', gap: 6 },
+  day: { flex: 1, textAlign: 'center', fontFamily: fonts.bold, fontSize: 10, lineHeight: 12 },
 })

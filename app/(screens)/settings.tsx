@@ -16,6 +16,7 @@ import { TermsModal } from '../../components/ui/TermsModal'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { typography, spacing, radius } from '../../lib/constants'
 import { moveSpring, moveTiming } from '../../src/design/rnMotion'
+import Constants from 'expo-constants'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -519,6 +520,10 @@ function TelegramLinkModal({
 
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
+// From app.json (version + Android versionCode), so the footer can't drift
+// from the release again — it said "v1.0.0 (build 1)" through 1.5.0.
+const APP_VERSION_LABEL = `v${Constants.expoConfig?.version ?? '?'} (build ${Constants.expoConfig?.android?.versionCode ?? '?'})`
+
 export default function SettingsScreen() {
   const { c }                 = useTheme()
   const router                = useRouter()
@@ -819,7 +824,7 @@ export default function SettingsScreen() {
 
         {/* Footer */}
         <Text style={[s.footer, { color: c.textDisabled, fontFamily: typography.fontFamily.regular }]}>
-          v1.0.0 (build 1)
+          {APP_VERSION_LABEL}
         </Text>
       </ScrollView>
 

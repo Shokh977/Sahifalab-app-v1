@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, Component } from 'react'
 import { Linking, View, Text, Pressable, StyleSheet, Platform, AppState } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
+import { useShallow } from 'zustand/react/shallow'
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts } from 'expo-font'
 import { StatusBar } from 'expo-status-bar'
@@ -181,11 +182,18 @@ async function registerTimezone() {
 export default function RootLayout() {
   const reduceMotion = useReducedMotion()
   useEffect(() => { startPerfProbe() }, [])  // preview builds only
-  const { isLoading, isAuthenticated, needsOnboarding, initAuth } = useAuthStore()
-  const { loadTheme, theme, c } = useThemeStore()
-  const { fetchUnreadCount } = useNotificationStore()
-  const { showToast } = useNotifToastStore()
-  const { pending: pendingRewards, visible: rewardModalVisible, dismiss: dismissRewards } = useRewardStore()
+  // Narrow selectors: the root used to subscribe to whole stores, so every
+  // change anywhere in them (a patched user photo, an unread count, a toast)
+  // re-rendered the root — and the navigator under it — for nothing.
+  const { isLoading, isAuthenticated, needsOnboarding, initAuth } = useAuthStore(useShallow(s => ({
+    isLoading: s.isLoading, isAuthenticated: s.isAuthenticated, needsOnboarding: s.needsOnboarding, initAuth: s.initAuth,
+  })))
+  const { loadTheme, theme, c } = useThemeStore(useShallow(s => ({ loadTheme: s.loadTheme, theme: s.theme, c: s.c })))
+  const fetchUnreadCount = useNotificationStore(s => s.fetchUnreadCount)
+  const showToast = useNotifToastStore(s => s.showToast)
+  const { pending: pendingRewards, visible: rewardModalVisible, dismiss: dismissRewards } = useRewardStore(useShallow(s => ({
+    pending: s.pending, visible: s.visible, dismiss: s.dismiss,
+  })))
   const router   = useRouter()
   const segments = useSegments()
   const isOnline = useOnline()
@@ -202,19 +210,9 @@ export default function RootLayout() {
     'Onest-SemiBold':                require('../assets/fonts/Onest-SemiBold.ttf'),
     'Onest-Bold':                    require('../assets/fonts/Onest-Bold.ttf'),
     'Onest-ExtraBold':               require('../assets/fonts/Onest-ExtraBold.ttf'),
-    // Plus Jakarta Sans stays loaded until the Phase 8 cleanup, so any missed
-    // direct reference still renders.
-    'PlusJakartaSans-Regular':       require('../assets/fonts/PlusJakartaSans-Regular.ttf'),
-    'PlusJakartaSans-Medium':        require('../assets/fonts/PlusJakartaSans-Medium.ttf'),
-    'PlusJakartaSans-SemiBold':      require('../assets/fonts/PlusJakartaSans-SemiBold.ttf'),
-    'PlusJakartaSans-Bold':          require('../assets/fonts/PlusJakartaSans-Bold.ttf'),
-    'PlusJakartaSans-ExtraBold':     require('../assets/fonts/PlusJakartaSans-ExtraBold.ttf'),
-    'NotoSerifDisplay-BoldItalic':   require('../assets/fonts/NotoSerifDisplay-BoldItalic.ttf'),
-    'SpaceGrotesk-Medium':           require('../assets/fonts/SpaceGrotesk-Medium.ttf'),
-    'SpaceGrotesk-SemiBold':         require('../assets/fonts/SpaceGrotesk-SemiBold.ttf'),
-    'SpaceGrotesk-Bold':             require('../assets/fonts/SpaceGrotesk-Bold.ttf'),
-    'InstrumentSerif-Regular':       require('../assets/fonts/InstrumentSerif-Regular.ttf'),
-    'JetBrainsMono-Medium':          require('../assets/fonts/JetBrainsMono-Medium.ttf'),
+    // Only the fonts the app draws with. Eleven unused faces (Plus Jakarta
+    // Sans, Noto Serif, Space Grotesk, Instrument Serif, JetBrains Mono) used
+    // to load here too, holding the splash screen until all were parsed.
   })
 
   // ── Notification handler (suppress system banner in foreground) ────────────
@@ -478,7 +476,7 @@ export default function RootLayout() {
             screen reuses the one tab navigator instead of stacking a copy.
             Protected: on logout the app's screens are dropped from the
             history, so they don't stay mounted (with no user) under login. */}
-        <Stack screenOptions={{ headerShown: false, animation: pushAnimation(reduceMotion), contentStyle: { backgroundColor: c.bgPrimary } }}>
+        <Stack screenOptions={{ headerShown: false, freezeOnBlur: true, animation: pushAnimation(reduceMotion), contentStyle: { backgroundColor: c.bgPrimary } }}>
           <Stack.Protected guard={isAuthenticated}>
             <Stack.Screen name="(tabs)"    options={{ animation: 'fade' }} dangerouslySingular />
             <Stack.Screen name="(screens)" />

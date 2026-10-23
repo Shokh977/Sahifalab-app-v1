@@ -391,6 +391,35 @@ function WitherOverlay({ uid }: { uid: string }) {
 
 // ── Animated sub-components ───────────────────────────────────────────────────
 
+function particleParams(seed: number, n: number, x0: number, y0: number, w: number, h: number, r: number) {
+  const R = rng(seed * 97 + 13)
+  return Array.from({ length: n }, () => {
+    const px  = x0 + R()*w
+    const py  = y0 - R()*h
+    const pr  = r + R()*1.6
+    const dur = 6 + R()*4
+    const del = R() * dur
+    R()
+    const dy  = 80 + R()*40
+    return { x: px, y: py, r: pr, dur, delay: del, dy }
+  })
+}
+
+function leafParams(seed: number, n: number) {
+  const R = rng(seed * 31 + 5)
+  return Array.from({ length: n }, () => {
+    const x    = 96 + R()*128
+    const y    = 150 + R()*120
+    const s    = 3 + R()*2.5
+    const lDur = 7 + R()*3
+    const lDel = R() * lDur
+    const ldx  = (R() - 0.5) * 40
+    const ldy  = 40 + R()*40
+    const lrot = 180 + R()*100
+    return { x, y, s, lDur, lDel, ldx, ldy, lrot }
+  })
+}
+
 // Wraps trunk+canopy+decorations; rotates whole tree around ground pivot
 function SwayGroup({ dur, amt, enabled, children }: {
   dur: number; amt: number; enabled: boolean; children: React.ReactNode
@@ -489,19 +518,7 @@ function AnimatedParticles({ seed, n, opts, enabled }: {
 }) {
   const { x0=90, y0=330, w=140, h=40, r=1.4, fill='#fff7d6', op=0.85 } = opts ?? {}
 
-  const params = useMemo(() => {
-    const R = rng(seed * 97 + 13)
-    return Array.from({ length: n }, () => {
-      const px  = x0 + R()*w
-      const py  = y0 - R()*h
-      const pr  = r + R()*1.6
-      const dur = 6 + R()*4
-      const del = R() * dur
-      R()
-      const dy  = 80 + R()*40
-      return { x: px, y: py, r: pr, dur, delay: del, dy }
-    })
-  }, [seed, n, x0, y0, w, h, r])
+  const params = useMemo(() => particleParams(seed, n, x0, y0, w, h, r), [seed, n, x0, y0, w, h, r])
 
   return (
     <G>
@@ -553,20 +570,7 @@ function AnimatedLeaf({ x, y, s, lDur, lDel, ldx, ldy, lrot, fill, enabled }: {
 function AnimatedLeaves({ seed, n, fill, enabled }: {
   seed: number; n: number; fill: string; enabled: boolean
 }) {
-  const params = useMemo(() => {
-    const R = rng(seed * 31 + 5)
-    return Array.from({ length: n }, () => {
-      const x    = 96 + R()*128
-      const y    = 150 + R()*120
-      const s    = 3 + R()*2.5
-      const lDur = 7 + R()*3
-      const lDel = R() * lDur
-      const ldx  = (R() - 0.5) * 40
-      const ldy  = 40 + R()*40
-      const lrot = 180 + R()*100
-      return { x, y, s, lDur, lDel, ldx, ldy, lrot }
-    })
-  }, [seed, n])
+  const params = useMemo(() => leafParams(seed, n), [seed, n])
 
   return (
     <G>
@@ -644,6 +648,65 @@ function SpinHalo({ id, enabled, children }: {
   return <AnimatedG animatedProps={aProps}>{children}</AnimatedG>
 }
 
+// ── Still versions (animate={false}) ──────────────────────────────────────────
+// The frame the animated layers rest on when disabled, drawn as plain SVG: no
+// shared values, no animated-props mappers. A thumbnail used to mount 20-40
+// animated nodes even when frozen in place; ten of them on one screen (the
+// tree stages) stalled the JS thread.
+
+function StillParticles({ seed, n, opts }: {
+  seed: number; n: number
+  opts?: { x0?:number; y0?:number; w?:number; h?:number; r?:number; fill?:string; op?:number }
+}) {
+  const { x0=90, y0=330, w=140, h=40, r=1.4, fill='#fff7d6', op=0.85 } = opts ?? {}
+  const params = useMemo(() => particleParams(seed, n, x0, y0, w, h, r), [seed, n, x0, y0, w, h, r])
+  return (
+    <G opacity={op}>
+      {params.map((p, i) => <Circle key={i} cx={f(p.x)} cy={f(p.y - p.dy * 0.5)} r={f(p.r)} fill={fill} />)}
+    </G>
+  )
+}
+
+function StillLeaves({ seed, n, fill }: { seed: number; n: number; fill: string }) {
+  const params = useMemo(() => leafParams(seed, n), [seed, n])
+  return (
+    <G>
+      {params.map((p, i) => (
+        <Path
+          key={i}
+          d={mkLeaf(p.x, p.y, p.s)}
+          fill={fill}
+          transform={`translate(${f(p.ldx * 0.5)} ${f(p.ldy * 0.5)}) rotate(${f(p.lrot * 0.5)} ${f(p.x)} ${f(p.y)})`}
+        />
+      ))}
+    </G>
+  )
+}
+
+function StillButterfly({ x, y, fill }: { x: number; y: number; fill: string }) {
+  return (
+    <G transform={`translate(${x} ${y})`}>
+      <Path d="M0 0 Q-9 -7 -7 2 Q-9 8 0 4 Z" fill={fill} opacity={0.88} />
+      <Path d="M0 0 Q9 -7 7 2 Q9 8 0 4 Z"  fill={fill} opacity={0.88} />
+      <Ellipse cx={0} cy={2} rx={1.1} ry={3.4} fill="#4a3a55" />
+    </G>
+  )
+}
+
+// Pick the animated or the still layer: separate components, so the hooks in
+// the animated ones are never mounted for a still tree.
+function MaybeSway({ still, children, ...p }: { still: boolean; dur: number; amt: number; enabled: boolean; children: React.ReactNode }) {
+  return still ? <G>{children}</G> : <SwayGroup {...p}>{children}</SwayGroup>
+}
+
+function MaybeSpin({ still, children, ...p }: { still: boolean; id: number; enabled: boolean; children: React.ReactNode }) {
+  return still ? <G>{children}</G> : <SpinHalo {...p}>{children}</SpinHalo>
+}
+
+function MaybeParticles({ still, ...p }: React.ComponentProps<typeof AnimatedParticles> & { still: boolean }) {
+  return still ? <StillParticles seed={p.seed} n={p.n} opts={p.opts} /> : <AnimatedParticles {...p} />
+}
+
 // ── Size map ──────────────────────────────────────────────────────────────────
 const SIZES: Record<TreeSize, { w: number; h: number }> = {
   hero:  { w: 280, h: 350 },
@@ -698,6 +761,8 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
   }, [])
 
   const animEnabled = animate && !simplified && !frozen && !dead && !reduced && appActive
+  // animate={false}: plain SVG with no animated nodes at all (thumbnails, badges).
+  const still = !animate
 
   const stateFilter = frozen ? `url(#sfFrozen${uid})` : dead ? `url(#sfDead${uid})` : atRisk ? `url(#sfAtRisk${uid})` : undefined
 
@@ -710,27 +775,31 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
 
       {/* Layer 0: breathing aura (stage 6+) — dropped in badge mode */}
       {id >= 6 && !simplified && (
-        <BreathingAura
-          cx={CX}
-          cy={f(GY - id*9 - 40)}
-          r={f(70 + id*7)}
-          fill={`url(#sfAura${uid})`}
-          glowMin={f(0.18 + id*0.03)}
-          glowMax={f(0.5  + id*0.04)}
-          enabled={animEnabled}
-        />
+        still ? (
+          <Circle cx={CX} cy={f(GY - id*9 - 40)} r={f(70 + id*7)} fill={`url(#sfAura${uid})`} opacity={f((0.68 + id*0.07) / 2)} />
+        ) : (
+          <BreathingAura
+            cx={CX}
+            cy={f(GY - id*9 - 40)}
+            r={f(70 + id*7)}
+            fill={`url(#sfAura${uid})`}
+            glowMin={f(0.18 + id*0.03)}
+            glowMax={f(0.5  + id*0.04)}
+            enabled={animEnabled}
+          />
+        )
       )}
 
       {/* Celestial halo sparkle ring (stages 9-10) — dropped in badge mode */}
       {id >= 9 && !simplified && (
-        <SpinHalo id={id} enabled={animEnabled}>
+        <MaybeSpin still={still} id={id} enabled={animEnabled}>
           <G transform={`translate(${CX} ${id === 10 ? 160 : 190})`} opacity={0.45}>
             <Sparkles
               seed={id + 40} n={10}
               opts={{ x0:-70, y0:-70, w:140, h:140, s:2.4, fill: id === 10 ? '#ffe6a0' : '#cbb6ff' }}
             />
           </G>
-        </SpinHalo>
+        </MaybeSpin>
       )}
 
       {/* Stage 1: seed */}
@@ -750,7 +819,7 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
           )}
 
           {/* Layer 3: sway group — trunk + canopy (+ canopy decorations, dropped in badge mode) */}
-          <SwayGroup dur={geom.swayDur} amt={geom.swayAmt} enabled={animEnabled}>
+          <MaybeSway still={still} dur={geom.swayDur} amt={geom.swayAmt} enabled={animEnabled}>
             {id === 8 && !simplified && <Runes x={CX} by={geom.trunk.by} h={geom.trunk.h} />}
             <Trunk uid={uid} t={geom.trunk} />
             <Canopy lobes={geom.lobes} pal={pal} opacity={dead ? 0.55 : 1} />
@@ -776,24 +845,37 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
                 <Dots seed={id} lobes={geom.lobes} fill="#bfe6ff" n={14} />
               </>
             )}
-          </SwayGroup>
+          </MaybeSway>
 
           {/* Layer 5a: floating leaves — dropped in badge mode */}
-          {!simplified && <AnimatedLeaves seed={id} n={lfCount} fill={pal.mid} enabled={animEnabled} />}
+          {!simplified && (still
+            ? <StillLeaves seed={id} n={lfCount} fill={pal.mid} />
+            : <AnimatedLeaves seed={id} n={lfCount} fill={pal.mid} enabled={animEnabled} />)}
 
           {/* Stage 7: butterflies — dropped in badge mode */}
           {id === 7 && !dead && !simplified && (
             <>
-              <AnimatedButterfly x={118} y={200} fill="#ff9ecb" delay={0}   dur={8.5} enabled={animEnabled} />
-              <AnimatedButterfly x={210} y={168} fill="#ffc6e4" delay={3.2} dur={9.0} enabled={animEnabled} />
-              <AnimatedButterfly x={180} y={150} fill="#ff8fc0" delay={1.6} dur={8.2} enabled={animEnabled} />
+              {still ? (
+                <>
+                  <StillButterfly x={118} y={200} fill="#ff9ecb" />
+                  <StillButterfly x={210} y={168} fill="#ffc6e4" />
+                  <StillButterfly x={180} y={150} fill="#ff8fc0" />
+                </>
+              ) : (
+                <>
+                  <AnimatedButterfly x={118} y={200} fill="#ff9ecb" delay={0}   dur={8.5} enabled={animEnabled} />
+                  <AnimatedButterfly x={210} y={168} fill="#ffc6e4" delay={3.2} dur={9.0} enabled={animEnabled} />
+                  <AnimatedButterfly x={180} y={150} fill="#ff8fc0" delay={1.6} dur={8.2} enabled={animEnabled} />
+                </>
+              )}
             </>
           )}
 
           {/* Layer 5b: rising particles — dropped entirely in badge mode */}
           {simplified ? null : !dead && id >= 9 ? (
             <>
-              <AnimatedParticles
+              <MaybeParticles
+                still={still}
                 seed={id}
                 n={id === 10 ? 22 : 16}
                 opts={{ x0:80, y0:300, w:160, h:160, r:1.6, fill: id===10 ? '#ffe6a0' : '#cbb6ff', op:0.9 }}
@@ -805,7 +887,8 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
               />
             </>
           ) : !dead && id >= 4 ? (
-            <AnimatedParticles
+            <MaybeParticles
+              still={still}
               seed={id}
               n={id === 6 ? 12 : 8}
               opts={{ x0:110, y0:320, w:100, h:40, fill: pal.glow, op:0.7 }}

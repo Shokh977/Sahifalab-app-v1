@@ -145,39 +145,30 @@ export function chaseNote<T extends { rank: number; score: number }>(me: T, pool
   return above ? `#${above.rank} gacha ${groupDigits(Math.max(1, above.score - me.score))} XP` : undefined
 }
 
-/** Reyting, Global: the list stops after this rank, then jumps to you. */
-export const GLOBAL_TOP = 11
-
 export type BoardItem<T> = { kind: 'row'; e: T } | { kind: 'gap' }
 
 /**
- * The rows under the podium. Doʻstlar: everyone after #3. Global: #4 to
- * #11; when you're further down, a "···" and then the rows just above you,
- * yours and just below (from the list or around_me).
+ * The rows under the podium: the whole list (Global sends the top 100,
+ * Doʻstlar everyone you follow). When you're past the end of the list, a
+ * "···" and then the rows just above you, yours and just below (around_me).
  */
 export function boardItems<T extends { rank: number; telegram_id: number; is_me?: boolean }>(
-  entries: readonly T[], around: readonly T[] | undefined, global: boolean,
+  entries: readonly T[], around: readonly T[] | undefined,
 ): BoardItem<T>[] {
   const sorted = [...entries].sort((a, b) => a.rank - b.rank)
-  const afterPodium = sorted.filter(e => e.rank > 3)
-  if (!global) return afterPodium.map(e => ({ kind: 'row', e }))
+  const rows: BoardItem<T>[] = sorted.filter(e => e.rank > 3).map(e => ({ kind: 'row', e }))
+  if (sorted.some(e => e.is_me)) return rows
 
-  const top = afterPodium.filter(e => e.rank <= GLOBAL_TOP)
-  const pool = [...sorted, ...(around ?? [])]
-  const me = pool.find(e => e.is_me)
-  if (!me || me.rank <= GLOBAL_TOP) return top.map(e => ({ kind: 'row', e }))
-
-  const seen = new Set(top.map(e => e.telegram_id))
-  const near = pool
-    .filter(e => e.rank >= me.rank - 1 && e.rank <= me.rank + 1 && e.rank > GLOBAL_TOP)
+  const me = (around ?? []).find(e => e.is_me)
+  if (!me) return rows
+  const seen = new Set(sorted.map(e => e.telegram_id))
+  const last = sorted.length > 0 ? sorted[sorted.length - 1].rank : 3
+  const near = (around ?? [])
+    .filter(e => e.rank >= me.rank - 1 && e.rank <= me.rank + 1 && e.rank > last)
     .sort((a, b) => a.rank - b.rank)
     .filter(e => !seen.has(e.telegram_id) && seen.add(e.telegram_id))
-  const gap = near.length > 0 && near[0].rank > GLOBAL_TOP + 1
-  return [
-    ...top.map(e => ({ kind: 'row' as const, e })),
-    ...(gap ? [{ kind: 'gap' as const }] : []),
-    ...near.map(e => ({ kind: 'row' as const, e })),
-  ]
+  const gap = near.length > 0 && near[0].rank > last + 1
+  return [...rows, ...(gap ? [{ kind: 'gap' as const }] : []), ...near.map(e => ({ kind: 'row' as const, e }))]
 }
 
 /** You, from the list or around_me, for the floating bar. */
@@ -188,6 +179,15 @@ export function myEntry<T extends { is_me?: boolean }>(entries: readonly T[], ar
 /** Bugun's competition tile: the one you joined that's running (featured first, then ending soonest). */
 export function runningCompetition(mine: readonly Challenge[]): Challenge | null {
   const live = mine.filter(c => isLive(c) && c.joined !== false && !isFinishedForMe(c))
+  live.sort((a, b) => Number(b.is_featured) - Number(a.is_featured) || Date.parse(a.ends_at) - Date.parse(b.ends_at))
+  return live[0] ?? null
+}
+
+/** A live competition you can still join (Bugun's "Qoʻshiling" tile): featured, then ending soonest. */
+export function joinableCompetition(open: readonly Challenge[]): Challenge | null {
+  const now = Date.now()
+  const live = open.filter(c => isLive(c) && !c.joined && (!c.join_deadline || Date.parse(c.join_deadline) > now)
+    && (c.max_participants == null || c.participant_count < c.max_participants))
   live.sort((a, b) => Number(b.is_featured) - Number(a.is_featured) || Date.parse(a.ends_at) - Date.parse(b.ends_at))
   return live[0] ?? null
 }

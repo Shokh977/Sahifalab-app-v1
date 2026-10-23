@@ -6,7 +6,10 @@
  */
 
 let FileSystem: any = null
-try { FileSystem = require('expo-file-system') } catch {}
+// The legacy API: the main 'expo-file-system' export no longer has
+// cacheDirectory / writeAsStringAsync (they throw or are undefined), which
+// silently disabled these sounds.
+try { FileSystem = require('expo-file-system/legacy') } catch {}
 
 let AudioModule: any = null
 try { AudioModule = require('expo-audio') } catch {}

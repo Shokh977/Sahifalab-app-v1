@@ -2,8 +2,9 @@
  * Reyting — the full XP ranking (v2 · Reyting, Phase 8). An iOS large
  * title that hands over to the nav bar as you scroll ("Bellashuv" back,
  * info on how XP is earned); Global / Doʻstlar and Bu hafta / Bu oy /
- * Hammasi segmented controls; the podium; then one grouped card — in
- * Global the top 11, "···" and the rows around you. Your row is
+ * Hammasi segmented controls; the podium; then one grouped card — the
+ * whole list (Global: the top 100; past it, "···" and the rows around
+ * you). Your row is
  * highlighted in the list and also floats at the bottom with
  * "#22 gacha 22 XP" and a Fokus button. A person opens a sheet.
  * Switching lists crossfades (durations.fade).
@@ -137,7 +138,7 @@ export default function LeaderboardScreen() {
   const entries = board?.entries ?? []
   const around = board?.around ?? []
   const podium = [...entries].sort((a, b) => a.rank - b.rank).filter(e => e.rank <= 3).slice(0, 3)
-  const items = board ? boardItems(entries, around, scope === 'global') : []
+  const items = board ? boardItems(entries, around) : []
   const me = board ? myEntry(entries, around) : null
   const note = me ? chaseNote(me, [...entries, ...around]) : undefined
   const people = board?.total ?? entries.length
@@ -185,13 +186,16 @@ export default function LeaderboardScreen() {
     <View>
       <LargeTitle title="Reyting" scrollY={scrollY} />
       <View style={styles.headerBlock}>
-        <SegmentedControl segments={SCOPE_LABELS} index={SCOPES.indexOf(scope)} onChange={i => setScope(SCOPES[i])} />
-        <SegmentedControl segments={PERIOD_LABELS} index={PERIODS.indexOf(period)} onChange={i => setPeriod(PERIODS[i])} />
+        <SegmentedControl size="md" segments={SCOPE_LABELS} index={SCOPES.indexOf(scope)} onChange={i => setScope(SCOPES[i])} />
+        <SegmentedControl size="md" segments={PERIOD_LABELS} index={PERIODS.indexOf(period)} onChange={i => setPeriod(PERIODS[i])} />
         <Animated.View style={[styles.gapMd, fadeStyle]}>
           {state}
           {podium.length > 0 && (
             <View style={[styles.podiumCard, { backgroundColor: colors.surface, borderColor: colors.border }, elevation]}>
-              <Podium entries={podium.map(e => ({ id: e.telegram_id, rank: e.rank, name: e.is_me ? 'Siz' : e.first_name || e.username || '', photoUrl: e.photo_url, xp: e.score }))} />
+              <Podium
+                entries={podium.map(e => ({ id: e.telegram_id, rank: e.rank, name: e.is_me ? 'Siz' : e.first_name || e.username || '', photoUrl: e.photo_url, xp: e.score }))}
+                onPress={id => { const e = podium.find(p => p.telegram_id === id); if (e) setPerson(e) }}
+              />
               <Text style={[typeScale.callout, tabular, styles.center, { color: colors.textMuted }]} numberOfLines={2}>{meta}</Text>
             </View>
           )}

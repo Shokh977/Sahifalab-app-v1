@@ -233,9 +233,10 @@ export const coinIcon = { face: ['#FFD66B', '#E9A21A'], ring: '#B9770E', mark: '
 
 /** Bugun hero: the streak flame (gradient, gold core) and the tree tile's glow. */
 export const streakFlame = { body: ['#FFB45E', '#EE5A12'], core: '#FFD66B' } as const
+// Light mode only: in dark mode the tree sits straight on the card (neither a
+// dark green glow nor the light tile suited it there).
 export const treeGlow = {
   light: ['#E3F5EA', '#F4FBF6'],
-  dark: ['rgba(77,191,126,0.22)', 'rgba(77,191,126,0.04)'],
 } as const
 
 /**
@@ -279,3 +280,48 @@ export function tintOf(p: { [K in TintName]?: string } & { accentText: string; a
   }
 }
 export const backgroundTokens = ['bg', 'surface', 'surfaceRaised', 'tabBar'] as const
+
+/**
+ * Bugungi reja cards (plan redesign): each type's identity colour — `ink`
+ * for the label/icon/number accents, `fill` for bars and segments, `tile`
+ * for the icon square. Surfaces, text, track and green come from the
+ * palette (closest existing tokens to the brief's values).
+ */
+export type PlanType = 'cards' | 'focus' | 'quiz' | 'course' | 'competition' | 'review'
+export const planTypeColors: Record<Scheme, Record<PlanType, { ink: string; fill: string; tile: string }>> = {
+  light: {
+    cards:       { ink: '#C2410C', fill: '#F26B1D', tile: '#FDEBDD' },
+    focus:       { ink: '#BE123C', fill: '#EC4A6A', tile: '#FDE6EB' },
+    quiz:        { ink: '#1D4ED8', fill: '#3B76F6', tile: '#E3ECFE' },
+    course:      { ink: '#6D28D9', fill: '#8B5CF6', tile: '#EDE7FE' },
+    competition: { ink: '#A15C07', fill: '#E8A317', tile: '#FCF0D6' },
+    review:      { ink: '#0F766E', fill: '#14A394', tile: '#DDF3F0' },
+  },
+  dark: {
+    cards:       { ink: '#FDA46B', fill: '#F97316', tile: 'rgba(249,115,22,0.16)' },
+    focus:       { ink: '#FB8FA5', fill: '#F43F5E', tile: 'rgba(244,63,94,0.16)' },
+    quiz:        { ink: '#8DB4FF', fill: '#3B82F6', tile: 'rgba(59,130,246,0.18)' },
+    course:      { ink: '#C4B5FD', fill: '#8B5CF6', tile: 'rgba(139,92,246,0.18)' },
+    competition: { ink: '#FCD34D', fill: '#EAB308', tile: 'rgba(234,179,8,0.16)' },
+    review:      { ink: '#5EE0CF', fill: '#14B8A6', tile: 'rgba(20,184,166,0.16)' },
+  },
+}
+/** The weekly chart's non-peak days. */
+export const planReviewSoftBar: Record<Scheme, string> = { light: '#9ED9D1', dark: 'rgba(20,184,166,0.45)' }
+/**
+ * The one "next" card. Dark: solid orange with white content. Light: bright,
+ * vivid orange (#F97316) — white text on it is only 2.8:1, so the content
+ * is a near-black brown (≈6:1); bars and the play button stay white.
+ */
+export const planNext: Record<Scheme, {
+  bg: string; border: string; ink: string; fill: string; tile: string; track: string; playBg: string; playIcon: string
+}> = {
+  light: {
+    bg: '#F97316', border: '#F97316', ink: '#2A1406', fill: '#FFFFFF',
+    tile: 'rgba(255,255,255,0.28)', track: 'rgba(42,20,6,0.16)', playBg: '#FFFFFF', playIcon: '#EA580C',
+  },
+  dark: {
+    bg: '#CB4A12', border: '#CB4A12', ink: '#FFFFFF', fill: '#FFFFFF',
+    tile: 'rgba(255,255,255,0.18)', track: 'rgba(255,255,255,0.28)', playBg: '#FFFFFF', playIcon: '#CB4A12',
+  },
+}

@@ -142,24 +142,18 @@ describe('boardItems (Reyting list under the podium)', () => {
   const ranks = (items: ReturnType<typeof boardItems<ReturnType<typeof row>>>) =>
     items.map(i => (i.kind === 'gap' ? '···' : i.e.rank))
 
-  it('Doʻstlar: everyone after the podium', () => {
-    expect(ranks(boardItems(top(14), undefined, false))).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+  it('shows everyone after the podium, the whole top 100', () => {
+    expect(ranks(boardItems(top(14), undefined))).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+    const list = top(100); list[59] = row(60, true)
+    expect(ranks(boardItems(list, undefined))).toHaveLength(97)
   })
-  it('Global, you in the top 11: #4–#11 only', () => {
-    const list = top(40); list[6] = row(7, true)
-    expect(ranks(boardItems(list, undefined, true))).toEqual([4, 5, 6, 7, 8, 9, 10, 11])
+  it('you outside the list: ···, then your neighbours from around_me', () => {
+    expect(ranks(boardItems(top(20), [row(55), row(56, true), row(57)])))
+      .toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, '···', 55, 56, 57])
   })
-  it('Global, you further down the list: top, ···, your neighbours', () => {
-    const list = top(40); list[29] = row(30, true)
-    expect(ranks(boardItems(list, undefined, true))).toEqual([4, 5, 6, 7, 8, 9, 10, 11, '···', 29, 30, 31])
-  })
-  it('Global, you outside the list: neighbours come from around_me', () => {
-    expect(ranks(boardItems(top(20), [row(55), row(56, true), row(57)], true)))
-      .toEqual([4, 5, 6, 7, 8, 9, 10, 11, '···', 55, 56, 57])
-  })
-  it('no ··· when you are right after #11', () => {
-    const list = top(20); list[11] = row(12, true)
-    expect(ranks(boardItems(list, undefined, true))).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+  it('no ··· when you are right after the list', () => {
+    expect(ranks(boardItems(top(20), [row(20), row(21, true), row(22)])))
+      .toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22])
   })
   it('myEntry finds you in the list or around_me', () => {
     expect(myEntry([row(1)], [row(9, true)])?.rank).toBe(9)

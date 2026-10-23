@@ -69,12 +69,16 @@ export default function AiFlashcardGenerateScreen() {
   useEffect(() => { actionIdRef.current = newActionId() }, [text, imageUri])
 
   async function pickImage(fromCamera: boolean) {
-    const perms = fromCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!perms.granted) {
-      Alert.alert('Ruxsat kerak', fromCamera ? 'Kamera uchun ruxsat bering.' : 'Galereya uchun ruxsat bering.')
-      return
+    // The gallery needs no permission: the system photo picker (Android
+    // usesAndroidPhotoPicker, iOS PHPicker) runs outside the app. Asking for
+    // it anyway always failed on Android — READ_MEDIA_IMAGES is in
+    // app.json's blockedPermissions — so the gallery never opened.
+    if (fromCamera) {
+      const perms = await ImagePicker.requestCameraPermissionsAsync()
+      if (!perms.granted) {
+        Alert.alert('Ruxsat kerak', 'Kamera uchun ruxsat bering.')
+        return
+      }
     }
     const result = fromCamera
       ? await ImagePicker.launchCameraAsync({ quality: 0.8 })

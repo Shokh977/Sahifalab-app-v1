@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import {
-  isMonday, localDateKey, nextTileKey, pickCurrentCourse, planTiles, quizClosesIn,
+  isMonday, localDateKey, nextTileKey, pickCurrentCourse, quizClosesIn,
   rankGap, uzText, weekdayOf,
 } from '../src/features/today/today'
 
@@ -45,57 +45,6 @@ describe('rankGap', () => {
   })
 })
 
-describe('planTiles', () => {
-  const focus = { minutes: 12, goal: 20 }
-  const quiz = { number: 67, state: 'not_started' as const, correct: null, secondsLeft: 3700 }
-  const cards = { total: 48, estMinutes: 6 }
-  const course = { id: 3, title: "Ingliz tili o'rganish", progress: 0.3, totalLessons: 10 }
-
-  it('builds the four tiles with values and sub-lines', () => {
-    const { tiles, done, total } = planTiles({ focus, quiz, cards, course }, null)
-    const by = Object.fromEntries(tiles.map(t => [t.key, t]))
-    expect(by.focus).toMatchObject({ value: '12 daq', title: 'Fokus', sub: 'Maqsad 20 daq', done: false })
-    expect(by.quiz).toMatchObject({ value: 'Oʻynash', title: '5 Savol #67', sub: 'Yopilishiga 1 s 1 d', done: false })
-    expect(by.cards).toMatchObject({ value: '48 ta', title: 'Kartalar', sub: '~6 daqiqa', done: false })
-    expect(by.course).toMatchObject({ value: '4-dars', title: 'Ingliz tili oʻrganish', progress: 0.3, status: '30%', done: false })
-    expect({ done, total }).toEqual({ done: 0, total: 4 })
-  })
-
-  it('puts the next tile first, then unfinished, then done', () => {
-    const r = planTiles({
-      focus: { minutes: 180, goal: 10 },
-      quiz: { ...quiz, state: 'submitted', correct: 5, rank: 10 },
-      cards, course,
-    }, 'cards')
-    expect(r.tiles.map(t => [t.key, t.next, t.done])).toEqual([
-      ['cards', true, false], ['course', false, false], ['focus', false, true], ['quiz', false, true],
-    ])
-    expect(r.tiles.find(t => t.key === 'quiz')).toMatchObject({ value: '5/5', sub: '#10-oʻrin bugun' })
-    expect(r.tiles.find(t => t.key === 'focus')).toMatchObject({ value: '180 daq', sub: 'Maqsad 10 daq' })
-    expect(r.done).toBe(2)
-  })
-
-  it('never marks a done tile as next, and hides tiles without data', () => {
-    const r = planTiles({ focus: { minutes: 30, goal: 20 }, quiz: null, cards: null, course: null }, 'focus')
-    expect(r.tiles).toHaveLength(1)
-    expect(r.tiles[0]).toMatchObject({ key: 'focus', next: false, done: true })
-  })
-
-  it('shows quiz progress and falls back when the rank is unknown', () => {
-    const inProgress = planTiles({ focus, quiz: { ...quiz, state: 'in_progress', answered: 3 }, cards: null, course: null }, 'quiz')
-    expect(inProgress.tiles[0]).toMatchObject({ key: 'quiz', value: '3/5', next: true, sub: '1 s 1 d qoldi' })
-    const noRank = planTiles({ focus, quiz: { ...quiz, state: 'submitted', correct: 4 }, cards: null, course: null }, null)
-    expect(noRank.tiles.find(t => t.key === 'quiz')?.sub).toBe('Bajarildi')
-    const empty = planTiles({ focus, quiz: null, cards: { total: 0, estMinutes: 0 }, course: null }, null)
-    expect(empty.tiles.find(t => t.key === 'cards')).toMatchObject({ done: true, sub: 'Bugun takrorlash yoʻq' })
-  })
-
-  it('maps the primary action to a tile', () => {
-    expect(nextTileKey('review')).toBe('cards')
-    expect(nextTileKey('focus')).toBe('focus')
-    expect(nextTileKey('none')).toBeNull()
-  })
-})
 
 describe('pickers', () => {
   it('pickCurrentCourse takes the unfinished course with most progress', () => {
@@ -104,25 +53,4 @@ describe('pickers', () => {
   })
 })
 
-describe('planTiles: competition and Haftalik sharh tiles (Phase 8)', () => {
-  const focus = { minutes: 30, goal: 20 }
-  const competition = { title: 'Fokus Marafoni', rank: 14, participants: 128, left: '5 kun qoldi' }
 
-  it('adds them after unfinished tasks, before done ones, outside the 2 / 4 count', () => {
-    const quiz = { number: 67, state: 'not_started' as const, correct: null, secondsLeft: 3700 }
-    const r = planTiles({ focus, quiz, cards: null, course: null, competition, review: { isNew: true } }, 'quiz')
-    expect(r.tiles.map(t => t.key)).toEqual(['quiz', 'competition', 'review', 'focus'])
-    expect(r.total).toBe(2)
-    expect(r.done).toBe(1)
-    const by = Object.fromEntries(r.tiles.map(t => [t.key, t]))
-    expect(by.competition).toMatchObject({ value: '#14', title: 'Fokus Marafoni', sub: 'Faol · 5 kun qoldi', status: '128 kishi', done: false })
-    expect(by.review).toMatchObject({ title: 'Haftalik sharh', status: 'Yangi', done: false })
-  })
-
-  it('shows a dash before your rank exists, and no "Yangi" off Mondays', () => {
-    const r = planTiles({ focus, quiz: null, cards: null, course: null, competition: { ...competition, rank: null }, review: { isNew: false } }, null)
-    const by = Object.fromEntries(r.tiles.map(t => [t.key, t]))
-    expect(by.competition.value).toBe('—')
-    expect(by.review.status).toBeUndefined()
-  })
-})

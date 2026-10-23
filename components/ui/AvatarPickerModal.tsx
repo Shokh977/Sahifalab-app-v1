@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Modal, View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Camera, Images } from 'phosphor-react-native'
+import { Camera, Images, Trash } from 'phosphor-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { moveSpring, moveTiming } from '../../src/design/rnMotion'
@@ -11,9 +11,11 @@ interface Props {
   onClose:   () => void
   onCamera:  () => void
   onGallery: () => void
+  /** Shown only when there's a photo to remove. */
+  onRemove?: () => void
 }
 
-export function AvatarPickerModal({ visible, onClose, onCamera, onGallery }: Props) {
+export function AvatarPickerModal({ visible, onClose, onCamera, onGallery, onRemove }: Props) {
   const { c }  = useTheme()
   const insets = useSafeAreaInsets()
 
@@ -40,9 +42,14 @@ export function AvatarPickerModal({ visible, onClose, onCamera, onGallery }: Pro
   if (!rendered) return null
 
   // Close modal first, then open the picker — avoids animation clash
+  // (the picker can't open while the closing Modal is still on screen).
   const pick = (fromCamera: boolean) => {
     onClose()
-    setTimeout(() => (fromCamera ? onCamera() : onGallery()), 250)
+    setTimeout(() => (fromCamera ? onCamera() : onGallery()), 350)
+  }
+  const remove = () => {
+    onClose()
+    if (onRemove) setTimeout(onRemove, 350)
   }
 
   return (
@@ -100,6 +107,24 @@ export function AvatarPickerModal({ visible, onClose, onCamera, onGallery }: Pro
               Galereyadan tanlash
             </Text>
           </Pressable>
+
+          {onRemove && (
+            <>
+              <View style={[styles.sep, { backgroundColor: c.border, marginLeft: 16 + 36 + spacing.sm }]} />
+              <Pressable
+                onPress={remove}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.bgPrimary }]}
+              >
+                <View style={[styles.iconWrap, { backgroundColor: c.error + '22' }]}>
+                  <Trash size={20} color={c.error} weight="bold" />
+                </View>
+                <Text style={[styles.rowText, { color: c.error, fontFamily: typography.fontFamily.medium }]}>
+                  Rasmni oʻchirish
+                </Text>
+              </Pressable>
+            </>
+          )}
         </View>
 
         {/* Cancel */}

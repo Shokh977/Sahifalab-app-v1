@@ -270,7 +270,7 @@ export default function CoursesTab() {
     <View style={[styles.root, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
       <View style={styles.topBar}>
         <Text style={[typeScale.title1, styles.flex, { color: colors.text }]} accessibilityRole="header">Kurslar</Text>
-        <IconButton icon={Search} accessibilityLabel="Kurslarni qidirish" onPress={() => router.push('/(screens)/search' as any)} />
+        <IconButton icon={Search} accessibilityLabel="Kurslarni qidirish" onPress={() => router.push('/(screens)/search?scope=courses' as any)} />
         <ProfileAvatarButton size={26} />
       </View>
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
-  RefreshControl, ScrollView, Image, Pressable,
+  RefreshControl, ScrollView, Pressable,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useRouter } from 'expo-router'
 import { ChevronLeft, Bookmark, Heart, BookOpen } from 'lucide-react-native'
@@ -34,7 +35,7 @@ function SavedCourseCard({ course }: { course: Course }) {
       ]}
     >
       {course.thumbnail_url ? (
-        <Image source={{ uri: course.thumbnail_url }} style={styles.courseThumb} />
+        <Image cachePolicy="memory-disk" source={{ uri: course.thumbnail_url }} style={styles.courseThumb} />
       ) : (
         <View style={[styles.courseThumb, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
           <BookOpen size={20} color={c.textMuted} />

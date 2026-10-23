@@ -1,13 +1,14 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   View, Text, StyleSheet, TextInput, FlatList,
-  Pressable, ActivityIndicator, Image, Animated, ScrollView, LayoutChangeEvent,
+  Pressable, ActivityIndicator, Animated, ScrollView, LayoutChangeEvent,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import ReAnimated, { runOnJS } from 'react-native-reanimated'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, Search as SearchIcon, X, BadgeCheck, BookOpen, FileText, Frown, Clock } from 'lucide-react-native'
 import { RoleBadge } from '../../components/ui/RoleBadge'
 import { useTheme } from '../../hooks/useTheme'
@@ -16,6 +17,9 @@ import { typography, spacing, radius } from '../../lib/constants'
 import { moveSpring } from '../../src/design/rnMotion'
 
 type Filter = 'all' | 'people' | 'courses' | 'posts'
+
+// ?scope=courses (the Kurslar tab's search): courses only — no filter tabs,
+// no swiping between them, and only the courses endpoint is queried.
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: 'all',     label: 'Hammasi'   },
@@ -109,6 +113,7 @@ function Avatar({ uri, name, size = 44 }: { uri?: string | null; name?: string |
   if (!uri || failed) return fallback
   return (
     <Image
+      cachePolicy="memory-disk"
       source={{ uri }}
       style={{ width: size, height: size, borderRadius: size / 2 }}
       onError={() => setFailed(true)}
@@ -119,9 +124,11 @@ function Avatar({ uri, name, size = 44 }: { uri?: string | null; name?: string |
 export default function SearchScreen() {
   const { c } = useTheme()
   const router = useRouter()
+  const { scope } = useLocalSearchParams<{ scope?: string }>()
+  const coursesOnly = scope === 'courses'
 
   const [query,   setQuery]   = useState('')
-  const [filter,  setFilter]  = useState<Filter>('all')
+  const [filter,  setFilter]  = useState<Filter>(coursesOnly ? 'courses' : 'all')
   const [results, setResults] = useState<SearchResults>({})
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState<string[]>([])
@@ -163,13 +170,14 @@ export default function SearchScreen() {
       setLoading(true)
       try {
         let data: SearchResults
-        if (f === 'people') data = await search.people(q)
-        else                data = await search.all(q)
+        if (f === 'people')   data = await search.people(q)
+        else if (coursesOnly) data = await search.courses(q)
+        else                  data = await search.all(q)
         setResults(data)
       } catch {}
       finally { setLoading(false) }
     }, 350)
-  }, [])
+  }, [coursesOnly])
 
   function handleQueryChange(text: string) {
     setQuery(text)
@@ -187,6 +195,7 @@ export default function SearchScreen() {
 
   const pan = useMemo(() =>
     Gesture.Pan()
+      .enabled(!coursesOnly)
       .activeOffsetX([-15, 15])
       .failOffsetY([-10, 10])
       .onEnd(e => {
@@ -198,7 +207,7 @@ export default function SearchScreen() {
           runOnJS(handleFilterChange)(FILTERS[idx - 1].key)
         }
       }),
-  [filter])
+  [filter, coursesOnly])
 
   function applyHistory(q: string) {
     setQuery(q)
@@ -247,7 +256,7 @@ export default function SearchScreen() {
         onPress={() => { saveToHistory(query); router.push(`/(screens)/course/${item.id}` as any) }}
       >
         {item.thumbnail_url
-          ? <Image source={{ uri: item.thumbnail_url }} style={styles.courseCover} />
+          ? <Image cachePolicy="memory-disk" source={{ uri: item.thumbnail_url }} style={styles.courseCover} />
           : (
             <View style={[styles.courseCover, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
               <BookOpen size={22} color={c.textMuted} />
@@ -347,7 +356,7 @@ export default function SearchScreen() {
             value={query}
             onChangeText={handleQueryChange}
             onSubmitEditing={handleSubmit}
-            placeholder="Qidirish..."
+            placeholder={coursesOnly ? 'Kurslarni qidirish...' : 'Qidirish...'}
             placeholderTextColor={c.textMuted}
             returnKeyType="search"
             style={[styles.input, { color: c.textPrimary, fontFamily: typography.fontFamily.regular }]}
@@ -361,7 +370,7 @@ export default function SearchScreen() {
       </View>
 
       {/* Filter tab bar */}
-      <FilterTabBar filter={filter} onSelect={handleFilterChange} borderColor={c.border} />
+      {!coursesOnly && <FilterTabBar filter={filter} onSelect={handleFilterChange} borderColor={c.border} />}
 
       {/* Body — swipeable to change filter */}
       <GestureDetector gesture={pan}>
@@ -404,7 +413,7 @@ export default function SearchScreen() {
         <View style={styles.emptyState}>
           <SearchIcon size={48} color={c.textMuted} style={{ marginBottom: spacing.sm }} />
           <Text style={[styles.emptyText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
-            Odamlar, kurslar yoki postlarni qidiring
+            {coursesOnly ? 'Kurs nomi yoki oʻqituvchini yozing' : 'Odamlar, kurslar yoki postlarni qidiring'}
           </Text>
         </View>
       ) : flatData.length === 0 ? (

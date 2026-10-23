@@ -1,18 +1,17 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  ActivityIndicator, RefreshControl, Modal, Animated, Dimensions, Platform,
+  ActivityIndicator, RefreshControl, Modal, Animated, Dimensions,
 } from 'react-native'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronLeft, Snowflake, Map, Info, X, Share2 } from 'lucide-react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import { ChevronLeft, Map, Info, X, Share2 } from 'lucide-react-native'
 import ViewShot, { type ViewShotRef } from 'react-native-view-shot'
 import * as Sharing from 'expo-sharing'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
 import { streaks as streaksApi, focusStages } from '../../lib/api'
-import type { StreakDetail, StreakCalendarDay } from '../../lib/api'
+import type { StreakDetail } from '../../lib/api'
 import { FreezeSheet } from '../../components/streak/FreezeSheet'
 import { StreakLostModal } from '../../components/streak/StreakLostModal'
 import { StreakAtRiskModal } from '../../components/streak/StreakAtRiskModal'
@@ -25,195 +24,18 @@ import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { useStreakStagesStore } from '../../stores/streakStagesStore'
 import { syncWidget } from '../../lib/syncWidget'
-import { TreeStagesSection } from '../../src/features/streak/TreeStagesSection'
+import { StreakCalendar } from '../../src/features/streak/StreakCalendar'
+import { GaugeDigits, MoodStatus, StreakFlame, useFlameOpacity, useMoodColors } from '../../src/features/streak/StreakGauge'
+import { streakMood } from '../../src/features/streak/streakMood'
+import { localDateKey } from '../../src/features/today/today'
+import { fonts, type as typeScale } from '../../src/design/typography'
 import { moveSpring, moveTiming } from '../../src/design/rnMotion'
+import ReAnimated, { useAnimatedStyle } from 'react-native-reanimated'
 
 let Haptics: any = null
 try { Haptics = require('expo-haptics') } catch {}
 
 
-
-const WEEKDAY_LABELS = ['Du', 'Se', 'Cho', 'Pa', 'Ju', 'Sh', 'Ya']
-
-// ── Calendar colours ─────────────────────────────────────────────────────────
-const CAL = {
-  studied: { connColor: '#22c55e' },
-  frozen:  { connColor: '#3b82f6' },
-  missed:  { connColor: null      },
-  future:  { connColor: null      },
-}
-
-// ── Calendar cell ─────────────────────────────────────────────────────────────
-const CalCell = React.memo(function CalCell({
-  day, c, isToday, connectLeft, connectRight, wide,
-}: {
-  day:          StreakCalendarDay | null
-  c:            ReturnType<typeof useTheme>['c']
-  isToday:      boolean
-  connectLeft:  boolean
-  connectRight: boolean
-  wide?:        boolean
-}) {
-  if (!day) return <View style={wide ? styles.wideSlot : styles.calSlot} />
-
-  const dayNum    = new Date(day.date).getDate()
-  const status    = day.status as keyof typeof CAL
-  const connColor = CAL[status]?.connColor ?? 'transparent'
-
-  // ── Wide mode (7-day view) ───────────────────────────────────────────────────
-  if (wide) {
-    if (status === 'future') {
-      return (
-        <View style={styles.wideSlot}>
-          <View style={[styles.calCellWide, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', margin: 2 }]}>
-            <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255,255,255,0.13)' }} />
-          </View>
-        </View>
-      )
-    }
-    if (status === 'studied') {
-      return (
-        <View style={styles.wideSlot}>
-          {connectLeft  && <View style={[styles.connWide, { left: 0, right: '50%', backgroundColor: connColor }]} />}
-          {connectRight && <View style={[styles.connWide, { left: '50%', right: 0,  backgroundColor: connColor }]} />}
-          <View style={[styles.cellGlowWide, { shadowColor: '#22c55e' }, isToday && styles.todayGlowRing]}>
-            <LinearGradient colors={['#86efac', '#15803d']} start={{ x: 0.15, y: 0 }} end={{ x: 0.85, y: 1 }} style={styles.calCellWide}>
-              <View style={styles.cellGloss} />
-              {isToday && <View style={[styles.todayInnerRing, { borderRadius: 12 }]} />}
-              <Text style={[styles.calNumWide, { color: '#fff', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
-              <Text style={styles.studiedCheckWide}>✓</Text>
-            </LinearGradient>
-          </View>
-        </View>
-      )
-    }
-    if (status === 'frozen') {
-      return (
-        <View style={styles.wideSlot}>
-          {connectLeft  && <View style={[styles.connWide, { left: 0, right: '50%', backgroundColor: connColor }]} />}
-          {connectRight && <View style={[styles.connWide, { left: '50%', right: 0,  backgroundColor: connColor }]} />}
-          <View style={[styles.cellGlowWide, { shadowColor: '#60a5fa' }, isToday && styles.todayGlowRing]}>
-            <LinearGradient colors={['#bae6fd', '#0c4a6e']} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={[styles.calCellWide, styles.frozenBorder]}>
-              <View style={styles.iceGloss} />
-              {isToday && <View style={[styles.todayInnerRing, { borderRadius: 12 }]} />}
-              <Snowflake size={13} color="rgba(224,242,254,0.75)" strokeWidth={2.5} style={styles.snowflakeIconWide} />
-              <Text style={[styles.calNumWide, { color: '#e0f2fe', fontFamily: typography.fontFamily.bold, marginTop: 6 }]}>{dayNum}</Text>
-            </LinearGradient>
-          </View>
-        </View>
-      )
-    }
-    // missed (wide)
-    if (isToday) {
-      return (
-        <View style={styles.wideSlot}>
-          <View style={[styles.calCellWide, { margin: 2, backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#f97316' }]}>
-            <Text style={[styles.calNumWide, { color: '#f97316', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
-          </View>
-        </View>
-      )
-    }
-    return (
-      <View style={styles.wideSlot}>
-        <View style={[styles.calCellWide, styles.missedCell, { margin: 2 }]}>
-          <Text style={[styles.calNumWide, { color: '#7f1d1d', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
-          <Text style={styles.missedXWide}>✕</Text>
-        </View>
-      </View>
-    )
-  }
-
-  // ── Narrow mode (30-day grid) ────────────────────────────────────────────────
-
-  // ── future ──────────────────────────────────────────────────────────────────
-  if (status === 'future') {
-    return (
-      <View style={styles.calSlot}>
-        <View style={{ flex: 1 }} />
-        <View style={[styles.calCell, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }]}>
-          <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.13)' }} />
-        </View>
-        <View style={{ flex: 1 }} />
-      </View>
-    )
-  }
-
-  // ── studied ──────────────────────────────────────────────────────────────────
-  if (status === 'studied') {
-    return (
-      <View style={styles.calSlot}>
-        <View style={[styles.connHalf, { backgroundColor: connectLeft ? connColor : 'transparent' }]} />
-        <View style={[styles.cellGlow, { shadowColor: '#22c55e' }, isToday && styles.todayGlowRing]}>
-          <LinearGradient
-            colors={['#86efac', '#15803d']}
-            start={{ x: 0.15, y: 0 }}
-            end={{ x: 0.85, y: 1 }}
-            style={styles.calCell}
-          >
-            {/* gloss highlight */}
-            <View style={styles.cellGloss} />
-            {isToday && <View style={styles.todayInnerRing} />}
-            <Text style={[styles.calNum, { color: '#fff', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
-            <Text style={styles.studiedCheck}>✓</Text>
-          </LinearGradient>
-        </View>
-        <View style={[styles.connHalf, { backgroundColor: connectRight ? connColor : 'transparent' }]} />
-      </View>
-    )
-  }
-
-  // ── frozen ───────────────────────────────────────────────────────────────────
-  if (status === 'frozen') {
-    return (
-      <View style={styles.calSlot}>
-        <View style={[styles.connHalf, { backgroundColor: connectLeft ? connColor : 'transparent' }]} />
-        <View style={[styles.cellGlow, { shadowColor: '#60a5fa' }, isToday && styles.todayGlowRing]}>
-          <LinearGradient
-            colors={['#bae6fd', '#0c4a6e']}
-            start={{ x: 0.1, y: 0 }}
-            end={{ x: 0.9, y: 1 }}
-            style={[styles.calCell, styles.frozenBorder]}
-          >
-            {/* ice corner reflection */}
-            <View style={styles.iceGloss} />
-            {isToday && <View style={styles.todayInnerRing} />}
-            <Snowflake
-              size={11}
-              color="rgba(224,242,254,0.75)"
-              strokeWidth={2.5}
-              style={styles.snowflakeIcon}
-            />
-            <Text style={[styles.calNum, { color: '#e0f2fe', fontFamily: typography.fontFamily.bold, marginTop: 5 }]}>{dayNum}</Text>
-          </LinearGradient>
-        </View>
-        <View style={[styles.connHalf, { backgroundColor: connectRight ? connColor : 'transparent' }]} />
-      </View>
-    )
-  }
-
-  // ── missed (narrow) ──────────────────────────────────────────────────────────
-  if (isToday) {
-    return (
-      <View style={styles.calSlot}>
-        <View style={{ flex: 1 }} />
-        <View style={[styles.calCell, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#f97316' }]}>
-          <Text style={[styles.calNum, { color: '#f97316', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
-        </View>
-        <View style={{ flex: 1 }} />
-      </View>
-    )
-  }
-  return (
-    <View style={styles.calSlot}>
-      <View style={{ flex: 1 }} />
-      <View style={[styles.calCell, styles.missedCell]}>
-        <Text style={[styles.calNum, { color: '#7f1d1d', fontFamily: typography.fontFamily.bold }]}>{dayNum}</Text>
-        <Text style={styles.missedX}>✕</Text>
-      </View>
-      <View style={{ flex: 1 }} />
-    </View>
-  )
-})
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function StreakDetailScreen() {
@@ -222,14 +44,6 @@ export default function StreakDetailScreen() {
   const insets  = useSafeAreaInsets()
   const user    = useAuthStore(s => s.user)
   const dashData = useDashboardStore(s => s.data)
-  // Tree stages live in this screen now (Phase 5); ?section=stages (the old
-  // tree-stages route redirects here) and the map icon scroll to them.
-  const { section } = useLocalSearchParams<{ section?: string }>()
-  const scrollRef = useRef<ScrollView>(null)
-  const stagesY = useRef<number | null>(null)
-  const scrollToStages = useCallback(() => {
-    if (stagesY.current != null) scrollRef.current?.scrollTo({ y: Math.max(0, stagesY.current - spacing.base), animated: true })
-  }, [])
 
   const [data, setData]               = useState<StreakDetail | null>(null)
   const [loading, setLoading]         = useState(true)
@@ -395,17 +209,24 @@ export default function StreakDetailScreen() {
 
   const stage  = stageFromStreak(streakDays)
   const goalM  = dashData?.focusStats?.daily_goal ?? 20
-  // Driven directly by the server's streak_state — frost means 'frozen_today'
-  // (protected) exclusively now, never "danger"; 'at_risk' gets its own warm
-  // wilting treatment instead (see MagicTree.tsx / plan doc P4).
-  const treeState: TreeState = (() => {
-    switch (data?.streak_state) {
-      case 'at_risk':      return 'at_risk'
-      case 'frozen_today': return 'frozen'
-      case 'lost':         return 'dead'
-      default:              return 'alive'
-    }
-  })()
+  // Today's gauge, same as the Bugun hero (StreakGauge): minutes from the
+  // dashboard when it was fetched today; a studied calendar day also counts.
+  const todayKey      = localDateKey(new Date())
+  const dashIsToday   = dashData ? localDateKey(new Date(dashData.fetchedAt)) === todayKey : false
+  const todayMinutes  = dashIsToday ? dashData?.focusStats.today_minutes ?? 0 : 0
+  const todayStudied  = data?.calendar.some(d => d.date === todayKey && d.status === 'studied') ?? false
+  const todayProgress = todayStudied ? 1 : Math.min(1, todayMinutes / (goalM > 0 ? goalM : 20))
+  const mood          = streakMood(data?.streak_state, todayProgress >= 1, streakDays)
+  const moodColors    = useMoodColors()
+  const flameOpacity  = useFlameOpacity(mood, todayProgress)
+  const flameStyle    = useAnimatedStyle(() => ({ opacity: flameOpacity.get() }))
+
+  // Frost means 'frozen_today' (protected) exclusively, never "danger";
+  // 'at_risk' gets its own warm wilting treatment (MagicTree.tsx / plan doc
+  // P4). Meeting today's goal wins over a stale server state.
+  const treeState: TreeState = mood === 'at_risk' ? 'at_risk'
+    : mood === 'frozen' ? 'frozen'
+    : mood === 'lost' && data?.streak_state === 'lost' ? 'dead' : 'alive'
 
   // Next-stage progress
   const stageMeta     = TREE_STAGES[stage - 1]
@@ -415,34 +236,6 @@ export default function StreakDetailScreen() {
     : 100
   const daysToNext = nextStageMeta ? nextStageMeta.streakDays - streakDays : 0
 
-
-  // Calendar: today in device-local time (not UTC) so "today" highlight matches sessions
-  const _d = new Date()
-  const todayStr = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`
-
-  // Calendar rows — 7-day: single flat row; 30-day: Monday-aligned grid
-  const calRows: (StreakCalendarDay | null)[][] = []
-  const cal7 = data?.calendar ? data.calendar.slice(-7) : []
-  const calWeekLabels = calDays === 7 && cal7.length
-    ? cal7.map(d => WEEKDAY_LABELS[(new Date(d.date).getDay() + 6) % 7])
-    : WEEKDAY_LABELS
-  if (data?.calendar.length) {
-    if (calDays === 7) {
-      calRows.push(cal7)
-    } else {
-      const firstDate = new Date(data.calendar[0].date)
-      const firstDow  = (firstDate.getDay() + 6) % 7
-      const padded: (StreakCalendarDay | null)[] = [
-        ...Array(firstDow).fill(null),
-        ...data.calendar,
-      ]
-      for (let i = 0; i < padded.length; i += 7) {
-        const row = padded.slice(i, i + 7)
-        while (row.length < 7) row.push(null)
-        calRows.push(row)
-      }
-    }
-  }
 
   // step-16: hero health — reuses the same treeState the tree itself uses, so
   // the background and the tree's frost coloring always transition together.
@@ -472,7 +265,6 @@ export default function StreakDetailScreen() {
       )}
 
       <ScrollView
-        ref={scrollRef}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
         refreshControl={
           <RefreshControl
@@ -512,7 +304,8 @@ export default function StreakDetailScreen() {
                     </Pressable>
                     <Pressable
                       style={[styles.topIconBtn, { backgroundColor: hc.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(22,50,31,0.08)', borderColor: 'transparent' }]}
-                      onPress={scrollToStages}
+                      onPress={() => router.push(`/(screens)/tree-stages?days=${streakDays}` as any)}
+                      accessibilityRole="button"
                       accessibilityLabel="Daraxt yoʻli"
                       hitSlop={8}
                     >
@@ -566,15 +359,13 @@ export default function StreakDetailScreen() {
                   <MagicTree stage={stage} state={treeState} size="auto" uid="sd_hero" />
 
                   {/* Big streak number */}
-                  <View style={styles.heroTextRow}>
-                    <Text style={styles.heroFlame}>🔥</Text>
-                    <Text style={[styles.heroNum, { color: hc.primary, fontFamily: typography.fontFamily.bold }]}>
-                      {streakDays}
-                    </Text>
+                  <View style={styles.heroTextRow} accessible accessibilityLabel={`${streakDays} kunlik seriya`}>
+                    <ReAnimated.View style={flameStyle}>
+                      <StreakFlame flat={moodColors.flameFlat(mood)} width={36} height={44} />
+                    </ReAnimated.View>
+                    <GaugeDigits value={streakDays} mood={mood} progress={todayProgress} textStyle={styles.heroNum} />
                   </View>
-                  <Text style={[styles.heroLabel, { color: hc.secondary, fontFamily: typography.fontFamily.regular }]}>
-                    kunlik seriya
-                  </Text>
+                  <MoodStatus mood={mood} textStyle={typeScale.body} size={16} />
 
                   {/* Next-stage progress */}
                   {nextStageMeta && (
@@ -667,57 +458,7 @@ export default function StreakDetailScreen() {
             </View>
           </View>
 
-          {/* Legend */}
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <LinearGradient colors={['#86efac', '#15803d']} start={{x:0.15,y:0}} end={{x:0.85,y:1}} style={styles.legendChip}>
-                <Text style={styles.legendChipIcon}>✓</Text>
-              </LinearGradient>
-              <Text style={[styles.legendText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>O'qildi</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <LinearGradient colors={['#bae6fd', '#0c4a6e']} start={{x:0.1,y:0}} end={{x:0.9,y:1}} style={[styles.legendChip, styles.frozenBorder]}>
-                <Snowflake size={8} color="rgba(224,242,254,0.85)" strokeWidth={2.5} />
-              </LinearGradient>
-              <Text style={[styles.legendText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>Muzlatildi</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendChip, styles.missedCell]}>
-                <Text style={[styles.legendChipIcon, { color: 'rgba(239,68,68,0.6)' }]}>✕</Text>
-              </View>
-              <Text style={[styles.legendText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>O'tkazildi</Text>
-            </View>
-          </View>
-
-          {/* Day-of-week header */}
-          <View style={styles.calRow}>
-            {calWeekLabels.map((d, i) => (
-              <Text key={i} style={[styles.calDayLabel, { color: c.textMuted, fontFamily: typography.fontFamily.medium }]}>
-                {d}
-              </Text>
-            ))}
-          </View>
-
-          {/* Calendar grid */}
-          {calRows.map((row, ri) => (
-            <View key={ri} style={styles.calRow}>
-              {row.map((day, i) => {
-                const active = (d: StreakCalendarDay | null | undefined) =>
-                  d?.status === 'studied' || d?.status === 'frozen'
-                return (
-                  <CalCell
-                    key={day ? day.date : `pad-${ri}-${i}`}
-                    day={day}
-                    c={c}
-                    isToday={day?.date === todayStr}
-                    connectLeft={active(day) && i > 0 && active(row[i - 1])}
-                    connectRight={active(day) && i < row.length - 1 && active(row[i + 1])}
-                    wide={calDays === 7}
-                  />
-                )
-              })}
-            </View>
-          ))}
+          <StreakCalendar days={data?.calendar} range={calDays} todayDone={todayProgress >= 1} />
         </View>
 
         {/* ── Freeze section ────────────────────────────────────────────── */}
@@ -771,14 +512,6 @@ export default function StreakDetailScreen() {
             </Pressable>
           </View>
         </View>
-
-        <TreeStagesSection
-          streakDays={streakDays}
-          onLayout={e => {
-            stagesY.current = e.nativeEvent.layout.y
-            if (section === 'stages') scrollToStages()
-          }}
-        />
 
       </ScrollView>
 
@@ -1055,17 +788,15 @@ const styles = StyleSheet.create({
   devToggleText: { fontSize: 9, color: '#fff', fontWeight: '700' },
   heroTextRow: {
     flexDirection: 'row',
-    alignItems:    'flex-end',
+    alignItems:    'center',
     gap:           6,
     marginTop:     spacing.sm,
   },
-  heroFlame: { fontSize: 32, lineHeight: 50 },
   heroNum: {
-    fontSize:   52,
-    lineHeight: 56,
-  },
-  heroLabel: {
-    fontSize: typography.size.base,
+    fontFamily:    fonts.extrabold,
+    fontSize:      52,
+    lineHeight:    56,
+    letterSpacing: -1.5,
   },
   inactivePill: {
     paddingHorizontal: spacing.md,
@@ -1103,56 +834,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: typography.size.base },
 
-  // ── Wide cell (7-day view) ─────────────────────────────────────────────────
-  wideSlot: { flex: 1 },
-  cellGlowWide: {
-    margin:        2,
-    borderRadius:  12,
-    shadowOffset:  { width: 0, height: 2 },
-    shadowOpacity: 0.55,
-    shadowRadius:  7,
-    // Android elevation forces a per-view rasterized shadow layer, recomposited
-    // every scroll frame — up to 7 of these on screen at once (7-day view) makes
-    // scrolling noticeably heavy. iOS shadows are cheap by comparison, so only
-    // Android drops it.
-    elevation:     Platform.OS === 'android' ? 0 : 5,
-  },
-  calCellWide: {
-    aspectRatio:    1,
-    borderRadius:   12,
-    alignItems:     'center',
-    justifyContent: 'center',
-    overflow:       'hidden',
-  },
-  connWide: {
-    position:  'absolute',
-    top:       '50%' as any,
-    marginTop: -2,
-    height:    4,
-  },
-  calNumWide: { fontSize: 13, lineHeight: 15 },
-  studiedCheckWide: {
-    position:   'absolute',
-    bottom:     3,
-    right:      6,
-    fontSize:   10,
-    color:      'rgba(255,255,255,0.75)',
-    fontWeight: '800',
-  },
-  missedXWide: {
-    position:   'absolute',
-    bottom:     3,
-    right:      6,
-    fontSize:   10,
-    color:      'rgba(239,68,68,0.45)',
-    fontWeight: '800',
-  },
-  snowflakeIconWide: {
-    position: 'absolute',
-    top:      4,
-    right:    4,
-  },
-
   // Calendar header row (title + toggle)
   calHeader: {
     flexDirection:  'row',
@@ -1170,133 +851,6 @@ const styles = StyleSheet.create({
     borderWidth:       1,
   },
   calToggleTxt: { fontSize: typography.size.xs },
-
-  // Calendar
-  calDayLabel: {
-    flex:      1,
-    textAlign: 'center',
-    fontSize:  10,
-  },
-  legend: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap', paddingVertical: 2 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendChip: {
-    width: 18, height: 18, borderRadius: 5,
-    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-  },
-  legendChipIcon: { fontSize: 9, color: '#fff', fontWeight: '700' },
-  legendText: { fontSize: typography.size.xs },
-
-  // No gap — spacing comes from the connector half-views inside each slot
-  calRow: { flexDirection: 'row' },
-
-  // Each slot: [connHalf] [cell] [connHalf]
-  calSlot: {
-    flex:          1,
-    flexDirection: 'row',
-    alignItems:    'center',
-  },
-  connHalf: {
-    flex:         1,
-    height:       4,
-    borderRadius: 2,
-  },
-
-  // Shadow/glow wrapper (not overflow:hidden so shadow bleeds out)
-  cellGlow: {
-    borderRadius:   10,
-    shadowOffset:   { width: 0, height: 2 },
-    shadowOpacity:  0.55,
-    shadowRadius:   7,
-    // Up to 30 of these render at once in the 30-day grid — Android elevation
-    // rasterizes a shadow layer per view and recomposites it every scroll
-    // frame, which is the main source of scroll jank on this screen. iOS
-    // shadows don't have that per-frame cost, so only Android drops it.
-    elevation:      Platform.OS === 'android' ? 0 : 5,
-  },
-  todayGlowRing: {
-    shadowOpacity: 0.9,
-    shadowRadius:  10,
-    elevation:     Platform.OS === 'android' ? 0 : 8,
-  },
-
-  // Gradient cell (overflow:hidden to clip gradient corners)
-  calCell: {
-    width:          36,
-    height:         36,
-    borderRadius:   10,
-    alignItems:     'center',
-    justifyContent: 'center',
-    overflow:       'hidden',
-  },
-  calNum: { fontSize: 11, lineHeight: 13 },
-
-  // Gloss highlight shared by studied + frozen
-  cellGloss: {
-    position:        'absolute',
-    top:             4,
-    left:            6,
-    width:           13,
-    height:          6,
-    borderRadius:    3,
-    backgroundColor: 'rgba(255,255,255,0.32)',
-  },
-
-  // Today inner ring (inside gradient, so always visible)
-  todayInnerRing: {
-    ...StyleSheet.absoluteFill,
-    borderWidth:  2,
-    borderColor:  'rgba(255,255,255,0.7)',
-    borderRadius: 10,
-  },
-
-  // Studied badge ✓
-  studiedCheck: {
-    position:   'absolute',
-    bottom:     2,
-    right:      5,
-    fontSize:   9,
-    color:      'rgba(255,255,255,0.75)',
-    fontWeight: '800',
-  },
-
-  // Frozen: 3-D border — light top/left, dark bottom/right
-  frozenBorder: {
-    borderWidth:       1.5,
-    borderTopColor:    '#7dd3fc',
-    borderLeftColor:   '#7dd3fc',
-    borderBottomColor: '#1e40af',
-    borderRightColor:  '#1e40af',
-  },
-  // Ice corner reflection (top-left white sheen)
-  iceGloss: {
-    position:        'absolute',
-    top:             3,
-    left:            4,
-    width:           10,
-    height:          5,
-    borderRadius:    2.5,
-    backgroundColor: 'rgba(255,255,255,0.42)',
-  },
-  snowflakeIcon: {
-    position: 'absolute',
-    top:      3,
-    right:    3,
-  },
-
-  // Missed: dark hollow cell with dim red border
-  missedCell: {
-    backgroundColor: '#1e0505',
-    borderWidth:     1,
-    borderColor:     'rgba(239,68,68,0.28)',
-  },
-  missedX: {
-    position:   'absolute',
-    bottom:     2,
-    right:      5,
-    fontSize:   9,
-    color:      'rgba(239,68,68,0.45)',
-    fontWeight: '800',
-  },
 
   // Freeze
   freezeHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

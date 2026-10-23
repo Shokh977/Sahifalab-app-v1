@@ -17,7 +17,8 @@ export function CoinIcon({ size = COIN_ICON }: { size?: number }) {
       </Defs>
       <Circle cx="11" cy="11" r="10" fill={`url(#${id})`} />
       <Circle cx="11" cy="11" r="6.5" fill="none" stroke={coinIcon.ring} strokeWidth={1.6} />
-      <Path d="M9 8.5h3.2a1.6 1.6 0 0 1 0 3.2H9.6m-.6-3.2v6" stroke={coinIcon.mark} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      {/* "T" for tanga: the bar, then the stem. */}
+      <Path d="M8.3 8.3h5.4M11 8.3v5.6" stroke={coinIcon.mark} strokeWidth={1.6} fill="none" strokeLinecap="round" />
     </Svg>
   )
 }

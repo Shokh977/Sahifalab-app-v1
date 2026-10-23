@@ -46,3 +46,26 @@ export function showPinnedRow(opts: {
   if (!opts.inList) return true
   return !opts.rowVisible
 }
+
+const FALLBACK_BAND = '#F5A623'
+
+/** The admin's colour (#RRGGBB / #RGB) or the default orange. Pure. */
+export function bandColor(hex: string | null | undefined): string {
+  const h = (hex ?? '').trim()
+  if (/^#[0-9a-f]{6}$/i.test(h)) return h.toUpperCase()
+  if (/^#[0-9a-f]{3}$/i.test(h)) return `#${h.slice(1).split('').map(ch => ch + ch).join('')}`.toUpperCase()
+  return FALLBACK_BAND
+}
+
+/** White or near-black text, whichever reads better on the band colour
+ *  (WCAG relative luminance, crossover at L ≈ 0.4 — white text on a light
+ *  yellow band was unreadable). Pure. */
+export function textOnBand(hex: string): { text: string; muted: string; chip: string } {
+  const c = bandColor(hex)
+  const ch = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16) / 255)
+    .map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+  const L = 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+  return L > 0.4
+    ? { text: '#1A1612', muted: 'rgba(26,22,18,0.72)', chip: 'rgba(0,0,0,0.12)' }
+    : { text: '#FFFFFF', muted: 'rgba(255,255,255,0.82)', chip: 'rgba(0,0,0,0.22)' }
+}

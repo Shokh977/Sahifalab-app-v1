@@ -1,17 +1,16 @@
 /**
  * Bellashuv — redesign Phase 4a, rebuilt to the v2 board in Phase 7.5 D1.
  * Competitions first ("Bellashuvlar": the hero with your live or the next
- * competition, other open ones, the finished ones), then the XP ranking
- * (podium, #4–#5, your row pinned), then a compact 5 Savol card — its main
- * entry point is now the Bugun plan tile.
+ * competition, other open ones, the finished ones), then a compact 5 Savol
+ * card — its main entry point is now the Bugun plan tile. The weekly XP
+ * ranking lives on Reyting only (Bugun's ranking card opens it).
  */
 import React, { useCallback, useState } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { Trophy } from 'lucide-react-native'
-import { challenges as challengesApi, leaderboard, type Challenge, type LeaderboardEntry } from '../../lib/api'
-import { useAuthStore } from '../../stores/authStore'
+import { challenges as challengesApi, type Challenge } from '../../lib/api'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { ProfileAvatarButton } from '../../components/layout/ProfileAvatarButton'
 import { useTheme } from '../../src/design/ThemeProvider'
@@ -22,20 +21,15 @@ import { useMinuteClock } from '../../src/features/today/useMinuteClock'
 import { endedCompetitions, otherCompetitions, pickMainCompetition } from '../../src/features/bellashuv/bellashuv'
 import { CompetitionsCard } from '../../src/features/bellashuv/CompetitionsCard'
 import { QuizTodayCard } from '../../src/features/bellashuv/QuizTodayCard'
-import { WeeklyRanking } from '../../src/features/bellashuv/WeeklyRanking'
 
 export default function BellashuvScreen() {
   const { colors } = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const now = useMinuteClock()
-  const userId = useAuthStore(s => s.user?.telegram_id ?? null)
 
   const quiz = useDashboardStore(s => s.data?.quiz ?? null)
   const quizFetchedAt = useDashboardStore(s => s.data?.quizFetchedAt ?? Date.now())
-  const cachedLb = useDashboardStore(s => s.data?.leaderboard ?? [])
-  const cachedRank = useDashboardStore(s => s.data?.myLeaderRank ?? null)
-  const cachedAround = useDashboardStore(s => s.data?.leaderAround)
 
   const [mine, setMine] = useState<Challenge[]>([])
   const [open, setOpen] = useState<Challenge[]>([])
@@ -43,34 +37,20 @@ export default function BellashuvScreen() {
   const [failed, setFailed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [joiningId, setJoiningId] = useState<string | null>(null)
-  const [lb, setLb] = useState<{ entries: LeaderboardEntry[]; myRank: number | null; around: LeaderboardEntry[] } | null>(null)
 
   const load = useCallback(async () => {
-    const [comp, week] = await Promise.allSettled([
-      Promise.all([challengesApi.mine(), challengesApi.list('upcoming_active')]),
-      leaderboard.weekly(),
-    ])
-    if (comp.status === 'fulfilled') {
-      const [mineRes, listRes] = comp.value
+    try {
+      const [mineRes, listRes] = await Promise.all([challengesApi.mine(), challengesApi.list('upcoming_active')])
       const myIds = new Set(mineRes.map(c => c.id))
       setMine(mineRes)
       setOpen(listRes.filter(c => !myIds.has(c.id)))
       setFailed(false)
-    } else {
+    } catch {
       setFailed(true)
-    }
-    if (week.status === 'fulfilled') {
-      const mark = (e: LeaderboardEntry) => ({ ...e, is_me: userId != null && e.telegram_id === userId })
-      const entries = week.value.entries.map(mark)
-      setLb({
-        entries,
-        myRank: week.value.my_rank ?? entries.find(e => e.is_me)?.rank ?? null,
-        around: ((week.value as { around_me?: LeaderboardEntry[] }).around_me ?? []).map(mark),
-      })
     }
     setLoaded(true)
     setRefreshing(false)
-  }, [userId])
+  }, [])
 
   useFocusEffect(useCallback(() => {
     load()
@@ -98,9 +78,6 @@ export default function BellashuvScreen() {
   const main = pickMainCompetition(mine, open)
   const others = otherCompetitions(mine, open, main)
   const ended = endedCompetitions(mine)
-  const entries = lb?.entries ?? cachedLb
-  const myRank = lb?.myRank ?? cachedRank
-  const around = lb?.around ?? cachedAround
   const liveCount = [...mine, ...open].filter(c => c.status === 'active' && !c.completed_at).length
   const openQuiz = () => router.push(quiz ? { pathname: '/(screens)/daily-quiz', params: { quizId: String(quiz.id) } } as any : '/(screens)/daily-quiz' as any)
   const openResults = () => quiz && router.push({ pathname: '/(screens)/daily-quiz-results', params: { quizId: String(quiz.id) } } as any)
@@ -154,8 +131,6 @@ export default function BellashuvScreen() {
             <EmptyState icon={Trophy} title="Hozircha bellashuv yoʻq" body="Tez orada yangi bellashuv qoʻshiladi." />
           )}
         </View>
-
-        <WeeklyRanking entries={entries} around={around} myRank={myRank} now={now} onAll={() => router.push('/(screens)/leaderboard' as any)} />
 
         <QuizTodayCard quiz={quiz} fetchedAt={quizFetchedAt} now={now} onOpen={openQuiz} onResults={openResults} />
       </ScrollView>

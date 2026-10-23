@@ -1,7 +1,8 @@
 /**
  * 5 Savol result: the share ticket (kept as is) with its reveal moment, the
- * share actions, then when the next round opens, the quiz streak, friends'
- * scores and the link to the full ranking.
+ * share actions, then when the next round opens, the quiz streak, the
+ * "Siz ham savol yuboring" prompt, friends' scores and the link to the full
+ * ranking.
  */
 import React, { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -16,6 +17,8 @@ import { type as typeScale } from '../../src/design/typography'
 import { haptics } from '../../src/lib/haptics'
 import { Badge, Button, Card, ListRow } from '../../src/components/ui'
 import { opensAt } from '../../src/features/quiz/quizPlay'
+import { QuestionCta } from '../../src/features/questions/QuestionCta'
+import { ctaProminent } from '../../src/features/questions/questionForm'
 import { uzText } from '../../src/features/today/today'
 import { ResultTicket, type AnswerMark, type ResultTicketProps } from './ResultTicket'
 import { ShareCaptureHost } from './ShareCaptureHost'
@@ -33,7 +36,7 @@ const SUCCESS_FROM = 4
 export type QuizFriend = NonNullable<DailyQuizResults['friends']>[number]
 
 export function QuizResultView({
-  quiz, result, rank, friends, fresh,
+  quiz, result, rank, friends, fresh, contributors,
 }: {
   quiz: DailyQuizToday
   result: { correct_count: number; tanga_awarded: number; per_question_correct: boolean[]; elapsed_ms?: number; quiz_streak_days: number }
@@ -41,6 +44,8 @@ export function QuizResultView({
   friends?: QuizFriend[]
   /** Just submitted (not reopened later): play the reveal moment. */
   fresh?: boolean
+  /** Names behind today's user-sourced questions (from the results call). */
+  contributors?: string[]
 }) {
   const { colors } = useTheme()
   const router = useRouter()
@@ -119,6 +124,8 @@ export function QuizResultView({
           trailing={{ kind: 'value', value: `${result.quiz_streak_days} kun` }}
         />
       </Card>
+
+      <QuestionCta prominent={ctaProminent(result.correct_count, contributors)} contributors={contributors} />
 
       {others.length > 0 && (
         <View style={styles.section}>

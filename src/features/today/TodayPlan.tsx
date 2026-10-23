@@ -1,44 +1,39 @@
 /**
- * "Bugungi reja" (Phase 7.5 C3): a 2×2 grid of PlanTiles — Fokus, 5 Savol,
- * Kartalar, the current course — with the one "KEYINGI" tile first (the
- * primary action), then unfinished tiles, your running competition and
- * Haftalik sharh (Phase 8), then done ones. A mini progress
- * (one segment per item) and "2 / 4" sit by the title. When a tile becomes
- * done it glides to its new place (LinearTransition, springs.ui); reduce
+ * "Bugungi reja" — the plan grid (plan redesign; card model in
+ * planCards.ts, card drawing in PlanTile.tsx). Two columns, gap 12, every
+ * task card the same size and anatomy; exactly one orange "next" card while
+ * anything is unfinished; Tahlil full width below an even grid or the
+ * filler of an odd one, so the grid never has a hole. A mini progress (one
+ * segment per counted task) and "2 / 4" sit by the title. When a card's
+ * place changes it glides there (LinearTransition, springs.ui); reduce
  * motion: no movement.
  */
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, { LinearTransition, useReducedMotion } from 'react-native-reanimated'
-import { CircleHelp, GraduationCap, Layers, NotebookPen, Timer, Trophy, type LucideIcon } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
 import { springs } from '../../design/motion'
 import { layout, radius, space } from '../../design/spacing'
-import type { TintName } from '../../design/tokens'
-import { fonts, tabular, type as typeScale } from '../../design/typography'
+import { tabular, type as typeScale } from '../../design/typography'
 import { SectionTitle } from '../../components/ui'
-import { PlanTile } from './PlanTile'
-import { planTiles, type PlanInput, type PlanKey } from './today'
+import { PlanReviewWide, PlanTile } from './PlanTile'
+import { planCards, type PlanCard, type PlanCardsInput } from './planCards'
+import type { PlanKey } from './today'
 
-const ICONS: Record<PlanKey, LucideIcon> = {
-  focus: Timer, quiz: CircleHelp, cards: Layers, course: GraduationCap, competition: Trophy, review: NotebookPen,
-}
-const TINTS: Record<PlanKey, TintName> = {
-  focus: 'orange', quiz: 'blue', cards: 'orange', course: 'violet', competition: 'gold', review: 'teal',
-}
 const SEGMENT = { width: 14, height: 6 }
+const GRID_GAP = 12
 
 const layoutTransition = LinearTransition.springify().duration(springs.ui.duration).dampingRatio(springs.ui.dampingRatio)
 
 export function TodayPlan({ input, next, onOpen }: {
-  input: PlanInput
-  /** The tile the primary action points at ("KEYINGI"). */
+  input: PlanCardsInput
+  /** The primary action's task; the next card falls back from it (planCards.pickNext). */
   next: PlanKey | null
-  onOpen: (key: PlanKey, isNext: boolean) => void
+  onOpen: (card: PlanCard) => void
 }) {
   const { colors } = useTheme()
   const reduceMotion = useReducedMotion()
-  const { tiles, done, total } = planTiles(input, next)
+  const { grid, wide, done, total } = planCards(input, next)
 
   return (
     <View style={styles.section}>
@@ -56,24 +51,17 @@ export function TodayPlan({ input, next, onOpen }: {
         }
       />
       <View style={styles.grid}>
-        {tiles.map(t => (
-          <Animated.View key={t.key} layout={reduceMotion ? undefined : layoutTransition} style={styles.cell}>
-            <PlanTile
-              variant={t.next ? 'next' : t.done ? 'done' : 'default'}
-              icon={ICONS[t.key]}
-              tint={TINTS[t.key]}
-              value={t.value}
-              title={t.title}
-              sub={t.sub}
-              progress={t.progress}
-              status={t.status && !t.done
-                ? <Text style={[typeScale.small, tabular, styles.status, { color: colors.textMuted }]}>{t.status}</Text>
-                : undefined}
-              onPress={() => onOpen(t.key, t.next)}
-            />
+        {grid.map(card => (
+          <Animated.View key={card.key} layout={reduceMotion ? undefined : layoutTransition} style={styles.cell}>
+            <PlanTile card={card} onPress={() => onOpen(card)} />
           </Animated.View>
         ))}
       </View>
+      {wide && (
+        <Animated.View layout={reduceMotion ? undefined : layoutTransition}>
+          <PlanReviewWide card={wide} onPress={() => onOpen(wide)} />
+        </Animated.View>
+      )}
     </View>
   )
 }
@@ -83,7 +71,7 @@ const styles = StyleSheet.create({
   meta: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   segments: { flexDirection: 'row', gap: 3 },
   segment: { width: SEGMENT.width, height: SEGMENT.height, borderRadius: radius.full },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: layout.cardGap },
-  cell: { flexBasis: '40%', flexGrow: 1, maxWidth: '50%' },
-  status: { fontFamily: fonts.bold },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
+  // Two equal columns: each cell grows from 40 % and stops at half.
+  cell: { flexBasis: '40%', flexGrow: 1, maxWidth: '48.5%' },
 })

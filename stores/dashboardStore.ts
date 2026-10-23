@@ -2,13 +2,13 @@ import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   auth, courses, enrollments, lessons as lessonsApi, leaderboard, focusStats, flashcards as flashcardsApi, streaks, dailyQuiz,
-  challenges, type Challenge, type MeResponse, type Course, type LeaderboardEntry, type FocusStats, type StreakState,
+  challenges, ai, type Challenge, type MeResponse, type Course, type LeaderboardEntry, type FocusStats, type StreakState,
   type DailyQuizStatus, type StreakCalendarDay,
 } from '../lib/api'
 import { useAuthStore } from './authStore'
 import { useFlashcardStore } from './flashcardStore'
 import { getTodayReviewQueue } from '../src/features/flashcards/queue'
-import { runningCompetition } from '../src/features/bellashuv/bellashuv'
+import { joinableCompetition, runningCompetition } from '../src/features/bellashuv/bellashuv'
 
 const CACHE_KEY = 'sahifalab_dashboard_cache'
 const CACHE_TTL = 300_000 // 5 min
@@ -55,18 +55,26 @@ export interface DashboardData {
   hasDecks?:      boolean
   /** The competition you joined, while it runs (Bugun tile, Phase 8). */
   competition?:   Challenge | null
+  /** A live competition you haven't joined, when you're in none (the "Qoʻshiling" tile). */
+  openCompetition?: Challenge | null
+  /** Cards studied today (the Kartalar card's bar: reviewed / due). */
+  flashcardReviewedToday?: number
+  /** Last completed week's focus minutes, Mon → Sun (the Tahlil card), and
+   *  the local day it was read — refreshed at most once a day. */
+  lastWeek?: { date: string; minutes: number[] } | null
 }
 
 /** Quiz status + decks, refreshed on every Home focus (cheap, not TTL-gated). */
-type TodayExtras = Pick<DashboardData, 'quiz' | 'quizFetchedAt' | 'topDueDeck' | 'hasDecks' | 'flashcardDueCount' | 'competition'>
+type TodayExtras = Pick<DashboardData, 'quiz' | 'quizFetchedAt' | 'topDueDeck' | 'hasDecks' | 'flashcardDueCount' | 'competition' | 'openCompetition' | 'flashcardReviewedToday'>
 
 async function fetchTodayExtras(): Promise<Partial<TodayExtras>> {
-  const [quizRes, decksRes, statsRes, mineRes] = await Promise.allSettled([
-    dailyQuiz.status(), flashcardsApi.listDecks(), flashcardsApi.getStats(), challenges.mine(),
+  const [quizRes, decksRes, statsRes, mineRes, openRes] = await Promise.allSettled([
+    dailyQuiz.status(), flashcardsApi.listDecks(), flashcardsApi.getStats(), challenges.mine(), challenges.list('active'),
   ])
   const out: Partial<TodayExtras> = {}
   // Joining happens on Bellashuv; this refresh on every Bugun focus picks it up.
   if (mineRes.status === 'fulfilled' && Array.isArray(mineRes.value)) out.competition = runningCompetition(mineRes.value)
+  if (openRes.status === 'fulfilled' && Array.isArray(openRes.value)) out.openCompetition = joinableCompetition(openRes.value)
   if (quizRes.status === 'fulfilled') {
     out.quiz = quizRes.value.quiz
     out.quizFetchedAt = Date.now()
@@ -83,6 +91,7 @@ async function fetchTodayExtras(): Promise<Partial<TodayExtras>> {
     out.topDueDeck = queue.top
     out.hasDecks = decksRes.value.length > 0
     out.flashcardDueCount = queue.total
+    out.flashcardReviewedToday = statsRes.status === 'fulfilled' ? statsRes.value?.today_reviewed ?? 0 : 0
   }
   return out
 }
@@ -103,6 +112,8 @@ interface DashboardState {
   fetch:                 () => Promise<void>
   refresh:               () => Promise<void>
   refreshToday:          (opts?: { force?: boolean }) => Promise<void>
+  /** Tahlil's week: GET /api/ai/weekly-review, once per local day. */
+  loadLastWeek:          () => Promise<void>
   /** Local update after a 5 Savol answer/submit, so Home is right on return. */
   patchQuiz:             (patch: Partial<DailyQuizStatus>) => void
   patchFocusStats:       (patch: Partial<FocusStats>) => void
@@ -154,6 +165,11 @@ async function saveCache(data: DashboardData) {
 // refreshToday() runs on every Home focus; this keeps tab-hopping cheap.
 const TODAY_REFRESH_MS = 30_000
 let lastTodayRefresh = 0
+let lastWeekInFlight = false
+
+function localDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const INTERESTS_KEY = 'sahifalab_user_interests'
 const EXPERIENCE_KEY = 'sahifalab_user_experience'
@@ -168,9 +184,17 @@ async function fetchAll(): Promise<DashboardData> {
 
   // Quiz status and decks (Bugun) load alongside; their failures stay inside fetchTodayExtras.
   lastTodayRefresh = Date.now()
+  // Each enrolled course's progress is requested as soon as the enrolment
+  // list arrives — in parallel with the other calls, not after all of them
+  // (that second round used to add a full extra round-trip to every load).
+  const enrolledWithProgress = enrollments.mine().then(async list => {
+    const withCourse = list.filter(e => e.courses !== null)
+    const progress = await Promise.allSettled(withCourse.map(e => lessonsApi.getProgress(e.course_id)))
+    return { list: withCourse, progress }
+  })
   const [settled, extras] = await Promise.all([Promise.allSettled([
     auth.me(),
-    enrollments.mine(),
+    enrolledWithProgress,
     // Fetch more courses so we have a real pool to personalize from
     courses.list({ limit: 20, ordering: '-created_at', ...(savedLevel ? { level: savedLevel } : {}) }),
     leaderboard.weekly(),
@@ -180,7 +204,7 @@ async function fetchAll(): Promise<DashboardData> {
   const [meRes, enrollRes, coursesRes, leaderRes, statsRes, streakRes] = settled
 
   const user       = meRes.status       === 'fulfilled' ? meRes.value              : null
-  const enrolled   = enrollRes.status   === 'fulfilled' ? enrollRes.value           : []
+  const enrolledLoad = enrollRes.status === 'fulfilled' ? enrollRes.value : { list: [], progress: [] }
   const recCourses = coursesRes.status  === 'fulfilled' ? coursesRes.value.courses  : []
   const lbRaw: import('../lib/api').WeeklyLeaderboard = leaderRes.status === 'fulfilled' ? leaderRes.value : { entries: [], my_rank: null }
 
@@ -225,13 +249,9 @@ async function fetchAll(): Promise<DashboardData> {
   }))
   const leaderTotal = lbRaw.total ?? null
 
-  // Filter enrolled courses: remove ones where course data is null
-  const rawEnrolled = enrolled.filter(e => e.courses !== null)
-
-  // Fetch actual progress for each enrolled course in parallel
-  const progressResults = await Promise.allSettled(
-    rawEnrolled.map(e => lessonsApi.getProgress(e.course_id)),
-  )
+  // Enrolled courses with course data, and their progress (fetched above).
+  const rawEnrolled = enrolledLoad.list
+  const progressResults = enrolledLoad.progress
 
   const validEnrolled: EnrolledCourse[] = rawEnrolled.map((e, i) => {
     const pr           = progressResults[i]
@@ -284,7 +304,10 @@ export const useDashboardStore = create<DashboardState>((set, get) => {
   // A fresh at-risk episode gets its own fresh allowance — reset the
   // reappear-once-more counter the moment streak_state moves off 'at_risk'.
   function applyFresh(fresh: DashboardData) {
-    const wasAtRisk = get().data?.streakAtRisk
+    const prev = get().data
+    const wasAtRisk = prev?.streakAtRisk
+    // Tahlil's week isn't part of fetchAll — keep it across refreshes.
+    if (fresh.lastWeek === undefined && prev?.lastWeek) fresh.lastWeek = prev.lastWeek
     set({ data: fresh })
     if (wasAtRisk && !fresh.streakAtRisk) {
       set({ atRiskModalShownCount: 0 })
@@ -329,6 +352,29 @@ export const useDashboardStore = create<DashboardState>((set, get) => {
       if (!get().data) set({ error: e?.message ?? 'Xatolik yuz berdi' })
     } finally {
       set({ loading: false })
+    }
+  },
+
+  loadLastWeek: async () => {
+    const data = get().data
+    const today = localDayKey(new Date())
+    if (!data || data.lastWeek?.date === today || lastWeekInFlight) return
+    lastWeekInFlight = true
+    try {
+      const res = await ai.weeklyReview()
+      // The last COMPLETED week: the stored review, or the same numbers
+      // computed live while the Monday batch hasn't written it yet.
+      const days = (res.review?.stats ?? res.live_stats)?.days ?? []
+      const minutes = days.length === 7 ? days.map(d => Math.max(0, d.minutes || 0)) : null
+      const current = get().data
+      if (!current) return
+      const updated = { ...current, lastWeek: minutes ? { date: today, minutes } : null }
+      set({ data: updated })
+      saveCache(updated)
+    } catch {
+      // Tahlil just stays hidden until the next try.
+    } finally {
+      lastWeekInFlight = false
     }
   },
 

@@ -242,6 +242,7 @@ export default function StudyTab() {
       </View>
 
       <SegmentedControl
+        size="md"
         segments={['Taymer', 'Statistika']}
         index={activeIndex}
         onChange={setActiveIndex}
@@ -253,8 +254,8 @@ export default function StudyTab() {
       <View style={[styles.page, activeIndex !== 1 && styles.hidden]}><StatsScreen /></View>
 
       {/* ── Timer info modal ───────────────────────────────────────────────── */}
-      <Sheet visible={showTimerInfo} onClose={() => setShowTimerInfo(false)}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 18, paddingBottom: 8 }}>
+      <Sheet visible={showTimerInfo} onClose={() => setShowTimerInfo(false)} scroll>
+          <View style={styles.fcInfoContent}>
 
             <Text style={[styles.fcInfoTitle, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
               Fokus taymer nima?
@@ -331,7 +332,7 @@ export default function StudyTab() {
               </View>
             ))}
 
-          </ScrollView>
+          </View>
 
           <Pressable
             onPress={() => setShowTimerInfo(false)}
@@ -419,6 +420,7 @@ const styles = StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
+  fcInfoContent: { gap: 18, paddingBottom: 8 },
   fcInfoTitle: {
     fontSize: typography.size.xl,
   },

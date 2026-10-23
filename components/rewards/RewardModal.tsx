@@ -26,10 +26,11 @@ const COPY: Record<string, { title: string; icon: string }> = {
   opening_balance:           { title: 'Tanga hamyoningiz tayyor',       icon: '🎁' },
   welcome_bonus:             { title: 'Xush kelibsiz sovg\'asi',        icon: '🎁' },
   study_activity_reconciled: { title: 'O\'qish uchun mukofot',          icon: '📚' },
+  question_published:        { title: 'Savolingiz 5 SAVOLDA chiqdi',    icon: '🙌' },
 }
 
 // One-off, not-part-of-the-daily-routine reasons get the bigger treatment.
-const MILESTONE_REASONS = new Set<string>(['challenge_complete', 'opening_balance', 'welcome_bonus'])
+const MILESTONE_REASONS = new Set<string>(['challenge_complete', 'opening_balance', 'welcome_bonus', 'question_published'])
 
 function copyFor(reason: RewardReason): { title: string; icon: string } {
   return COPY[reason] ?? { title: 'Yangi mukofot', icon: '🪙' }

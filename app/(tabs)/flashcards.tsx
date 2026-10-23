@@ -239,6 +239,7 @@ export default function FlashcardsScreen() {
       </View>
 
       <SegmentedControl
+        size="md"
         segments={['Mening kartalarim', 'Ommaviy toʻplamlar']}
         index={activeTab === 'mine' ? 0 : 1}
         onChange={i => setActiveTab(i === 0 ? 'mine' : 'public')}

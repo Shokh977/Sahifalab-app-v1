@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { isOutsideList, progressFraction, showPinnedRow, statusLine } from '../src/features/bellashuv/challengeDetail'
+import { bandColor, isOutsideList, progressFraction, showPinnedRow, statusLine, textOnBand } from '../src/features/bellashuv/challengeDetail'
 
 const now = Date.parse('2026-10-18T12:00:00Z')
 
@@ -36,5 +36,20 @@ describe('pinned own row', () => {
     expect(showPinnedRow({ ranked: true, inList: false, rowVisible: false })).toBe(true)
     expect(showPinnedRow({ ranked: true, inList: true, rowVisible: false })).toBe(true)
     expect(showPinnedRow({ ranked: true, inList: true, rowVisible: true })).toBe(false)
+  })
+})
+
+describe('competition header band', () => {
+  it('uses the admin colour, or the default orange', () => {
+    expect(bandColor('#1e88e5')).toBe('#1E88E5')
+    expect(bandColor('#f80')).toBe('#FF8800')
+    expect(bandColor('red')).toBe('#F5A623')
+    expect(bandColor(null)).toBe('#F5A623')
+  })
+
+  it('picks readable text for the band', () => {
+    expect(textOnBand('#0D47A1').text).toBe('#FFFFFF')
+    expect(textOnBand('#FFEB3B').text).toBe('#1A1612')
+    expect(textOnBand('#7B1FA2').text).toBe('#FFFFFF')
   })
 })

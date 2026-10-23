@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   View, Text, StyleSheet, Pressable, ScrollView, TextInput,
-  Modal, Alert, BackHandler, ActivityIndicator, Image, Dimensions,
+  Modal, Alert, BackHandler, ActivityIndicator, Dimensions,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { Stack } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -631,10 +632,10 @@ export default function TestScreen() {
         </Text>
 
         {currentQ.question_image ? (
-          <Image
+          <Image cachePolicy="memory-disk"
             source={{ uri: currentQ.question_image }}
             style={styles.qImage}
-            resizeMode="contain"
+            contentFit="contain"
           />
         ) : null}
 

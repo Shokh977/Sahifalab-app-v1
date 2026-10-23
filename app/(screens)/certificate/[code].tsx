@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator,
-  Linking, Alert, Image,
+  Linking, Alert,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import * as FileSystem from 'expo-file-system/legacy'
@@ -26,7 +27,7 @@ function CertCard({ cert, c }: { cert: CertificateDetail; c: any }) {
       <Image
         source={require('../../../assets/images/icon.png')}
         style={styles.logo}
-        resizeMode="contain"
+        contentFit="contain"
       />
 
       {/* Title */}
@@ -71,10 +72,10 @@ function CertCard({ cert, c }: { cert: CertificateDetail; c: any }) {
 
       {/* QR code */}
       {cert.qr_url ? (
-        <Image
+        <Image cachePolicy="memory-disk"
           source={{ uri: cert.qr_url }}
           style={styles.qrCode}
-          resizeMode="contain"
+          contentFit="contain"
         />
       ) : null}
     </View>

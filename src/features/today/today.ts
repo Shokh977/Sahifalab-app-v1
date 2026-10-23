@@ -2,8 +2,6 @@
  * Pure helpers for Bugun (Home). No React, no I/O — unit-tested in
  * __tests__/today.test.ts.
  */
-import { focusLabel } from './focusLabel'
-
 /** Ordinary Uzbek ʻ (U+02BB) in oʻ / gʻ, for server and legacy strings
  *  that still carry an ASCII apostrophe or a curly quote. */
 export function uzText(s: string): string {
@@ -69,152 +67,12 @@ export function rankGap(entries: readonly RankEntry[], myRank: number | null | u
 
 // ── Today plan (Phase 7.5 C3: a 2×2 grid of tiles) ──────────────────────────
 
-export interface PlanInput {
-  /** Always in the plan (Phase 7.5 A6). */
-  focus: { minutes: number; goal: number }
-  quiz: {
-    number: number
-    state: 'not_started' | 'in_progress' | 'submitted'
-    correct: number | null
-    secondsLeft: number
-    answered?: number
-    /** Your place once submitted (newer backends). */
-    rank?: number | null
-  } | null
-  /** Today's review queue; null = no decks, so no tile. */
-  cards: { total: number; estMinutes: number } | null
-  course: { id: number; title: string; progress: number; totalLessons: number } | null
-  /** The competition you joined, while it runs (Phase 8): rank and time left. */
-  competition?: { title: string; rank: number | null; participants: number; left: string } | null
-  /** Haftalik sharh is always a tile (Phase 8); `isNew` on Mondays. */
-  review?: { isNew: boolean } | null
-}
-
-/** Daily tasks (counted in "2 / 4") and the two info tiles that aren't. */
-export type PlanKey = 'focus' | 'quiz' | 'cards' | 'course' | 'competition' | 'review'
-/** Kept for callers that still name rows. */
-export type PlanRowKey = PlanKey
-
-export interface PlanTileData {
-  key: PlanKey
-  value: string
-  title: string
-  sub?: string
-  /** 0–1: a bar instead of the sub-line (the course). */
-  progress?: number
-  /** Top-right text on an unfinished tile ("30%"). */
-  status?: string
-  done: boolean
-  next: boolean
-}
+/** The daily task the primary action points at ("next"). */
+export type PlanKey = 'focus' | 'quiz' | 'cards' | 'course'
 
 /** Which tile the primary action points at. */
 export function nextTileKey(target: 'focus' | 'quiz' | 'review' | 'course' | 'none'): PlanKey | null {
   return target === 'review' ? 'cards' : target === 'none' ? null : target
-}
-
-/**
- * The plan's tiles: Fokus, 5 Savol, Kartalar (with decks), the course (when
- * enrolled), then your running competition and Haftalik sharh. Order: the
- * "next" tile, the other unfinished tasks, the two info tiles, then done
- * tasks. "2 / 4" counts the tasks only.
- */
-export function planTiles(input: PlanInput, next: PlanKey | null): { tiles: PlanTileData[]; done: number; total: number } {
-  const tiles: PlanTileData[] = []
-
-  const f = focusLabel(input.focus.minutes, input.focus.goal)
-  const goal = input.focus.goal > 0 ? input.focus.goal : 20
-  tiles.push({
-    key: 'focus',
-    value: `${Math.max(0, Math.floor(input.focus.minutes))} daq`,
-    title: 'Fokus',
-    sub: `Maqsad ${goal} daq`,
-    done: f.done,
-    next: false,
-  })
-
-  if (input.quiz) {
-    const q = input.quiz
-    const done = q.state === 'submitted'
-    const answered = q.answered ?? 0
-    tiles.push({
-      key: 'quiz',
-      value: done ? `${q.correct ?? 0}/5` : q.state === 'in_progress' && answered > 0 ? `${answered}/5` : 'Oʻynash',
-      title: `5 Savol #${q.number}`,
-      sub: done
-        ? (q.rank ? `#${q.rank}-oʻrin bugun` : 'Bajarildi')
-        : quizClosesIn(q.secondsLeft),
-      done,
-      next: false,
-    })
-  }
-
-  if (input.cards) {
-    const n = input.cards.total
-    tiles.push({
-      key: 'cards',
-      value: `${n} ta`,
-      title: 'Kartalar',
-      sub: n > 0 ? `~${input.cards.estMinutes} daqiqa` : 'Bugun takrorlash yoʻq',
-      done: n === 0,
-      next: false,
-    })
-  }
-
-  if (input.course) {
-    const c = input.course
-    const p = Math.min(1, Math.max(0, c.progress))
-    const lesson = c.totalLessons > 0 ? Math.min(c.totalLessons, Math.round(p * c.totalLessons) + 1) : 1
-    tiles.push({
-      key: 'course',
-      value: `${lesson}-dars`,
-      title: uzText(c.title),
-      progress: p,
-      status: `${Math.round(p * 100)}%`,
-      done: p >= 1,
-      next: false,
-    })
-  }
-
-  // Not daily tasks: shown after the unfinished ones, never "done".
-  const info: PlanTileData[] = []
-  if (input.competition) {
-    const c = input.competition
-    info.push({
-      key: 'competition',
-      value: c.rank != null ? `#${c.rank}` : '—',
-      title: uzText(c.title),
-      sub: `Faol · ${c.left}`,
-      status: `${c.participants} kishi`,
-      done: false,
-      next: false,
-    })
-  }
-  if (input.review) {
-    info.push({
-      key: 'review',
-      value: 'Tahlil',
-      title: 'Haftalik sharh',
-      sub: 'Oʻtgan hafta',
-      status: input.review.isNew ? 'Yangi' : undefined,
-      done: false,
-      next: false,
-    })
-  }
-
-  const nextTile = tiles.find(t => t.key === next && !t.done)
-  if (nextTile) {
-    nextTile.next = true
-    // The KEYINGI tile's sub-line sits in a narrower pill: the short countdown.
-    if (nextTile.key === 'quiz' && input.quiz && input.quiz.state !== 'submitted') nextTile.sub = quizClosesShort(input.quiz.secondsLeft)
-  }
-  const ordered = [
-    ...tiles.filter(t => t.next),
-    ...tiles.filter(t => !t.next && !t.done),
-    ...info,
-    ...tiles.filter(t => t.done),
-  ]
-  return { tiles: ordered, done: tiles.filter(t => t.done).length, total: tiles.length }
 }
 
 /** The unfinished enrolled course with the most progress (ties: first). */

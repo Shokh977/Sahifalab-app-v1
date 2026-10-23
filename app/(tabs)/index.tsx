@@ -24,8 +24,8 @@ import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
 import { Card, EmptyState, SkeletonRow } from '../../src/components/ui'
 import { getPrimaryAction } from '../../src/features/today/primaryAction'
-import { isMonday, localDateKey, nextTileKey, pickCurrentCourse, type PlanKey } from '../../src/features/today/today'
-import { timeLeft } from '../../src/features/bellashuv/bellashuv'
+import { isMonday, localDateKey, nextTileKey, pickCurrentCourse } from '../../src/features/today/today'
+import type { PlanCard } from '../../src/features/today/planCards'
 import { estMinutes } from '../../src/features/flashcards/queueMath'
 import { useMinuteClock } from '../../src/features/today/useMinuteClock'
 import { TodayHeader } from '../../src/features/today/TodayHeader'
@@ -34,6 +34,7 @@ import { TodayPlan } from '../../src/features/today/TodayPlan'
 import { WeeklyRivalCard } from '../../src/features/today/WeeklyRivalCard'
 import { ExtraSlot } from '../../src/features/today/ExtraSlot'
 import { AnnouncementCard } from '../../src/features/today/AnnouncementCard'
+import { QuestionLaunchCard } from '../../src/features/questions/QuestionLaunchCard'
 
 /** Shortest timer the Fokus preset will set from Home. */
 const MIN_FOCUS_PRESET = 5
@@ -45,7 +46,7 @@ export default function HomeTab() {
   const isOnline = useOnline()
   const now = useMinuteClock()
   const {
-    fetch, refresh, refreshToday, data, loading, refreshing, error,
+    fetch, refresh, refreshToday, loadLastWeek, data, loading, refreshing, error,
     streakLostSeen, markStreakLostSeen,
     atRiskModalShownCount, bumpAtRiskModalShown,
   } = useDashboardStore()
@@ -53,7 +54,7 @@ export default function HomeTab() {
   // On focus, not just mount: the tabs stay mounted under the root Stack, so
   // returning from a lesson, quiz or review must re-check. fetch() is
   // TTL-gated; refreshToday() re-reads only the quiz and decks (throttled).
-  useFocusEffect(useCallback(() => { fetch(); refreshToday() }, [fetch, refreshToday]))
+  useFocusEffect(useCallback(() => { fetch(); refreshToday(); loadLastWeek() }, [fetch, refreshToday, loadLastWeek]))
 
   // ── Streak-lost modal ────────────────────────────────────────────────────
   const shownLostRef = useRef(false)
@@ -139,10 +140,14 @@ export default function HomeTab() {
     : 0
   const current = pickCurrentCourse(data.enrolled)
   const currentCourse = current?.courses
-    ? { id: current.course_id, title: current.courses.title, progress: current.progress, totalLessons: current.courses.total_lessons ?? 0 }
+    ? {
+        id: current.course_id, title: current.courses.title, progress: current.progress,
+        totalLessons: current.courses.total_lessons ?? 0, cover: current.courses.thumbnail_url ?? null,
+      }
     : null
   const topDeck = data.topDueDeck ?? null
-  const competition = data.competition ?? null
+  // Yours while it runs; otherwise a live one to join.
+  const competition = data.competition ?? data.openCompetition ?? null
   const fresh = localDateKey(new Date(data.fetchedAt)) === localDateKey(new Date(now))
 
   const action = getPrimaryAction({
@@ -176,25 +181,16 @@ export default function HomeTab() {
     router.push('/(tabs)/study' as any)
   }
 
-  function onPrimary() {
-    track('today_primary_action_tap', { action: action.target })
-    switch (action.target) {
-      case 'focus': openFocus(); break
-      case 'quiz': openQuiz(); break
-      case 'review': openReview(); break
-      case 'course': if (currentCourse) openCourse(currentCourse.id); break
-      default: break
-    }
-  }
-
-  function onPlanTile(key: PlanKey, isNext: boolean) {
-    if (isNext) { onPrimary(); return }
-    if (key === 'focus') openFocus()
-    else if (key === 'quiz') openQuiz()
-    else if (key === 'cards') openReview()
-    else if (key === 'competition') { if (competition) router.push(`/(screens)/challenge/${competition.slug}` as any) }
-    else if (key === 'review') router.push('/(screens)/weekly-review' as any)
-    else if (currentCourse) openCourse(currentCourse.id)
+  // Every card opens its own task — the orange "next" one included (it's
+  // the same task the primary action would open).
+  function onPlanTile(card: PlanCard) {
+    if (card.next) track('today_primary_action_tap', { action: card.type })
+    if (card.type === 'focus') openFocus()
+    else if (card.type === 'quiz') openQuiz()
+    else if (card.type === 'cards') openReview()
+    else if (card.type === 'competition') router.push(`/(screens)/challenge/${card.ref}` as any)
+    else if (card.type === 'review') router.push('/(screens)/weekly-review' as any)
+    else if (card.type === 'course' && typeof card.ref === 'number') openCourse(card.ref)
   }
 
   return (
@@ -220,7 +216,7 @@ export default function HomeTab() {
           goalMinutes={goalMinutes}
           weekCalendar={data.weekCalendar}
           hint={action.target === 'focus' ? { text: action.caption, tone: action.tone } : undefined}
-          onTreePress={() => router.push('/(screens)/streak-detail' as any)}
+          onPress={() => router.push('/(screens)/streak-detail' as any)}
           fresh={fresh}
         />
 
@@ -231,13 +227,20 @@ export default function HomeTab() {
               number: quiz.quiz_number, state: quiz.state, correct: quiz.correct_count,
               secondsLeft: quizSecondsLeft, answered: quiz.answered_count ?? 0, rank: quiz.my_rank ?? null,
             } : null,
-            cards: data.hasDecks ? { total: data.flashcardDueCount, estMinutes: estMinutes(data.flashcardDueCount) } : null,
-            course: currentCourse,
-            competition: competition ? {
-              title: competition.title, rank: competition.rank, participants: competition.participant_count,
-              left: timeLeft(competition.ends_at, now),
+            cards: data.hasDecks ? {
+              due: data.flashcardDueCount, reviewed: data.flashcardReviewedToday ?? 0,
+              estMinutes: estMinutes(data.flashcardDueCount),
             } : null,
-            review: { isNew: isMonday(new Date(now)) },
+            courses: data.enrolled
+              .filter(e => e.courses)
+              .map(e => ({ id: e.course_id, title: e.courses!.title, progress: e.progress, totalLessons: e.courses!.total_lessons ?? 0 })),
+            competitions: competition ? [{
+              id: competition.id, slug: competition.slug, title: competition.title, rank: competition.rank,
+              participants: competition.participant_count, startsAt: competition.starts_at, endsAt: competition.ends_at,
+              joined: !!data.competition,
+            }] : [],
+            review: { isNew: isMonday(new Date(now)), lastWeek: data.lastWeek?.minutes ?? null },
+            nowMs: now,
           }}
           next={nextTileKey(action.target)}
           onOpen={onPlanTile}
@@ -260,6 +263,8 @@ export default function HomeTab() {
           recommended={data.recommended[0] ?? null}
           onCourse={openCourse}
         />
+
+        <QuestionLaunchCard />
 
         <AnnouncementCard />
       </ScrollView>

@@ -10,6 +10,8 @@ export default function ScreensLayout() {
     <Stack
       screenOptions={{
         headerShown:  false,
+        // Screens under the top one stop re-rendering until you go back to them.
+        freezeOnBlur: true,
         // Matches the root stack: iOS-style push on Android too, a fade under reduce motion.
         animation:    pushAnimation(reduceMotion),
         contentStyle: { backgroundColor: c.bgPrimary },

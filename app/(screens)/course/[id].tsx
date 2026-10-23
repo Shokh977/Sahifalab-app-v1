@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, ScrollView, Pressable,
-  Image, ActivityIndicator, Alert, Linking, Animated,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Linking, Animated,
   TextInput, Dimensions, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native'
+import { Image } from 'expo-image'
 import Svg, { Circle } from 'react-native-svg'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -635,7 +635,7 @@ function ReviewCard({ rv, courseId, myUserId, myUsername, onChanged, c }: {
     <View style={styles.reviewFlat}>
       <View style={styles.reviewTop}>
         {rv.profiles.photo_url
-          ? <Image source={{ uri: rv.profiles.photo_url }} style={styles.reviewAvatar} />
+          ? <Image cachePolicy="memory-disk" source={{ uri: rv.profiles.photo_url }} style={styles.reviewAvatar} />
           : <View style={[styles.reviewAvatar, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
               <Text style={{ color: c.textMuted, fontSize: 11 }}>{rv.profiles.first_name[0]?.toUpperCase()}</Text>
             </View>
@@ -853,7 +853,7 @@ function EnrolledInfoTab({
               style={styles.teacherRow}
             >
               {teacher.photo_url
-                ? <Image source={{ uri: teacher.photo_url }} style={[styles.teacherAvatar, { width: 44, height: 44, borderRadius: 22 }]} />
+                ? <Image cachePolicy="memory-disk" source={{ uri: teacher.photo_url }} style={[styles.teacherAvatar, { width: 44, height: 44, borderRadius: 22 }]} />
                 : <View style={[styles.teacherAvatar, { width: 44, height: 44, borderRadius: 22, backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
                     <Text style={{ color: c.textMuted, fontSize: 16 }}>{teacher.first_name[0].toUpperCase()}</Text>
                   </View>
@@ -1397,15 +1397,17 @@ export default function CourseDetailScreen() {
         </View>
 
         {/* Tab content — swipeable pages */}
-        <ScrollView
+        <Animated.ScrollView
           ref={tabScrollRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
+          // Native driver: the tab underline follows the swipe on the UI
+          // thread instead of round-tripping every frame through JS.
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { x: tabScrollX } } }],
-            { useNativeDriver: false },
+            { useNativeDriver: true },
           )}
           onMomentumScrollEnd={e => {
             const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W)
@@ -1452,7 +1454,7 @@ export default function CourseDetailScreen() {
               router={router} c={c} insets={insets}
             />
           </View>
-        </ScrollView>
+        </Animated.ScrollView>
         {sheets}
       </SafeAreaView>
     )

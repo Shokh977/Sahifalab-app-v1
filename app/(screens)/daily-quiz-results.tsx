@@ -10,6 +10,8 @@ import { ShareCard } from '../../components/daily-quiz/ShareCard'
 import { typography, spacing, radius } from '../../lib/constants'
 import { rankColumnWidth } from '../../src/design/spacing'
 import { tabular } from '../../src/design/typography'
+import { QuestionCta } from '../../src/features/questions/QuestionCta'
+import { CTA, ctaProminent } from '../../src/features/questions/questionForm'
 
 export default function DailyQuizResultsScreen() {
   const { c }  = useTheme()
@@ -160,8 +162,18 @@ export default function DailyQuizResultsScreen() {
               ))}
               <Text style={[s.explanation, { color: c.textSecondary }]}>{q.explanation}</Text>
               <Text style={[s.source, { color: c.textMuted }]}>{q.source}</Text>
+              {q.submitted_by ? (
+                <Text style={[s.credit, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                  {CTA.attribution(q.submitted_by)}
+                </Text>
+              ) : null}
             </View>
           ))}
+
+          <QuestionCta
+            prominent={ctaProminent(data.caller?.correct_count ?? 0, data.contributors)}
+            contributors={data.contributors}
+          />
 
           <Text style={[s.sectionLabel, { color: c.textMuted, fontFamily: typography.fontFamily.semibold }]}>
             REYTING · {data.total_players} o'yinchi
@@ -231,6 +243,7 @@ const s = StyleSheet.create({
   optText: { fontSize: 13, flex: 1 },
   explanation: { fontSize: 12, lineHeight: 18, marginTop: 4 },
   source: { fontSize: 11, fontStyle: 'italic' },
+  credit: { fontSize: 12, marginTop: 2 },
 
   leaderboard: { borderRadius: radius.cardLg, borderWidth: 1, overflow: 'hidden' },
   lbRow: {

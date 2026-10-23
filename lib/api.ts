@@ -56,6 +56,10 @@ function localDate(): string {
  * instead, here, once, for every call site in the app.
  */
 function formatErrorDetail(detail: unknown): string {
+  // Structured refusals ({code, message}) — the message is the Uzbek text to show.
+  if (detail && typeof detail === 'object' && typeof (detail as { message?: unknown }).message === 'string') {
+    return (detail as { message: string }).message
+  }
   if (Array.isArray(detail)) {
     const msgs = detail
       .map((e: any) => (e && typeof e.msg === 'string' ? e.msg : null))
@@ -65,9 +69,21 @@ function formatErrorDetail(detail: unknown): string {
   return "So'rov noto'g'ri. Qayta urinib ko'ring."
 }
 
+// The JWT, kept in memory after the first read. Every request used to read
+// SecureStore (a Keystore/Keychain decrypt, often 10–40 ms on Android) before
+// it could even start; now only the first one does. authStore keeps this in
+// step whenever it saves or clears the token.
+let tokenCache: string | null | undefined
+
+export function setCachedToken(token: string | null): void {
+  tokenCache = token
+}
+
 async function getToken(): Promise<string | null> {
-  try { return await SecureStore.getItemAsync(TOKEN_KEY) }
+  if (tokenCache !== undefined) return tokenCache
+  try { tokenCache = await SecureStore.getItemAsync(TOKEN_KEY) }
   catch { return null }
+  return tokenCache
 }
 
 export async function request<T>(
@@ -115,7 +131,13 @@ export async function request<T>(
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       const message = data?.detail ?? `HTTP ${res.status}`
-      throw new Error(typeof message === 'string' ? message : formatErrorDetail(message))
+      const err = new Error(typeof message === 'string' ? message : formatErrorDetail(message)) as Error & { code?: string; status?: number }
+      // Stable refusal code when the backend sends one (e.g. 'daily_limit').
+      if (message && typeof message === 'object' && typeof (message as { code?: unknown }).code === 'string') {
+        err.code = (message as { code: string }).code
+      }
+      err.status = res.status
+      throw err
     }
     return data as T
   }
@@ -387,6 +409,9 @@ export const search = {
 
   people: (q: string) =>
     request<SearchResults>(`/api/search?q=${encodeURIComponent(q)}&type=people`, { auth: true }),
+
+  courses: (q: string) =>
+    request<SearchResults>(`/api/search?q=${encodeURIComponent(q)}&type=courses`, { auth: true }),
 }
 
 // ── Profile endpoints ─────────────────────────────────────────────────────────
@@ -1969,6 +1994,8 @@ export interface DailyQuizResultQuestion {
   explanation:   string
   source:        string
   voided:        boolean
+  /** "Siz ham savol yuboring": the submitter's name (or "Sahifalab foydalanuvchisi"). Newer backends only. */
+  submitted_by?: string | null
 }
 
 export interface DailyQuizLeaderboardEntry {
@@ -1997,6 +2024,8 @@ export interface DailyQuizResults {
   quiz_streak_days: number
   /** People the caller follows (+ the caller), global rank. Newer backends only. */
   friends?:         (DailyQuizLeaderboardEntry & { is_me: boolean })[]
+  /** Names behind today's user-sourced questions. Newer backends only. */
+  contributors?:    string[]
 }
 
 export const dailyQuiz = {
@@ -2033,6 +2062,70 @@ export const dailyQuiz = {
       body: JSON.stringify({ question_id: questionId, reason }),
       auth: true,
     }),
+}
+
+// ── "Siz ham savol yuboring" — user-submitted 5 Savol questions (105) ────────
+// Server-authoritative: limits, status, scheduling and the reward are all
+// decided by the backend; the client only shows them.
+
+export type QuestionSubmissionStatus =
+  | 'pending_review' | 'approved' | 'scheduled' | 'published' | 'rejected' | 'duplicate'
+
+export interface QuestionLimits {
+  enabled:          boolean
+  daily_limit:      number
+  used_today:       number
+  remaining_today:  number
+  pending:          number
+  max_pending:      number
+  next_slot_at:     string | null
+  /** Show the "Notoʻgʻri javoblarni AI tayyorlasin" button (app_config, off by default). */
+  assist_enabled:   boolean
+  assist_remaining: number
+  reward_tanga:     number
+}
+
+export interface MyQuestionSubmission {
+  id:             number
+  question_text:  string
+  options:        string[]
+  correct_index:  number
+  status:         QuestionSubmissionStatus
+  /** Ready-to-show Uzbek label ("Koʻrib chiqilmoqda", "03.11 kuni chiqadi", …). */
+  status_label:   string
+  is_anonymous:   boolean
+  created_at:     string
+  quiz_number:    number | null
+  quiz_date:      string | null
+  published_at:   string | null
+  reward_tanga:   number | null
+}
+
+export interface QuestionSubmitBody {
+  question_text:  string
+  options:        string[]
+  correct_index:  number
+  explanation?:   string | null
+  source_note?:   string | null
+  is_anonymous:   boolean
+  used_ai_assist: boolean
+}
+
+export const questions = {
+  limits: () => request<QuestionLimits>('/api/questions/limits', { auth: true }),
+
+  submit: (body: QuestionSubmitBody) =>
+    request<{ id: number; status: QuestionSubmissionStatus; status_label: string; remaining_today: number }>(
+      '/api/questions/submit', { method: 'POST', body: JSON.stringify(body), auth: true },
+    ),
+
+  /** Three editable wrong options. Separate, smaller daily cap. */
+  assistDistractors: (questionText: string, correctAnswer: string) =>
+    request<{ distractors: string[]; assist_remaining: number }>('/api/questions/assist-distractors', {
+      method: 'POST', body: JSON.stringify({ question_text: questionText, correct_answer: correctAnswer }), auth: true,
+    }),
+
+  mine: () => request<{ submissions: MyQuestionSubmission[] }>('/api/questions/mine', { auth: true }),
 }
 
 // ── Reward modal queue (tanga-economy-rework Part 5) ─────────────────────────

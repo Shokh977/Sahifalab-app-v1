@@ -1,11 +1,13 @@
 /**
- * "Daraxt yoʻli" — the ten tree stages, moved from the old tree-stages
- * screen into Seriya (redesign Phase 5). Same MagicTree art and
- * TREE_STAGES; the current stage is outlined, locked ones show their
- * withered tree with a lock (readable, not faded out).
+ * "Daraxt yoʻli" — the ten tree stages (the tree-stages screen, opened
+ * from Seriya's map button). Same MagicTree art and TREE_STAGES; the current
+ * stage is outlined, locked ones show their withered tree with a lock
+ * (readable, not faded out). The trees are still (animate={false}): plain
+ * SVG, no animated nodes. Inside Seriya's scroll, ten animated-node trees
+ * under the live hero tree were what made the screen stall.
  */
 import React, { useEffect, useState } from 'react'
-import { InteractionManager, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
+import { InteractionManager, StyleSheet, Text, View } from 'react-native'
 import { Lock } from 'lucide-react-native'
 import { MagicTree } from '../../../components/streak/MagicTree'
 import { TREE_STAGES, stageFromStreak } from '../../../lib/treeTheme'
@@ -18,7 +20,7 @@ import { uzText } from '../today/today'
 const TREE_W = avatarSize.xl
 const TREE_H = avatarSize.xl + space.lg
 
-export function TreeStagesSection({ streakDays, onLayout }: { streakDays: number; onLayout?: (e: LayoutChangeEvent) => void }) {
+export function TreeStagesSection({ streakDays }: { streakDays: number }) {
   const { colors } = useTheme()
   const current = stageFromStreak(streakDays)
   const currentMeta = TREE_STAGES[current - 1]
@@ -32,8 +34,7 @@ export function TreeStagesSection({ streakDays, onLayout }: { streakDays: number
   }, [])
 
   return (
-    <View style={styles.section} onLayout={onLayout}>
-      <Text style={[typeScale.title2, { color: colors.text }]} accessibilityRole="header">Daraxt yoʻli</Text>
+    <View style={styles.section}>
       <Text style={[typeScale.callout, { color: colors.textMuted }]}>Seriyangizni oshiring — barcha 10 shaklni oching.</Text>
 
       <View style={styles.grid}>

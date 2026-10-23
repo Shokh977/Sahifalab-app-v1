@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
-  ActivityIndicator, Image, RefreshControl, Alert, Linking,
+  ActivityIndicator, RefreshControl, Alert, Linking,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import {
   Users, BookOpen, TrendingUp, Wallet,
@@ -270,7 +271,7 @@ export default function TeacherDashboardScreen() {
       <View style={[styles.banner, { backgroundColor: c.bgSecondary, borderBottomColor: c.border }]}>
         <View style={styles.bannerLeft}>
           {user?.photo_url ? (
-            <Image source={{ uri: user.photo_url }} style={styles.avatar} />
+            <Image cachePolicy="memory-disk" source={{ uri: user.photo_url }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, { backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }]}>
               <Text style={{ color: c.brand, fontSize: 20, fontFamily: typography.fontFamily.bold }}>

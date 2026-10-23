@@ -6,20 +6,21 @@ import React, { useState } from 'react'
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { Redirect } from 'expo-router'
 import {
-  Bell, BookOpen, CalendarCheck, ChevronRight, Clock, CircleHelp, Flame, GraduationCap, Inbox, Layers, Mail, Moon, Search,
+  Bell, BookOpen, CalendarCheck, ChevronRight, Clock, Flame, Inbox, Mail, Moon, Search,
   Settings2, Star, Timer, TreePine, Trophy, Users, Zap,
 } from 'lucide-react-native'
 import { ThemeProvider, useTheme } from '../../src/design/ThemeProvider'
 import { LevelUpOverlay } from '../../components/study/LevelUpOverlay'
 import { layout, space } from '../../src/design/spacing'
-import { tabular, type as typeScale } from '../../src/design/typography'
+import { type as typeScale } from '../../src/design/typography'
 import type { Scheme } from '../../src/design/tokens'
 import {
   Avatar, Badge, Button, Card, Chip, CoinPill, Countdown, IconButton, EmptyState, Input, ListRow, ProgressBar, ProgressRing,
   ScreenHeader, SegmentedControl, Sheet, Stepper, SkeletonBlock, SkeletonLine, SkeletonRow, StatTile, TextArea, Toast,
   ToastHost, showToast, SectionTitle, WeekDayIcon, BadgeTile,
 } from '../../src/components/ui'
-import { PlanTile } from '../../src/features/today/PlanTile'
+import { TodayPlan } from '../../src/features/today/TodayPlan'
+import { planPreviews } from '../../src/features/today/planPreviews'
 import { RivalLadder, type RivalRow } from '../../src/features/today/RivalLadder'
 import { TrophyIcon } from '../../src/features/today/TrophyIcon'
 import { CompetitionHero } from '../../src/features/bellashuv/CompetitionHero'
@@ -256,6 +257,8 @@ const LADDER: RivalRow[] = [
 function Phase75() {
   const { colors } = useTheme()
   const [ladder, setLadder] = useState(LADDER)
+  const [previews] = useState(() => planPreviews(Date.now()))
+  const [plan, setPlan] = useState(0)
   const noop = () => {}
   const swap = () => setLadder(rows => {
     // You pass Abror: +30 XP and the ranks trade places.
@@ -284,13 +287,13 @@ function Phase75() {
         </View>
       </Section>
 
-      <Section title="Phase 7.5 · PlanTile">
-        <View style={styles.grid}>
-          <View style={styles.cell}><PlanTile variant="next" icon={Layers} tint="orange" value="48 ta" title="Kartalar" sub="~6 daqiqa" onPress={noop} /></View>
-          <View style={styles.cell}><PlanTile variant="default" icon={GraduationCap} tint="violet" value="3-dars" title="Mnemonika" progress={0.3} status={<Text style={[typeScale.small, tabular, { color: colors.textMuted }]}>30%</Text>} onPress={noop} /></View>
-          <View style={styles.cell}><PlanTile variant="done" icon={Timer} tint="orange" value="180 daq" title="Fokus" sub="Maqsad 10 daq" onPress={noop} /></View>
-          <View style={styles.cell}><PlanTile variant="done" icon={CircleHelp} tint="blue" value="5/5" title="5 Savol #12" sub="#10-oʻrin bugun" onPress={noop} /></View>
+      <Section title="Bugungi reja — holatlar">
+        <View style={styles.wrap}>
+          {previews.map((p, k) => (
+            <Chip key={p.name} variant="choice" label={p.name} selected={plan === k} onPress={() => setPlan(k)} />
+          ))}
         </View>
+        <TodayPlan input={previews[plan].input} next={previews[plan].next} onOpen={noop} />
       </Section>
 
       <Section title="Phase 7.5 · RivalLadder">

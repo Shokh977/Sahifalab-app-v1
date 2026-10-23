@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { accentFill, accentFillDeep, avatarColors, backgroundTokens, onAvatar, palette, textTokens, tintOf, type TintName } from '../src/design/tokens'
+import { accentFill, accentFillDeep, avatarColors, backgroundTokens, onAvatar, palette, planNext, planTypeColors, textTokens, tintOf, type TintName } from '../src/design/tokens'
 import { contrastRatio, meetsAA } from '../src/design/contrast'
 
 /** Midpoint of two #RRGGBB colours (the gradient's centre). */
@@ -83,5 +83,20 @@ describe.each(['dark', 'light'] as const)('%s chips and tiles', scheme => {
   it.each(tints.map(t => [t]))('%s icon on its soft tile is at least 3:1 (non-text)', t => {
     const { ink, soft } = tintOf(p, t, scheme)
     expect(contrastRatio(ink, over(soft, p.surface))).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('Bugungi reja cards', () => {
+  it.each(['light', 'dark'] as const)('%s: every type ink and the muted text read on the card', scheme => {
+    const p = palette[scheme]
+    for (const t of Object.values(planTypeColors[scheme]) as { ink: string }[]) {
+      expect(contrastRatio(t.ink, p.surface)).toBeGreaterThanOrEqual(4.5)
+    }
+    expect(contrastRatio(p.textMuted, p.surface)).toBeGreaterThanOrEqual(4.5)
+  })
+  it.each(['light', 'dark'] as const)('%s: the next card content reads on it', scheme => {
+    const n = planNext[scheme]
+    expect(contrastRatio(n.ink, n.bg)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(n.playIcon, n.playBg)).toBeGreaterThanOrEqual(3)
   })
 })

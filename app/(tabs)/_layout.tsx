@@ -3,20 +3,24 @@ import { Tabs } from 'expo-router'
 import { AnimatedTabBar } from '../../components/layout/AnimatedTabBar'
 import { bezier, durations } from '../../src/design/motion'
 
-// Tab switch (spec section 5): content crossfades in 220 ms, no sliding.
+// Tab switch: content crossfades, no sliding. 150 ms (was 220): the
+// system's own tab bars switch almost instantly, and a longer fade read as
+// the app being slow to respond.
 const TAB_FADE = {
   animation: 'fade' as const,
   transitionSpec: {
     animation: 'timing' as const,
     // react-navigation animates tabs with RN Animated, so the curve is RN Easing.
-    config: { duration: durations.fade, easing: Easing.bezier(...bezier.standard) },
+    config: { duration: durations.fast, easing: Easing.bezier(...bezier.standard) },
   },
 }
 
 export default function TabLayout() {
   return (
     <Tabs
-      screenOptions={{ headerShown: false, ...TAB_FADE }}
+      // freezeOnBlur: a tab you're not looking at stops re-rendering (Bugun's
+      // minute clock, store updates from other screens) until you come back.
+      screenOptions={{ headerShown: false, freezeOnBlur: true, ...TAB_FADE }}
       tabBar={(props) => <AnimatedTabBar {...props} />}
     >
       <Tabs.Screen name="index"         options={{ title: 'Bugun' }} />

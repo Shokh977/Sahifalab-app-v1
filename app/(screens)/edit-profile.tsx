@@ -1,15 +1,17 @@
 import React, { useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TextInput, Pressable,
-  ScrollView, Image, ActivityIndicator, Alert,
+  ScrollView, ActivityIndicator, Alert,
   KeyboardAvoidingView, Platform,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { useTheme } from '../../hooks/useTheme'
 import { profile as profileApi, uploadProfileImage, onboarding } from '../../lib/api'
 import { useProfileStore } from '../../stores/profileStore'
+import { useAuthStore } from '../../stores/authStore'
 import { typography, spacing, radius } from '../../lib/constants'
 import { AvatarPickerModal } from '../../components/ui/AvatarPickerModal'
 
@@ -37,18 +39,28 @@ export default function EditProfileScreen() {
   // ── Avatar picker ──────────────────────────────────────────────────────────
 
   const launchPicker = useCallback(async (fromCamera: boolean) => {
-    const perms = fromCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync()
-
-    if (!perms.granted) {
-      Alert.alert('Ruxsat kerak', fromCamera ? 'Kamera uchun ruxsat bering.' : 'Galereya uchun ruxsat bering.')
-      return
+    // Only the camera needs a runtime permission. The gallery is the system
+    // photo picker (Android usesAndroidPhotoPicker, iOS PHPicker), which needs
+    // none — and asking for it always failed on Android because
+    // READ_MEDIA_IMAGES is in app.json's blockedPermissions, so the gallery
+    // never even opened.
+    if (fromCamera) {
+      const perms = await ImagePicker.requestCameraPermissionsAsync()
+      if (!perms.granted) {
+        Alert.alert('Ruxsat kerak', 'Kamera uchun ruxsat bering.')
+        return
+      }
     }
 
-    const result = fromCamera
-      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.85 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.85 })
+    let result: ImagePicker.ImagePickerResult
+    try {
+      result = fromCamera
+        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 })
+    } catch (e: any) {
+      Alert.alert('Xatolik', e?.message ?? 'Rasmni ochib boʻlmadi')
+      return
+    }
 
     if (result.canceled || !result.assets[0]) return
     const asset = result.assets[0]
@@ -58,6 +70,7 @@ export default function EditProfileScreen() {
     try {
       const url = await uploadProfileImage(asset.uri, 'avatar', asset.mimeType ?? 'image/jpeg')
       patchOwnProfile({ photo_url: url })
+      useAuthStore.getState().patchUser({ photo_url: url })
       setAvatarUri(url)
     } catch (e: any) {
       Alert.alert('Xatolik', e?.message ?? 'Rasm yuklanmadi')
@@ -70,6 +83,32 @@ export default function EditProfileScreen() {
   const handleAvatarPress = useCallback(() => {
     setShowPicker(true)
   }, [])
+
+  const removeAvatar = useCallback(() => {
+    Alert.alert('Rasmni oʻchirish', 'Profil rasmingiz oʻchiriladi.', [
+      { text: 'Bekor', style: 'cancel' },
+      {
+        text: 'Oʻchirish',
+        style: 'destructive',
+        onPress: async () => {
+          const previous = avatarUri
+          setAvatarUri(null)
+          setUploading(true)
+          try {
+            // PUT /api/profile/me treats an empty photo_url as "no photo".
+            await profileApi.updateMe({ photo_url: '' })
+            patchOwnProfile({ photo_url: null })
+            useAuthStore.getState().patchUser({ photo_url: null })
+          } catch (e: any) {
+            setAvatarUri(previous)
+            Alert.alert('Xatolik', e?.message ?? 'Rasmni oʻchirib boʻlmadi')
+          } finally {
+            setUploading(false)
+          }
+        },
+      },
+    ])
+  }, [avatarUri, patchOwnProfile])
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -134,7 +173,7 @@ export default function EditProfileScreen() {
           <View style={styles.avatarSection}>
             <Pressable onPress={handleAvatarPress} style={styles.avatarWrap}>
               {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                <Image cachePolicy="memory-disk" source={{ uri: avatarUri }} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, { backgroundColor: c.bgTertiary, alignItems: 'center', justifyContent: 'center' }]}>
                   <Text style={{ color: c.textSecondary, fontSize: 28, fontFamily: typography.fontFamily.bold }}>
@@ -222,6 +261,7 @@ export default function EditProfileScreen() {
         onClose={() => setShowPicker(false)}
         onCamera={() => launchPicker(true)}
         onGallery={() => launchPicker(false)}
+        onRemove={avatarUri ? removeAvatar : undefined}
       />
     </SafeAreaView>
   )

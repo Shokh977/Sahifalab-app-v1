@@ -1,6 +1,7 @@
 /**
  * SegmentedControl — 2–3 segments; the selection indicator slides with
- * springs.nav (no bounce), and jumps under reduce motion.
+ * springs.nav (no bounce), and jumps under reduce motion. `size="md"`:
+ * the screen-level tabs (Reyting, Fokus): a 44 px track with 15 px labels.
  */
 import React, { useEffect, useState } from 'react'
 import { StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
@@ -8,19 +9,22 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSprin
 import { useTheme } from '../../design/ThemeProvider'
 import { springs } from '../../design/motion'
 import { controlHeight, radius, space } from '../../design/spacing'
-import { type as typeScale } from '../../design/typography'
+import { fonts, type as typeScale } from '../../design/typography'
 import { Pressable } from './Pressable'
 
 export interface SegmentedControlProps {
   segments: readonly string[]
   index: number
   onChange: (index: number) => void
+  size?: 'sm' | 'md'
   style?: StyleProp<ViewStyle>
 }
 
 const INSET = 3
+const MD = { height: 44, label: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20 } }
 
-export function SegmentedControl({ segments, index, onChange, style }: SegmentedControlProps) {
+export function SegmentedControl({ segments, index, onChange, size = 'sm', style }: SegmentedControlProps) {
+  const md = size === 'md'
   const { colors, scheme, elevation } = useTheme()
   const reduceMotion = useReducedMotion()
   const [width, setWidth] = useState(0)
@@ -38,7 +42,7 @@ export function SegmentedControl({ segments, index, onChange, style }: Segmented
     <View
       accessibilityRole="tablist"
       onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
-      style={[styles.track, { backgroundColor: colors.surfaceRaised }, style]}
+      style={[styles.track, { height: md ? MD.height : controlHeight.sm, backgroundColor: colors.surfaceRaised }, style]}
     >
       {segW > 0 && (
         <Animated.View
@@ -63,7 +67,12 @@ export function SegmentedControl({ segments, index, onChange, style }: Segmented
             accessibilityLabel={label}
             style={styles.segment}
           >
-            <Text style={[typeScale.callout, { color: active ? colors.text : colors.textMuted }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+            <Text
+              style={[md ? MD.label : typeScale.callout, md && active && { fontFamily: fonts.bold }, { color: active ? colors.text : colors.textMuted }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
               {label}
             </Text>
           </Pressable>
@@ -74,7 +83,7 @@ export function SegmentedControl({ segments, index, onChange, style }: Segmented
 }
 
 const styles = StyleSheet.create({
-  track: { flexDirection: 'row', height: controlHeight.sm, borderRadius: radius.md, padding: INSET },
+  track: { flexDirection: 'row', borderRadius: radius.md, padding: INSET },
   indicator: { position: 'absolute', top: INSET, bottom: INSET, left: INSET, borderRadius: radius.md - INSET },
   segment: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xs },
 })

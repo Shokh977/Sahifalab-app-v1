@@ -3,9 +3,9 @@ import React, {
 } from 'react'
 import {
   View, Text, StyleSheet, Modal, Pressable, FlatList,
-  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Image, Animated, Dimensions,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Dimensions,
 } from 'react-native'
+import { Image } from 'expo-image'
 import Reanimated, {
   useSharedValue, useAnimatedStyle, withSpring, runOnJS,
 } from 'react-native-reanimated'
@@ -105,7 +105,7 @@ async function saveThreadCache(postId: number, commentId: number, parentId: numb
 function Avatar({ uri, name, size = AVATAR_SIZE }: { uri?: string | null; name: string; size?: number }) {
   const { c } = useTheme()
   const init  = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  if (uri) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+  if (uri) return <Image cachePolicy="memory-disk" source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c.brandSubtle, alignItems: 'center', justifyContent: 'center' }}>
       <Text style={{ color: c.brand, fontSize: size * 0.38, fontFamily: typography.fontFamily.bold }}>{init}</Text>
