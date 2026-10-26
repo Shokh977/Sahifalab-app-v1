@@ -19,7 +19,7 @@ import { AvatarRing } from './cosmetics/AvatarRing'
 import {
   BANNERS, RARITY_COLOR, RARITY_LABEL, RINGS, TREES, unlockHint, type BannerKind, type LookSlot, type RingKind,
 } from './cosmetics/cosmetics'
-import { PRO_UPGRADE_ENABLED } from '../pro/flags'
+import { PRO_PURCHASE_ENABLED } from '../pro/flags'
 
 const STAGE_H = 196
 
@@ -52,7 +52,13 @@ export function GetLookSheet({ target, owner, unlockedForMe, onClose }: {
     if (unlockedForMe) return <Button label="Menga ham qoʻllash" size="lg" fullWidth onPress={apply} />
     const u = item.unlock
     if (u.kind === 'pro') {
-      return <Button label={PRO_UPGRADE_ENABLED ? 'Pro bilan oling' : 'Tez orada'} size="lg" fullWidth disabled onPress={() => {}} />
+      if (!PRO_PURCHASE_ENABLED) return <Button label="Tez orada" size="lg" fullWidth disabled onPress={() => {}} />
+      return (
+        <>
+          <Button label="Pro bilan oling" size="lg" fullWidth onPress={() => { onClose(); router.push('/(screens)/pro' as any) }} />
+          <Text style={[typeScale.callout, styles.center, { color: colors.textMuted }]}>1, 3 yoki 12 oy · bir martalik toʻlov</Text>
+        </>
+      )
     }
     if (u.kind === 'seasonal') return <Button label="Mavsum boshlanganda" size="lg" fullWidth disabled onPress={() => {}} />
     return <Button label="Seriyani davom ettiring" size="lg" fullWidth variant="secondary" onPress={onClose} />
@@ -120,5 +126,6 @@ const styles = StyleSheet.create({
   rarityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: radius.full, paddingHorizontal: space.sm, paddingVertical: 3 },
   dot: { width: 7, height: 7, borderRadius: 4 },
   ownerRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  cta: { marginTop: space.sm },
+  cta: { marginTop: space.sm, gap: space.xs },
+  center: { textAlign: 'center' },
 })

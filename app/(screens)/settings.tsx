@@ -9,6 +9,8 @@ import { ChevronLeft } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useThemeStore } from '../../stores/themeStore'
 import { THEMES, THEME_IDS } from '../../src/design/themes'
+import { pro as proApi, type ProStatus } from '../../lib/api'
+import { PRO_PURCHASE_ENABLED } from '../../src/features/pro/flags'
 import { useDevLookStore } from '../../stores/devLookStore'
 import { BANNERS, RINGS } from '../../src/features/profile/cosmetics/cosmetics'
 import { useAuthStore } from '../../stores/authStore'
@@ -532,6 +534,15 @@ export default function SettingsScreen() {
   const router                = useRouter()
   const { preference, setPreference, themeId, setThemeId } = useThemeStore()
   const devLook = useDevLookStore()
+  // Sahifalab Pro: "Faol · N kun qoldi", a pending payment, or the way in.
+  const [proStatus, setProStatus] = useState<ProStatus | null>(null)
+  useEffect(() => {
+    if (!PRO_PURCHASE_ENABLED) return
+    proApi.status().then(setProStatus).catch(() => {})
+  }, [])
+  const proValue = proStatus?.is_pro
+    ? `Faol · ${proStatus.days_left} kun qoldi`
+    : proStatus?.pending ? 'Toʻlov tekshirilmoqda' : 'Ochish'
   const { user, logout, loginWithToken, refreshUser } = useAuthStore()
 
   // O'QISH
@@ -793,6 +804,13 @@ export default function SettingsScreen() {
         {/* KO'RINISH */}
         <SectionHeader title="KO'RINISH" />
         <SettingGroup>
+          {PRO_PURCHASE_ENABLED && (
+            <SettingRow
+              label="✨ Sahifalab Pro"
+              value={proValue}
+              onPress={() => router.push('/(screens)/pro' as any)}
+            />
+          )}
           <SettingRow
             label="Mavzu"
             value={THEMES[themeId].name}

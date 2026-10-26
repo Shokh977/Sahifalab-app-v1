@@ -21,7 +21,8 @@ import { fonts, type as typeScale } from '../../src/design/typography'
 import { AccentFill, Button, Pressable, ScreenHeader, Sheet, ToastHost, showToast } from '../../src/components/ui'
 import { ThemeDecor } from '../../src/features/themes/ThemeDecor'
 import { THEME_ITEMS } from '../../src/features/profile/cosmetics/cosmetics'
-import { PRO_UPGRADE_ENABLED } from '../../src/features/pro/flags'
+import { useRouter } from 'expo-router'
+import { PRO_PURCHASE_ENABLED } from '../../src/features/pro/flags'
 
 const MAIN: ThemeId[] = ['standart', 'tun', 'zumrad', 'sakura']
 const SEASONAL: ThemeId[] = ['ramazon', 'navroz']
@@ -97,6 +98,7 @@ function MiniBugun({ width }: { width: number }) {
 export default function ThemesScreen() {
   const { colors } = useTheme()
   const { width } = useWindowDimensions()
+  const router = useRouter()
   const themeId = useThemeStore(s => s.themeId)
   const setThemeId = useThemeStore(s => s.setThemeId)
   const [look, setLook] = useState<MyLook | null>(null)
@@ -192,8 +194,9 @@ export default function ThemesScreen() {
             {lockedItem.unlock.kind === 'pro' ? (
               <>
                 <Button
-                  label={PRO_UPGRADE_ENABLED ? 'Pro bilan oching' : 'Tez orada'}
-                  size="lg" fullWidth disabled onPress={() => {}}
+                  label={PRO_PURCHASE_ENABLED ? 'Pro bilan oching' : 'Tez orada'}
+                  size="lg" fullWidth disabled={!PRO_PURCHASE_ENABLED}
+                  onPress={() => { setLocked(null); router.push('/(screens)/pro' as any) }}
                 />
                 <Text style={[typeScale.callout, styles.center, { color: colors.textMuted }]}>
                   1, 3 yoki 12 oy · bir martalik toʻlov, avtomatik yangilanmaydi

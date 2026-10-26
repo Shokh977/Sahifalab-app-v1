@@ -1320,6 +1320,42 @@ export interface EnrollmentCodeResponse {
   status:          'awaiting_payment' | 'paid'
 }
 
+/** Sahifalab Pro one-time passes (backend 107_pro_orders). */
+export interface ProPlan {
+  months:         1 | 3 | 12
+  price:          number
+  per_month:      number
+  saving_percent: number
+}
+export interface ProRequest {
+  reference_code: string
+  status:         'awaiting_payment' | 'paid'
+  expires_at:     string | null
+  months:         number
+  amount:         number
+}
+export interface ProStatus {
+  is_pro:    boolean
+  pro_until: string | null
+  days_left: number
+  pending:   ProRequest | null
+}
+
+export const pro = {
+  plans: () =>
+    request<{ plans: ProPlan[] }>('/api/pro/plans'),
+
+  /** 503 until migrations 106 / 107 are applied. */
+  status: () =>
+    request<ProStatus>('/api/pro/status', { auth: true }),
+
+  /** A PAY-XXXX-YYYY code for a pass; the same open request comes back if there is one. */
+  requestCode: (months: number) =>
+    request<ProRequest & { telegram_bot_url: string }>('/api/pro/request-code', {
+      method: 'POST', body: JSON.stringify({ months }), auth: true,
+    }),
+}
+
 export const enrollments = {
   check: (courseId: number) =>
     request<EnrollmentCheck>(`/api/enrollments/check?course_id=${courseId}`, { auth: true }),

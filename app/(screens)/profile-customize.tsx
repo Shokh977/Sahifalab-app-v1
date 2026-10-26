@@ -29,7 +29,7 @@ import {
   BANNERS, RARITY_COLOR, RARITY_LABEL, RINGS, SEASON_LABEL, TREES, bannerKind, ringKind, treeLookKind, unlockHint,
   type BannerKind, type CosmeticItem, type LookSlot, type RingKind,
 } from '../../src/features/profile/cosmetics/cosmetics'
-import { PRO_UPGRADE_ENABLED } from '../../src/features/pro/flags'
+import { PRO_PURCHASE_ENABLED } from '../../src/features/pro/flags'
 
 /** The profile's own slots; the app theme has its own screen (Mavzu). */
 type Slot = Exclude<LookSlot, 'theme'>
@@ -125,8 +125,14 @@ export default function ProfileCustomize() {
     }
     const hint = unlockHint(selected, look.best_streak)
     const u = selected.unlock
+    if (u.kind === 'pro' && PRO_PURCHASE_ENABLED) {
+      return {
+        info: `${selected.name} · ${RARITY_LABEL[selected.rarity]} — Pro bilan ochiladi`,
+        button: <Button label="Pro bilan oching" size="lg" fullWidth onPress={() => router.push('/(screens)/pro' as any)} />,
+      }
+    }
     const label = u.kind === 'pro'
-      ? (PRO_UPGRADE_ENABLED ? 'Pro bilan oching' : 'Tez orada')
+      ? 'Tez orada'
       : u.kind === 'achievement' ? `${u.streakDays - look.best_streak} kun qoldi` : 'Mavsum boshlanganda'
     return {
       info: `${selected.name} · ${hint}`,
