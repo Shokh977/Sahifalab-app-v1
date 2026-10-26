@@ -69,10 +69,12 @@ export default function ProScreen() {
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(() => {
-    proApi.plans().then(r => setPlans(r.plans)).catch(() => {})
+    // No passes (an older server, or Pro not switched on yet): say "tez orada"
+    // instead of an endless skeleton and a disabled button.
+    proApi.plans().then(r => setPlans(r.plans)).catch(() => setUnavailable(true))
     proApi.status()
-      .then(s => { setStatus(s); setUnavailable(false); if (s.pending) setMonths(s.pending.months) })
-      .catch((e: any) => { if (e?.status === 503) setUnavailable(true) })
+      .then(s => { setStatus(s); if (s.pending) setMonths(s.pending.months) })
+      .catch((e: any) => { if (e?.status === 503 || e?.status === 404) setUnavailable(true) })
   }, [])
   useFocusEffect(useCallback(() => { load() }, [load]))
 
