@@ -28,9 +28,9 @@ import type { StreakCalendarDay, StreakState } from '../../../lib/api'
 import { MagicTree } from '../../../components/streak/MagicTree'
 import { TREE_STAGES, stageFromStreak, type TreeState } from '../../../lib/treeTheme'
 import { useTheme } from '../../design/ThemeProvider'
+import { ThemeDecor } from '../themes/ThemeDecor'
 import { durations, easing, springs, streakTick } from '../../design/motion'
 import { iconSize, radius, space } from '../../design/spacing'
-import { treeGlow } from '../../design/tokens'
 import { fonts, tabular, type as typeScale } from '../../design/typography'
 import { haptics } from '../../lib/haptics'
 import { Pressable, ProgressBar } from '../../components/ui'
@@ -79,10 +79,10 @@ function useDailyTick(ready: boolean): boolean {
 
 /** The tree tile's soft green glow (a radial gradient) — light mode only; none in dark. */
 function TreeGlow() {
-  const { scheme } = useTheme()
+  const { treeTile } = useTheme()
   const id = `glow${useId().replace(/[^a-zA-Z0-9]/g, '')}`
-  if (scheme === 'dark') return null
-  const [inner, outer] = treeGlow.light
+  if (!treeTile) return null
+  const [inner, outer] = treeTile
   return (
     <Svg width={TREE_TILE} height={TREE_TILE} style={StyleSheet.absoluteFill}>
       <Defs>
@@ -155,9 +155,11 @@ export function TodayHero({
       accessibilityHint="Seriya sahifasini ochadi"
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, elevation]}
     >
+      <ThemeDecor variant="border" radius={CARD_RADIUS} />
       <View style={styles.top}>
         <View style={styles.treeTile}>
           <TreeGlow />
+          <ThemeDecor variant="tile" radius={TREE_RADIUS} />
           <Animated.View style={treeStyle}>
             <MagicTree stage={stage} state={treeState} size="thumb" uid="today" animate={false} />
           </Animated.View>

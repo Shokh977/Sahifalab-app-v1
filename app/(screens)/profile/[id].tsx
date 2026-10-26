@@ -6,7 +6,8 @@
  * card; four stat tiles; the gradient level card; the newest earned badges
  * as tinted icon tiles. Teachers add their bio card,
  * links and courses; students their finished courses. "···" opens a sheet
- * with Shikoyat qilish / Bloklash. Your own id redirects to Profil.
+ * with Shikoyat qilish / Bloklash. Your own id redirects to Profil. The
+ * screen renders in its owner's app theme (Mavzu), whatever yours is.
  */
 import React, { useCallback, useEffect, useState } from 'react'
 import { Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -27,10 +28,10 @@ import { useProfileStore } from '../../../stores/profileStore'
 import { useDashboardStore } from '../../../stores/dashboardStore'
 import {
   profile as profileApi, follows, moderation, courses as coursesApi,
-  type BadgeGroups, type Course, type MutualUser,
+  type BadgeGroups, type Course, type MutualUser, type MyLook,
 } from '../../../lib/api'
 import type { ProfileCertificate, ProfileData, TeacherProfileData } from '../../../lib/types'
-import { useTheme } from '../../../src/design/ThemeProvider'
+import { ThemeProvider, useTheme } from '../../../src/design/ThemeProvider'
 import { avatarSize, iconSize, iconStroke, layout, radius, space } from '../../../src/design/spacing'
 import { fonts, type as typeScale } from '../../../src/design/typography'
 import {
@@ -46,7 +47,7 @@ import { ProfileStat } from '../../../src/features/profile/ProfileStat'
 import { ProfileHeader } from '../../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../../src/features/profile/TreeHeroCard'
 import { GetLookSheet, type LookTarget } from '../../../src/features/profile/GetLookSheet'
-import { bannerKind, ringKind, treeLookKind } from '../../../src/features/profile/cosmetics/cosmetics'
+import { bannerKind, ringKind, themeKind, treeLookKind } from '../../../src/features/profile/cosmetics/cosmetics'
 import { groupThousands } from '../../../src/features/profile/profileFormat'
 
 const BADGE_COLS = 4
@@ -113,6 +114,16 @@ function TeacherInfo({ td }: { td: TeacherProfileData }) {
 }
 
 export default function PublicProfileScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const ownerTheme = useProfileStore(s => s.cache[Number(id)]?.data?.look?.theme)
+  return (
+    <ThemeProvider themeId={themeKind(ownerTheme)}>
+      <PublicProfileBody />
+    </ThemeProvider>
+  )
+}
+
+function PublicProfileBody() {
   const { colors } = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -136,7 +147,7 @@ export default function PublicProfileScreen() {
   const [blocking, setBlocking] = useState(false)
   const [selected, setSelected] = useState<ProfileBadge | null>(null)
   const [lookTarget, setLookTarget] = useState<LookTarget | null>(null)
-  const [myUnlocked, setMyUnlocked] = useState<{ banner: Record<string, boolean>; ring: Record<string, boolean>; tree: Record<string, boolean> } | null>(null)
+  const [myUnlocked, setMyUnlocked] = useState<MyLook['unlocked'] | null>(null)
 
   // What the viewer can use — fetched the first time they tap a cosmetic.
   const openLook = useCallback((t: LookTarget) => {
@@ -144,7 +155,7 @@ export default function PublicProfileScreen() {
     if (myUnlocked) return
     profileApi.getMyLook()
       .then(l => setMyUnlocked(l.unlocked))
-      .catch(() => setMyUnlocked({ banner: {}, ring: {}, tree: {} }))
+      .catch(() => setMyUnlocked({ banner: {}, ring: {}, tree: {}, theme: {} }))
   }, [myUnlocked])
 
   const [teacherData, setTeacherData] = useState<TeacherProfileData | null>(null)

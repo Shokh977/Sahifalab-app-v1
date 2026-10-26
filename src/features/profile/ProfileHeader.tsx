@@ -7,6 +7,7 @@
 import React from 'react'
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { StatusBar } from 'expo-status-bar'
 import { ChevronLeft, Hexagon, MoreHorizontal, Settings, Share2, type LucideIcon } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
 import { iconStroke, layout, radius, space } from '../../design/spacing'
@@ -62,6 +63,8 @@ export function ProfileHeader({
 
   return (
     <View>
+      {/* While on screen, the status bar reads on the banner, not the theme. */}
+      {animated && <StatusBar style={dark ? 'light' : 'dark'} />}
       <View style={{ height }}>
         <BannerScene kind={banner} width={width} height={height} animated={animated} />
         <View style={[styles.nav, { top: insets.top }]}>

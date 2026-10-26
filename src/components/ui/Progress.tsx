@@ -1,7 +1,7 @@
 /**
  * ProgressBar and ProgressRing — thin / thick; value changes animate on the
  * UI thread (durations.slow, easing.standard), instantly under reduce motion.
- * The bar's default fill is the v2 orange gradient (progressFill) on the
+ * The bar's default fill is the theme's progress gradient (progressFill) on the
  * track colour; pass `color` for a flat semantic fill.
  */
 import React, { useEffect } from 'react'
@@ -14,7 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../../design/ThemeProvider'
 import { durations, easing } from '../../design/motion'
 import { avatarSize, progressThickness, radius } from '../../design/spacing'
-import { progressFill } from '../../design/tokens'
 
 export type ProgressThickness = keyof typeof progressThickness
 
@@ -41,7 +40,7 @@ export interface ProgressBarProps {
 }
 
 export function ProgressBar({ value, thickness = 'thin', color, accessibilityLabel, style }: ProgressBarProps) {
-  const { colors } = useTheme()
+  const { colors, progressFill } = useTheme()
   const p = useProgress(value)
   const fill = useAnimatedStyle(() => ({ width: `${p.get() * 100}%` }))
   const h = progressThickness[thickness]

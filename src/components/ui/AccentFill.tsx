@@ -1,6 +1,6 @@
 /**
- * AccentFill — the v2 accent surface: an orange gradient (accentFill, top →
- * bottom) filling its parent. Put it first inside a positioned view and give
+ * AccentFill — the v2 accent surface: the theme's accent gradient (accentFill,
+ * top → bottom; orange in Standart) filling its parent. Put it first inside a positioned view and give
  * it the parent's corner radius. Text on it is white and at least 18 px
  * extra bold (type.onAccent) or a 24 px+ number; anything smaller sits in
  * a white pill with accentText (Phase 7.5 B1). `deep` is the darker
@@ -9,9 +9,10 @@
 import React from 'react'
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { accentFill, accentFillDeep } from '../../design/tokens'
+import { useTheme } from '../../design/ThemeProvider'
 
 export function AccentFill({ radius, deep, style }: { radius?: number; deep?: boolean; style?: StyleProp<ViewStyle> }) {
+  const { accentFill, accentFillDeep } = useTheme()
   return (
     <LinearGradient
       colors={deep ? accentFillDeep : accentFill}

@@ -31,7 +31,9 @@ import {
 } from '../../src/features/profile/cosmetics/cosmetics'
 import { PRO_UPGRADE_ENABLED } from '../../src/features/pro/flags'
 
-const SLOTS: LookSlot[] = ['banner', 'ring', 'tree']
+/** The profile's own slots; the app theme has its own screen (Mavzu). */
+type Slot = Exclude<LookSlot, 'theme'>
+const SLOTS: Slot[] = ['banner', 'ring', 'tree']
 const TAB_LABELS = ['Banner', 'Halqa', 'Daraxt'] as const
 const TREE_TILE = { w: 92, h: 112 }
 const PREVIEW_STAGE = 6
@@ -66,7 +68,7 @@ export default function ProfileCustomize() {
   const [look, setLook] = useState<MyLook | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [choice, setChoice] = useState<Choice>({ banner: 'plain', ring: 'oddiy', tree: 'tabiiy' })
-  const [tab, setTab] = useState(Math.max(0, SLOTS.indexOf(params.slot as LookSlot)))
+  const [tab, setTab] = useState(Math.max(0, SLOTS.indexOf(params.slot as Slot)))
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -86,7 +88,7 @@ export default function ProfileCustomize() {
   const catalog: Record<string, CosmeticItem> = slot === 'banner' ? BANNERS : slot === 'ring' ? RINGS : TREES
   const selectedId = choice[slot]
   const selected = catalog[selectedId]
-  const isUnlocked = (s: LookSlot, id: string) => !!look?.unlocked[s]?.[id]
+  const isUnlocked = (s: Slot, id: string) => !!look?.unlocked[s]?.[id]
   const lockedElsewhere = SLOTS.some(s => s !== slot && !isUnlocked(s, choice[s]))
   const dirty = !!look && SLOTS.some(s => isUnlocked(s, choice[s]) && choice[s] !== look.effective[s])
 
@@ -98,7 +100,7 @@ export default function ProfileCustomize() {
   const save = async () => {
     if (!look) return
     const body: Partial<Choice> = {}
-    for (const s of SLOTS) if (isUnlocked(s, choice[s])) (body as Record<LookSlot, string>)[s] = choice[s]
+    for (const s of SLOTS) if (isUnlocked(s, choice[s])) (body as Record<Slot, string>)[s] = choice[s]
     setSaving(true)
     try {
       await profileApi.updateMyLook(body)

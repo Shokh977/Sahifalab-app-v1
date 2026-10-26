@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router'
 import { ChevronLeft } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useThemeStore } from '../../stores/themeStore'
+import { THEMES } from '../../src/design/themes'
 import { useAuthStore } from '../../stores/authStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useDownloadStore, type DownloadQuality } from '../../stores/downloadStore'
@@ -527,7 +528,7 @@ const APP_VERSION_LABEL = `v${Constants.expoConfig?.version ?? '?'} (build ${Con
 export default function SettingsScreen() {
   const { c }                 = useTheme()
   const router                = useRouter()
-  const { preference, setPreference } = useThemeStore()
+  const { preference, setPreference, themeId } = useThemeStore()
   const { user, logout, loginWithToken, refreshUser } = useAuthStore()
 
   // O'QISH
@@ -770,8 +771,16 @@ export default function SettingsScreen() {
         {/* KO'RINISH */}
         <SectionHeader title="KO'RINISH" />
         <SettingGroup>
+          <SettingRow
+            label="Mavzu"
+            value={THEMES[themeId].name}
+            onPress={() => router.push('/(screens)/themes' as any)}
+          />
           <View style={[s.row, { paddingBottom: 8 }]}>
-            <Text style={[s.rowLabel, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>Mavzu</Text>
+            <Text style={[s.rowLabel, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>Rejim</Text>
+            {themeId !== 'standart' && (
+              <Text style={[s.rowValue, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>Standart mavzuda</Text>
+            )}
           </View>
           <View style={[s.themeRow, { paddingHorizontal: spacing.base, paddingBottom: spacing.base }]}>
             {THEME_OPTIONS.map(opt => (

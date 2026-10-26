@@ -6,11 +6,12 @@
  */
 import type { Scheme } from '../../../design/tokens'
 import type { TreeLook } from '../../../../lib/treeLooks'
+import { THEME_IDS, THEMES, type ThemeId } from '../../../design/themes'
 
 export type Rarity = 'oddiy' | 'noyob' | 'epik' | 'afsonaviy'
 export type BannerKind = 'plain' | 'tong' | 'tun' | 'oltin' | 'bahor' | 'hilol'
 export type RingKind = 'oddiy' | 'shabnam' | 'olov' | 'kometa' | 'lola' | 'oltin'
-export type LookSlot = 'banner' | 'ring' | 'tree'
+export type LookSlot = 'banner' | 'ring' | 'tree' | 'theme'
 
 /** How an item unlocks — mirrors the backend's cosmetics_service.CATALOG. */
 export type Unlock =
@@ -57,6 +58,16 @@ export const TREES: Record<TreeLook, CosmeticItem> = {
   oltin: { name: 'Oltin daraxt', rarity: 'afsonaviy', unlock: { kind: 'pro' } },
 }
 
+/** App themes (Mavzu): Pro, or free for everyone in their season. */
+export const THEME_ITEMS: Record<ThemeId, CosmeticItem> = {
+  standart: { name: THEMES.standart.name, rarity: 'oddiy', unlock: { kind: 'free' } },
+  tun: { name: THEMES.tun.name, rarity: 'epik', unlock: { kind: 'pro' } },
+  zumrad: { name: THEMES.zumrad.name, rarity: 'afsonaviy', unlock: { kind: 'pro' } },
+  sakura: { name: THEMES.sakura.name, rarity: 'noyob', unlock: { kind: 'pro' } },
+  ramazon: { name: THEMES.ramazon.name, rarity: 'epik', unlock: { kind: 'seasonal', season: 'ramazon' } },
+  navroz: { name: THEMES.navroz.name, rarity: 'epik', unlock: { kind: 'seasonal', season: 'navroz' } },
+}
+
 export const SEASON_LABEL = { navroz: 'Mart', ramazon: 'Ramazon' } as const
 
 /** A banner / ring id from the server, or the free fallback when unknown. */
@@ -65,6 +76,9 @@ export function bannerKind(id: string | undefined): BannerKind {
 }
 export function ringKind(id: string | undefined): RingKind {
   return id && id in RINGS ? (id as RingKind) : 'oddiy'
+}
+export function themeKind(id: string | undefined): ThemeId {
+  return id && (THEME_IDS as string[]).includes(id) ? (id as ThemeId) : 'standart'
 }
 export function treeLookKind(id: string | undefined): TreeLook {
   return id && id in TREES ? (id as TreeLook) : 'tabiiy'

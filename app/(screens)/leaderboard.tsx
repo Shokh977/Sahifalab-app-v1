@@ -21,6 +21,7 @@ import { Info, Trophy, Users, WifiOff } from 'lucide-react-native'
 import { leaderboard, type LeaderboardEntry, type LeaderboardPeriod, type WeeklyLeaderboard } from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
 import { useTheme } from '../../src/design/ThemeProvider'
+import { ThemeDecor } from '../../src/features/themes/ThemeDecor'
 import { durations, easing } from '../../src/design/motion'
 import { layout, radius, space } from '../../src/design/spacing'
 import { fonts, tabular, type as typeScale } from '../../src/design/typography'
@@ -192,6 +193,8 @@ export default function LeaderboardScreen() {
           {state}
           {podium.length > 0 && (
             <View style={[styles.podiumCard, { backgroundColor: colors.surface, borderColor: colors.border }, elevation]}>
+              <ThemeDecor variant="podium" radius={CARD_RADIUS} />
+              <ThemeDecor variant="border" radius={CARD_RADIUS} />
               <Podium
                 entries={podium.map(e => ({ id: e.telegram_id, rank: e.rank, name: e.is_me ? 'Siz' : e.first_name || e.username || '', photoUrl: e.photo_url, xp: e.score }))}
                 onPress={id => { const e = podium.find(p => p.telegram_id === id); if (e) setPerson(e) }}

@@ -27,6 +27,7 @@ import { syncStreakReminderWithPrefs } from '../lib/streakNotifications'
 import { useThemeStore } from '../stores/themeStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { useNotifToastStore } from '../stores/notifToastStore'
+import { useThemeSync } from '../src/features/themes/useThemeSync'
 import { usePendingDeepLinkStore } from '../stores/pendingDeepLinkStore'
 import { parseDeepLink } from '../lib/deepLinks'
 import { useOfflineQueueStore } from '../stores/offlineQueueStore'
@@ -196,6 +197,8 @@ export default function RootLayout() {
   })))
   const router   = useRouter()
   const segments = useSegments()
+  // The server may have locked the local theme (Pro ended, season over).
+  useThemeSync(isAuthenticated && !isLoading)
   const isOnline = useOnline()
   const wasOnlineRef = useRef(false)
   const hasAnnouncement = useAnnouncementStore(s => s.current !== null)

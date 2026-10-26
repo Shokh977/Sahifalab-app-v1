@@ -16,7 +16,7 @@ import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { ChartColumn, Check, ChevronRight, CircleHelp, GraduationCap, Layers, Play, Timer, Trophy, type LucideIcon } from 'lucide-react-native'
 import { useTheme } from '../../design/ThemeProvider'
-import { planNext, planReviewSoftBar, planTypeColors, type PlanType } from '../../design/tokens'
+import { planReviewSoftBar, planTypeColors, type PlanType } from '../../design/tokens'
 import { fonts } from '../../design/typography'
 import { Pressable } from '../../components/ui'
 import { WEEKDAYS_SHORT, peakDay, type PlanCard, type PlanSignal } from './planCards'
@@ -43,10 +43,10 @@ const ICONS: Record<PlanType, LucideIcon> = {
 interface Ink { label: string; text: string; muted: string; fill: string; track: string; tile: string; icon: string }
 
 function useInk(type: PlanType, next: boolean): Ink {
-  const { colors, scheme } = useTheme()
+  const { colors, scheme, planNext } = useTheme()
   const t = planTypeColors[scheme][type]
   if (next) {
-    const n = planNext[scheme]
+    const n = planNext
     return { label: n.ink, text: n.ink, muted: n.ink, fill: n.fill, track: n.track, tile: n.tile, icon: n.ink }
   }
   return { label: t.ink, text: colors.text, muted: colors.textMuted, fill: t.fill, track: colors.track, tile: t.tile, icon: t.ink }
@@ -97,9 +97,9 @@ function Signal({ signal, ink, soft }: { signal: PlanSignal; ink: Ink; soft: str
 }
 
 function StatusSlot({ card, ink, onPress }: { card: PlanCard; ink: Ink; onPress: () => void }) {
-  const { colors, scheme } = useTheme()
+  const { colors, planNext } = useTheme()
   if (card.status === 'next') {
-    const n = planNext[scheme]
+    const n = planNext
     return (
       <Pressable onPress={onPress} accessibilityLabel="Boshlash" hitSlop={6} style={[styles.play, { backgroundColor: n.playBg }]}>
         <Play size={14} color={n.playIcon} fill={n.playIcon} strokeWidth={2} />
@@ -145,7 +145,7 @@ function Metric({ card, ink }: { card: PlanCard; ink: Ink }) {
 }
 
 export function PlanTile({ card, onPress }: { card: PlanCard; onPress: () => void }) {
-  const { colors, scheme, elevation } = useTheme()
+  const { colors, scheme, elevation, planNext } = useTheme()
   const ink = useInk(card.type, card.next)
   return (
     <Pressable
@@ -154,7 +154,7 @@ export function PlanTile({ card, onPress }: { card: PlanCard; onPress: () => voi
       style={[
         styles.card,
         card.next
-          ? { backgroundColor: planNext[scheme].bg, borderColor: planNext[scheme].border }
+          ? { backgroundColor: planNext.bg, borderColor: planNext.border }
           : { backgroundColor: colors.surface, borderColor: colors.border },
         elevation,
       ]}
