@@ -147,22 +147,26 @@ export const BannerScene = memo(function BannerScene({ kind, width, height, anim
         )}
       />
       <Canvas style={StyleSheet.absoluteFill}>
-        <Rect x={0} y={0} width={width} height={height} opacity={kind === 'plain' ? 0.05 : 0.07}>
+        <Rect x={0} y={0} width={width} height={height}>
           <FractalNoise freqX={0.9} freqY={0.9} octaves={2} seed={3} tileWidth={0} tileHeight={0} />
-          <ColorMatrix matrix={GREY} />
+          <ColorMatrix matrix={kind === 'plain' ? GRAIN_PLAIN : GRAIN} />
         </Rect>
       </Canvas>
     </View>
   )
 })
 
-// Desaturate the noise to grey, alpha 1.
-const GREY = [
+// Desaturate the noise to grey at a fixed low alpha. The alpha must live in
+// the matrix: a colour filter runs after paint opacity, so an `opacity`
+// prop on the Rect would be overwritten and the grain drawn fully opaque.
+const grain = (alpha: number) => [
   0.33, 0.33, 0.33, 0, 0,
   0.33, 0.33, 0.33, 0, 0,
   0.33, 0.33, 0.33, 0, 0,
-  0, 0, 0, 0, 1,
+  0, 0, 0, 0, alpha,
 ]
+const GRAIN = grain(0.07)
+const GRAIN_PLAIN = grain(0.05)
 
 function Plain({ colors }: { colors: [string, string] }) {
   return (
