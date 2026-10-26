@@ -418,12 +418,32 @@ export const search = {
 
 import type { ProfileData, ActivityItem } from './types'
 
+export interface MyLook {
+  saved:        { banner: string; ring: string }
+  effective:    { banner: string; ring: string }
+  unlocked:     { banner: Record<string, boolean>; ring: Record<string, boolean> }
+  is_pro:       boolean
+  pro_until:    string | null
+  best_streak:  number
+  open_seasons: string[]
+}
+
 export const profile = {
   getMe: () =>
     request<ProfileData>('/api/profile/me', { auth: true }),
 
   getPublic: (identifier: string | number) =>
     request<ProfileData>(`/api/profile/${identifier}`, { auth: true }),
+
+  /** Your saved and effective cosmetics look and what's unlocked (503 before migration 106). */
+  getMyLook: () =>
+    request<MyLook>('/api/profile/me/look', { auth: true }),
+
+  /** Save banner / ring; 403 when an item is locked. */
+  updateMyLook: (body: { banner?: string; ring?: string }) =>
+    request<MyLook>('/api/profile/me/look', {
+      method: 'PUT', body: JSON.stringify(body), auth: true,
+    }),
 
   updateMe: (body: {
     first_name?:     string

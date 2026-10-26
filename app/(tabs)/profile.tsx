@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect, useIsFocused, useRouter } from 'expo-router'
-import { Award, BarChart3, ChevronRight, Clock, Flame, GraduationCap, Heart, Lightbulb, Trophy, type LucideIcon } from 'lucide-react-native'
+import { Award, BarChart3, ChevronRight, Clock, Flame, GraduationCap, Heart, Lightbulb, Sparkles, Trophy, type LucideIcon } from 'lucide-react-native'
 import { shareProfile } from '../../lib/share'
 import { useProfileStore } from '../../stores/profileStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -32,6 +32,7 @@ import { focusHours } from '../../src/features/profile/profileFormat'
 import { ProfileStat } from '../../src/features/profile/ProfileStat'
 import { ProfileHeader } from '../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../src/features/profile/TreeHeroCard'
+import { bannerKind, ringKind } from '../../src/features/profile/cosmetics/cosmetics'
 
 const BADGE_COLS = 4
 const BADGE_PREVIEW = 8
@@ -138,8 +139,8 @@ export default function ProfileTab() {
         }
       >
         <ProfileHeader
-          banner="plain"
-          ring="oddiy"
+          banner={bannerKind(p?.look?.banner)}
+          ring={ringKind(p?.look?.ring)}
           name={name}
           id={authUser?.telegram_id}
           uri={p?.photo_url ?? authUser?.photo_url}
@@ -177,7 +178,10 @@ export default function ProfileTab() {
             <SkeletonRow />
           )}
         </View>
-        <Button label="Tahrirlash" variant="secondary" onPress={() => router.push('/(screens)/edit-profile' as any)} />
+        <View style={styles.ownActions}>
+          <Button label="Profilni bezash" icon={Sparkles} size="lg" onPress={() => router.push('/(screens)/profile-customize' as any)} style={styles.flex} />
+          <Button label="Tahrirlash" variant="secondary" size="lg" onPress={() => router.push('/(screens)/edit-profile' as any)} style={styles.editBtn} />
+        </View>
 
         <TreeHeroCard streak={streak} uid="profile-own" animate={focused} />
 
@@ -253,6 +257,8 @@ const styles = StyleSheet.create({
   handle: { fontFamily: fonts.semibold, fontSize: 16 },
   countText: { fontFamily: fonts.regular, fontSize: 15 },
   counts: { flexDirection: 'row', alignItems: 'center', gap: space.xxs + 2, marginTop: 2, flexWrap: 'wrap' },
+  ownActions: { flexDirection: 'row', gap: space.sm },
+  editBtn: { width: 128 },
   statGrid: { gap: space.sm - 2 },
   stats: { flexDirection: 'row', gap: space.sm - 2 },
   section: { gap: space.sm },

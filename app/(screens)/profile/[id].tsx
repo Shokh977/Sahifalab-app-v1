@@ -45,6 +45,8 @@ import { LevelHeroCard } from '../../../src/features/profile/LevelHeroCard'
 import { ProfileStat } from '../../../src/features/profile/ProfileStat'
 import { ProfileHeader } from '../../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../../src/features/profile/TreeHeroCard'
+import { GetLookSheet, type LookTarget } from '../../../src/features/profile/GetLookSheet'
+import { bannerKind, ringKind } from '../../../src/features/profile/cosmetics/cosmetics'
 import { groupThousands } from '../../../src/features/profile/profileFormat'
 
 const BADGE_COLS = 4
@@ -133,6 +135,17 @@ export default function PublicProfileScreen() {
   const [blocked, setBlocked] = useState(false)
   const [blocking, setBlocking] = useState(false)
   const [selected, setSelected] = useState<ProfileBadge | null>(null)
+  const [lookTarget, setLookTarget] = useState<LookTarget | null>(null)
+  const [myUnlocked, setMyUnlocked] = useState<{ banner: Record<string, boolean>; ring: Record<string, boolean> } | null>(null)
+
+  // What the viewer can use — fetched the first time they tap a cosmetic.
+  const openLook = useCallback((t: LookTarget) => {
+    setLookTarget(t)
+    if (myUnlocked) return
+    profileApi.getMyLook()
+      .then(l => setMyUnlocked(l.unlocked))
+      .catch(() => setMyUnlocked({ banner: {}, ring: {} }))
+  }, [myUnlocked])
 
   const [teacherData, setTeacherData] = useState<TeacherProfileData | null>(null)
   const [teacherCourses, setTeacherCourses] = useState<Course[]>([])
@@ -307,8 +320,8 @@ export default function PublicProfileScreen() {
         }
       >
         <ProfileHeader
-          banner="plain"
-          ring="oddiy"
+          banner={bannerKind(p.look?.banner)}
+          ring={ringKind(p.look?.ring)}
           name={name}
           id={p.telegram_id}
           uri={p.photo_url}
@@ -319,6 +332,8 @@ export default function PublicProfileScreen() {
           onShare={share}
           onMore={() => setShowMore(true)}
           animated={focused}
+          onBannerPress={() => openLook({ slot: 'banner', id: bannerKind(p.look?.banner) })}
+          onRingPress={() => openLook({ slot: 'ring', id: ringKind(p.look?.ring) })}
         />
 
         <View style={styles.content}>
@@ -476,6 +491,12 @@ export default function PublicProfileScreen() {
       </ScrollView>
 
       <BadgeSheet badge={selected} onClose={() => setSelected(null)} />
+      <GetLookSheet
+        target={lookTarget}
+        owner={{ name, id: p.telegram_id, uri: p.photo_url }}
+        unlockedForMe={lookTarget && myUnlocked ? !!myUnlocked[lookTarget.slot][lookTarget.id] : null}
+        onClose={() => setLookTarget(null)}
+      />
       <FollowListSheet
         kind={follow}
         userId={p.telegram_id}

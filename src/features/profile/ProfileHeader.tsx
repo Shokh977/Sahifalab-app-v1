@@ -14,7 +14,7 @@ import { fonts } from '../../design/typography'
 import { Pressable } from '../../components/ui'
 import { BannerScene } from './cosmetics/BannerScene'
 import { AvatarRing } from './cosmetics/AvatarRing'
-import { bannerIsDark, type BannerKind, type RingKind } from './cosmetics/cosmetics'
+import { BANNERS, RARITY_COLOR, RARITY_LABEL, bannerIsDark, type BannerKind, type RingKind } from './cosmetics/cosmetics'
 
 const BANNER = 150     // below the status bar
 const AVATAR = 120
@@ -34,7 +34,7 @@ function NavButton({ icon: Icon, label, dark, onPress, disabled }: {
 }
 
 export function ProfileHeader({
-  banner, ring, name, id, uri, level, levelTitle, own, onBack, onShare, onMore, shareDisabled, animated = true,
+  banner, ring, name, id, uri, level, levelTitle, own, onBack, onShare, onMore, shareDisabled, animated = true, onBannerPress, onRingPress,
 }: {
   banner: BannerKind
   ring: RingKind
@@ -50,6 +50,9 @@ export function ProfileHeader({
   onMore: () => void
   shareDisabled?: boolean
   animated?: boolean
+  /** Someone else's profile: tapping a banner chip / ring opens "Bu ko'rinishni oling". */
+  onBannerPress?: () => void
+  onRingPress?: () => void
 }) {
   const { colors, scheme } = useTheme()
   const insets = useSafeAreaInsets()
@@ -72,10 +75,24 @@ export function ProfileHeader({
           <NavButton icon={Share2} label="Profilni ulashish" dark={dark} onPress={onShare} disabled={shareDisabled} />
           <NavButton icon={own ? Settings : MoreHorizontal} label={own ? 'Sozlamalar' : 'Boshqa amallar'} dark={dark} onPress={onMore} />
         </View>
+        {onBannerPress && banner !== 'plain' && (
+          <Pressable
+            onPress={onBannerPress}
+            accessibilityLabel={`Banner: ${BANNERS[banner].name}, ${RARITY_LABEL[BANNERS[banner].rarity]}`}
+            style={styles.lookChipHit}
+          >
+            <View style={[styles.lookChip, dark ? styles.glassDark : styles.glassLight]}>
+              <View style={[styles.lookDot, { backgroundColor: RARITY_COLOR.dark[BANNERS[banner].rarity] }]} />
+              <Text style={[styles.lookText, { color: dark ? '#FFFFFF' : '#1C2530' }]}>{BANNERS[banner].name}</Text>
+            </View>
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.avatarRow}>
-        <AvatarRing kind={ring} size={AVATAR} name={name} id={id} uri={uri} bg={colors.bg} animated={animated} />
+        <Pressable onPress={onRingPress} disabled={!onRingPress || ring === 'oddiy'} noFeedback>
+          <AvatarRing kind={ring} size={AVATAR} name={name} id={id} uri={uri} bg={colors.bg} animated={animated} />
+        </Pressable>
         <View
           style={[styles.levelChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
           accessible
@@ -108,6 +125,13 @@ const styles = StyleSheet.create({
   titleDark: {
     color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
+  lookChipHit: { position: 'absolute', right: layout.gutter - 6, bottom: space.xs, height: HIT, justifyContent: 'center' },
+  lookChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, height: 28, borderRadius: radius.full,
+    borderWidth: 1, paddingHorizontal: space.sm,
+  },
+  lookDot: { width: 6, height: 6, borderRadius: 3 },
+  lookText: { fontFamily: fonts.bold, fontSize: 13 },
   avatarRow: {
     flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
     marginTop: -AVATAR / 2, paddingLeft: layout.gutter - 6, paddingRight: layout.gutter,

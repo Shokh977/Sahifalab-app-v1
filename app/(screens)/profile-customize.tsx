@@ -1,0 +1,263 @@
+/**
+ * Profilni bezash — pick your banner and avatar ring (Claude Design
+ * "6-qadam" §5). A live preview on top updates on every tap, even for
+ * locked items (try before you unlock); the bottom bar says how a locked
+ * item opens. Saving sends only unlocked choices — the server checks them
+ * again (PUT /api/profile/me/look). Mavzu and Daraxt tabs come later.
+ * Opens with ?slot=ring&item=kometa to preselect an item.
+ */
+import React, { useEffect, useMemo, useState } from 'react'
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router'
+import { Check, RotateCcw, Sparkles } from 'lucide-react-native'
+import { profile as profileApi, type MyLook } from '../../lib/api'
+import { useAuthStore } from '../../stores/authStore'
+import { useProfileStore } from '../../stores/profileStore'
+import { useTheme } from '../../src/design/ThemeProvider'
+import { layout, radius, space } from '../../src/design/spacing'
+import { fonts, type as typeScale } from '../../src/design/typography'
+import {
+  Button, EmptyState, Pressable, ScreenHeader, SegmentedControl, SkeletonBlock, ToastHost, showToast,
+} from '../../src/components/ui'
+import { uzText } from '../../src/features/today/today'
+import { BannerScene } from '../../src/features/profile/cosmetics/BannerScene'
+import { AvatarRing } from '../../src/features/profile/cosmetics/AvatarRing'
+import {
+  BANNERS, RARITY_COLOR, RARITY_LABEL, RINGS, SEASON_LABEL, bannerKind, ringKind, unlockHint,
+  type BannerKind, type CosmeticItem, type LookSlot, type RingKind,
+} from '../../src/features/profile/cosmetics/cosmetics'
+import { PRO_UPGRADE_ENABLED } from '../../src/features/pro/flags'
+
+const SLOTS: LookSlot[] = ['banner', 'ring']
+const TAB_LABELS = ['Banner', 'Halqa'] as const
+const COLS = 3
+const PREVIEW_H = 204
+const PREVIEW_BANNER = 104
+const PREVIEW_RING = 88
+const THUMB = 84
+
+type Choice = { banner: BannerKind; ring: RingKind }
+
+/** The chip on a thumbnail: what the item is for you. */
+function stateChip(item: CosmeticItem, unlocked: boolean): { label: string; kind: 'owned' | 'pro' | 'glass' } {
+  const u = item.unlock
+  if (u.kind === 'free') return { label: 'Sizda', kind: 'owned' }
+  if (u.kind === 'achievement') return unlocked ? { label: 'Yutuq', kind: 'owned' } : { label: `Yutuq · ${u.streakDays} kun`, kind: 'glass' }
+  if (u.kind === 'seasonal') return { label: `Mavsumiy · ${SEASON_LABEL[u.season]}`, kind: unlocked ? 'owned' : 'glass' }
+  return unlocked ? { label: 'Sizda', kind: 'owned' } : { label: 'PRO', kind: 'pro' }
+}
+
+export default function ProfileCustomize() {
+  const { colors, scheme } = useTheme()
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const focused = useIsFocused()
+  const { width } = useWindowDimensions()
+  const params = useLocalSearchParams<{ slot?: string; item?: string }>()
+  const authUser = useAuthStore(s => s.user)
+  const ownProfile = useProfileStore(s => s.ownProfile)
+  const loadOwnProfile = useProfileStore(s => s.loadOwnProfile)
+
+  const [look, setLook] = useState<MyLook | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [choice, setChoice] = useState<Choice>({ banner: 'plain', ring: 'oddiy' })
+  const [tab, setTab] = useState(params.slot === 'ring' ? 1 : 0)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    profileApi.getMyLook()
+      .then(l => {
+        setLook(l)
+        const saved = { banner: bannerKind(l.effective.banner), ring: ringKind(l.effective.ring) }
+        if (params.slot === 'banner' && params.item) saved.banner = bannerKind(params.item)
+        if (params.slot === 'ring' && params.item) saved.ring = ringKind(params.item)
+        setChoice(saved)
+      })
+      .catch((e: any) => setError(e?.status === 503 ? 'Bezaklar tez orada ochiladi' : e?.message ?? 'Yuklanmadi'))
+  }, [params.slot, params.item])
+
+  const slot = SLOTS[tab]
+  const catalog: Record<string, CosmeticItem> = slot === 'banner' ? BANNERS : RINGS
+  const selectedId = choice[slot]
+  const selected = catalog[selectedId]
+  const isUnlocked = (s: LookSlot, id: string) => !!look?.unlocked[s]?.[id]
+  const lockedElsewhere = SLOTS.some(s => s !== slot && !isUnlocked(s, choice[s]))
+  const dirty = !!look && SLOTS.some(s => isUnlocked(s, choice[s]) && choice[s] !== look.effective[s])
+
+  const name = uzText(ownProfile?.first_name ?? authUser?.first_name ?? '')
+  const streak = look?.best_streak ?? 0
+  const cardW = width - layout.gutter * 2
+  const cellW = (cardW - space.sm * (COLS - 1)) / COLS
+
+  const save = async () => {
+    if (!look) return
+    const body: Partial<Choice> = {}
+    for (const s of SLOTS) if (isUnlocked(s, choice[s])) body[s] = choice[s] as never
+    setSaving(true)
+    try {
+      await profileApi.updateMyLook(body)
+      await loadOwnProfile()
+      showToast('success', 'Saqlandi')
+      router.back()
+    } catch (e: any) {
+      showToast('error', e?.message ?? 'Saqlanmadi')
+    }
+    setSaving(false)
+  }
+
+  const reset = () => setChoice({ banner: 'plain', ring: 'oddiy' })
+
+  const bottom = useMemo(() => {
+    if (!look) return null
+    if (isUnlocked(slot, selectedId)) {
+      return {
+        info: lockedElsewhere ? 'Boshqa tanlovingizda qulflangan bezak bor — faqat ochiqlari saqlanadi' : `${selected.name} · ${RARITY_LABEL[selected.rarity]}`,
+        button: <Button label="Saqlash" size="lg" fullWidth onPress={save} loading={saving} disabled={!dirty} />,
+      }
+    }
+    const hint = unlockHint(selected, look.best_streak)
+    const u = selected.unlock
+    const label = u.kind === 'pro'
+      ? (PRO_UPGRADE_ENABLED ? 'Pro bilan oching' : 'Tez orada')
+      : u.kind === 'achievement' ? `${u.streakDays - look.best_streak} kun qoldi` : 'Mavsum boshlanganda'
+    return {
+      info: `${selected.name} · ${hint}`,
+      button: <Button label={label} size="lg" fullWidth disabled onPress={() => {}} />,
+    }
+    // save closes over the latest choice; recomputing on these is enough
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [look, slot, selectedId, lockedElsewhere, dirty, saving, choice])
+
+  return (
+    <View style={[styles.root, { backgroundColor: colors.bg }]}>
+      <ScreenHeader
+        title="Profilni bezash"
+        actions={[{ icon: RotateCcw, accessibilityLabel: 'Asl holiga', onPress: reset }]}
+      />
+
+      {error ? (
+        <EmptyState icon={Sparkles} title={error} body="Profilingiz hozircha oddiy koʻrinishda." action={{ label: 'Orqaga', onPress: () => router.back() }} />
+      ) : (
+        <ScrollView contentContainerStyle={[styles.body, { paddingBottom: space.xxl }]}>
+          {/* Live preview */}
+          <View style={[styles.preview, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <BannerScene kind={choice.banner} width={cardW} height={PREVIEW_BANNER} animated={focused} />
+            <View style={[styles.live, { backgroundColor: 'rgba(0,0,0,0.35)' }]}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>JONLI</Text>
+            </View>
+            <View style={styles.previewRow}>
+              <AvatarRing
+                kind={choice.ring} size={PREVIEW_RING} name={name} id={authUser?.telegram_id}
+                uri={ownProfile?.photo_url ?? authUser?.photo_url} bg={colors.surface} animated={focused}
+              />
+              <View style={styles.flex}>
+                <Text style={[styles.previewName, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+                {ownProfile?.username ? <Text style={[typeScale.label, { color: colors.accentText }]}>@{ownProfile.username}</Text> : null}
+                <View style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <Text style={[typeScale.callout, { color: colors.text }]}>{streak} kun</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <SegmentedControl segments={TAB_LABELS} index={tab} onChange={setTab} size="md" />
+
+          {!look ? (
+            <View style={styles.grid}>
+              {Array.from({ length: 6 }, (_, i) => <SkeletonBlock key={i} width={cellW} height={cellW + 52} borderRadius={18} />)}
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {Object.entries(catalog).map(([id, item]) => {
+                const unlocked = isUnlocked(slot, id)
+                const chip = stateChip(item, unlocked)
+                const on = id === selectedId
+                return (
+                  <Pressable
+                    key={id}
+                    onPress={() => setChoice(c => ({ ...c, [slot]: id }))}
+                    accessibilityLabel={`${item.name}, ${RARITY_LABEL[item.rarity]}${unlocked ? '' : `, ${chip.label}`}`}
+                    accessibilityState={{ selected: on }}
+                    style={[
+                      styles.cell,
+                      { width: cellW, backgroundColor: colors.surface, borderColor: on ? colors.accent : colors.border, borderWidth: on ? 2 : 1 },
+                    ]}
+                  >
+                    <View style={[styles.thumb, { backgroundColor: colors.surfaceRaised }]}>
+                      {slot === 'banner' ? (
+                        <BannerScene kind={id as BannerKind} width={cellW - 12} height={THUMB} animated={false} />
+                      ) : (
+                        <AvatarRing kind={id as RingKind} size={60} name={name} id={authUser?.telegram_id} bg={colors.surfaceRaised} animated={false} />
+                      )}
+                      <View style={[styles.chip, chipStyle(chip.kind)]}>
+                        <Text style={[styles.chipText, { color: chip.kind === 'pro' ? '#3A2A00' : '#FFFFFF' }]} numberOfLines={1}>{chip.label}</Text>
+                      </View>
+                      {on && (
+                        <View style={[styles.check, { backgroundColor: colors.accent }]}>
+                          <Check size={14} color={colors.onAccent} strokeWidth={3} />
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.cellName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                    <View style={styles.rarity}>
+                      <View style={[styles.dot, { backgroundColor: RARITY_COLOR[scheme][item.rarity] }]} />
+                      <Text style={[typeScale.callout, { color: RARITY_COLOR[scheme][item.rarity] }]}>{RARITY_LABEL[item.rarity]}</Text>
+                    </View>
+                  </Pressable>
+                )
+              })}
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {bottom && !error && (
+        <View style={[styles.bar, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: insets.bottom + space.sm }]}>
+          <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={2}>{bottom.info}</Text>
+          {bottom.button}
+        </View>
+      )}
+      <ToastHost />
+    </View>
+  )
+}
+
+function chipStyle(kind: 'owned' | 'pro' | 'glass') {
+  if (kind === 'owned') return { backgroundColor: '#1F8A4C' }
+  if (kind === 'pro') return { backgroundColor: '#E4BE68' }
+  return { backgroundColor: 'rgba(20,20,24,0.62)' }
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  flex: { flex: 1, minWidth: 0 },
+  body: { paddingHorizontal: layout.gutter, gap: layout.sectionGap - space.xs },
+  preview: { height: PREVIEW_H, borderRadius: 24, borderWidth: 1, overflow: 'hidden' },
+  live: {
+    position: 'absolute', top: space.sm, left: space.sm, flexDirection: 'row', alignItems: 'center',
+    gap: space.xxs + 2, borderRadius: radius.full, paddingHorizontal: space.sm, height: 26,
+  },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#4ADE80' },
+  liveText: { color: '#FFFFFF', fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 0.8 },
+  previewRow: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: space.sm,
+    marginTop: -PREVIEW_RING / 2, paddingHorizontal: space.md,
+  },
+  previewName: { fontFamily: fonts.extrabold, fontSize: 19 },
+  pill: {
+    alignSelf: 'flex-start', borderWidth: 1, borderRadius: radius.full,
+    paddingHorizontal: space.sm, paddingVertical: 3, marginTop: space.xxs,
+  },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  cell: { borderRadius: 18, padding: 6, gap: 4, paddingBottom: space.sm },
+  thumb: { height: THUMB, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  chip: { position: 'absolute', left: 4, bottom: 4, borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2, maxWidth: '96%' },
+  chipText: { fontFamily: fonts.extrabold, fontSize: 10 },
+  check: { position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  cellName: { fontFamily: fonts.bold, fontSize: 14, paddingHorizontal: 4 },
+  rarity: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 4 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  bar: { borderTopWidth: 1, paddingHorizontal: layout.gutter, paddingTop: space.sm, gap: space.sm },
+})
