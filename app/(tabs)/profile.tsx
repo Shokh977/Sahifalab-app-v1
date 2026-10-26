@@ -32,7 +32,7 @@ import { focusHours } from '../../src/features/profile/profileFormat'
 import { ProfileStat } from '../../src/features/profile/ProfileStat'
 import { ProfileHeader } from '../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../src/features/profile/TreeHeroCard'
-import { bannerKind, ringKind } from '../../src/features/profile/cosmetics/cosmetics'
+import { bannerKind, ringKind, treeLookKind } from '../../src/features/profile/cosmetics/cosmetics'
 
 const BADGE_COLS = 4
 const BADGE_PREVIEW = 8
@@ -183,7 +183,7 @@ export default function ProfileTab() {
           <Button label="Tahrirlash" variant="secondary" size="lg" onPress={() => router.push('/(screens)/edit-profile' as any)} style={styles.editBtn} />
         </View>
 
-        <TreeHeroCard streak={streak} uid="profile-own" animate={focused} />
+        <TreeHeroCard streak={streak} uid="profile-own" animate={focused} look={treeLookKind(p?.look?.tree)} />
 
         <View style={styles.statGrid}>
           <View style={styles.stats}>

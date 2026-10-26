@@ -46,7 +46,7 @@ import { ProfileStat } from '../../../src/features/profile/ProfileStat'
 import { ProfileHeader } from '../../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../../src/features/profile/TreeHeroCard'
 import { GetLookSheet, type LookTarget } from '../../../src/features/profile/GetLookSheet'
-import { bannerKind, ringKind } from '../../../src/features/profile/cosmetics/cosmetics'
+import { bannerKind, ringKind, treeLookKind } from '../../../src/features/profile/cosmetics/cosmetics'
 import { groupThousands } from '../../../src/features/profile/profileFormat'
 
 const BADGE_COLS = 4
@@ -136,7 +136,7 @@ export default function PublicProfileScreen() {
   const [blocking, setBlocking] = useState(false)
   const [selected, setSelected] = useState<ProfileBadge | null>(null)
   const [lookTarget, setLookTarget] = useState<LookTarget | null>(null)
-  const [myUnlocked, setMyUnlocked] = useState<{ banner: Record<string, boolean>; ring: Record<string, boolean> } | null>(null)
+  const [myUnlocked, setMyUnlocked] = useState<{ banner: Record<string, boolean>; ring: Record<string, boolean>; tree: Record<string, boolean> } | null>(null)
 
   // What the viewer can use — fetched the first time they tap a cosmetic.
   const openLook = useCallback((t: LookTarget) => {
@@ -144,7 +144,7 @@ export default function PublicProfileScreen() {
     if (myUnlocked) return
     profileApi.getMyLook()
       .then(l => setMyUnlocked(l.unlocked))
-      .catch(() => setMyUnlocked({ banner: {}, ring: {} }))
+      .catch(() => setMyUnlocked({ banner: {}, ring: {}, tree: {} }))
   }, [myUnlocked])
 
   const [teacherData, setTeacherData] = useState<TeacherProfileData | null>(null)
@@ -390,7 +390,13 @@ export default function PublicProfileScreen() {
           )}
         </View>
 
-        <TreeHeroCard streak={p.streak_days ?? 0} uid={`profile-${p.telegram_id}`} animate={focused} />
+        <TreeHeroCard
+          streak={p.streak_days ?? 0}
+          uid={`profile-${p.telegram_id}`}
+          animate={focused}
+          look={treeLookKind(p.look?.tree)}
+          onLookPress={() => openLook({ slot: 'tree', id: treeLookKind(p.look?.tree) })}
+        />
 
         <View style={styles.statGrid}>
           <View style={styles.stats}>

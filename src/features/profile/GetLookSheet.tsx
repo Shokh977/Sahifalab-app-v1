@@ -1,6 +1,6 @@
 /**
- * "Bu ko'rinishni oling" — opens when you tap someone else's banner or
- * avatar ring: the item animated on a dark stage, its name and rarity,
+ * "Bu ko'rinishni oling" — opens when you tap someone else's banner,
+ * avatar ring or tree look chip: the item animated on a dark stage, its name and rarity,
  * who is using it, and how it opens. If you can already use it,
  * "Menga ham qo'llash" opens Profilni bezash with it preselected.
  */
@@ -12,10 +12,12 @@ import { useTheme } from '../../design/ThemeProvider'
 import { layout, radius, space } from '../../design/spacing'
 import { fonts, type as typeScale } from '../../design/typography'
 import { Avatar, Button, Sheet } from '../../components/ui'
+import { MagicTree } from '../../../components/streak/MagicTree'
+import type { TreeLook } from '../../../lib/treeLooks'
 import { BannerScene } from './cosmetics/BannerScene'
 import { AvatarRing } from './cosmetics/AvatarRing'
 import {
-  BANNERS, RARITY_COLOR, RARITY_LABEL, RINGS, unlockHint, type BannerKind, type LookSlot, type RingKind,
+  BANNERS, RARITY_COLOR, RARITY_LABEL, RINGS, TREES, unlockHint, type BannerKind, type LookSlot, type RingKind,
 } from './cosmetics/cosmetics'
 import { PRO_UPGRADE_ENABLED } from '../pro/flags'
 
@@ -34,7 +36,10 @@ export function GetLookSheet({ target, owner, unlockedForMe, onClose }: {
   const router = useRouter()
   const { width } = useWindowDimensions()
   const stageW = width - layout.gutter * 2
-  const item = target ? (target.slot === 'banner' ? BANNERS[target.id as BannerKind] : RINGS[target.id as RingKind]) : null
+  const item = !target ? null
+    : target.slot === 'banner' ? BANNERS[target.id as BannerKind]
+    : target.slot === 'ring' ? RINGS[target.id as RingKind]
+    : TREES[target.id as TreeLook]
 
   const apply = () => {
     if (!target) return
@@ -67,8 +72,10 @@ export function GetLookSheet({ target, owner, unlockedForMe, onClose }: {
               <View style={styles.bannerWrap}>
                 <BannerScene kind={target.id as BannerKind} width={stageW - space.lg * 2} height={(stageW - space.lg * 2) * 180 / 411} />
               </View>
-            ) : (
+            ) : target.slot === 'ring' ? (
               <AvatarRing kind={target.id as RingKind} size={140} name={owner.name} id={owner.id} uri={owner.uri} bg="#2A2118" />
+            ) : (
+              <MagicTree stage={8} size="card" look={target.id as TreeLook} uid={`sheet-${target.id}`} />
             )}
             <View style={styles.live}>
               <View style={styles.liveDot} />

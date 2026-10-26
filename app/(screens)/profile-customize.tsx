@@ -1,9 +1,9 @@
 /**
- * Profilni bezash — pick your banner and avatar ring (Claude Design
+ * Profilni bezash — pick your banner, avatar ring and tree look (Claude Design
  * "6-qadam" §5). A live preview on top updates on every tap, even for
  * locked items (try before you unlock); the bottom bar says how a locked
  * item opens. Saving sends only unlocked choices — the server checks them
- * again (PUT /api/profile/me/look). Mavzu and Daraxt tabs come later.
+ * again (PUT /api/profile/me/look). The Mavzu tab comes with themes.
  * Opens with ?slot=ring&item=kometa to preselect an item.
  */
 import React, { useEffect, useMemo, useState } from 'react'
@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router'
 import { Check, RotateCcw, Sparkles } from 'lucide-react-native'
 import { profile as profileApi, type MyLook } from '../../lib/api'
+import { MagicTree } from '../../components/streak/MagicTree'
+import type { TreeLook } from '../../lib/treeLooks'
 import { useAuthStore } from '../../stores/authStore'
 import { useProfileStore } from '../../stores/profileStore'
 import { useTheme } from '../../src/design/ThemeProvider'
@@ -24,20 +26,22 @@ import { uzText } from '../../src/features/today/today'
 import { BannerScene } from '../../src/features/profile/cosmetics/BannerScene'
 import { AvatarRing } from '../../src/features/profile/cosmetics/AvatarRing'
 import {
-  BANNERS, RARITY_COLOR, RARITY_LABEL, RINGS, SEASON_LABEL, bannerKind, ringKind, unlockHint,
+  BANNERS, RARITY_COLOR, RARITY_LABEL, RINGS, SEASON_LABEL, TREES, bannerKind, ringKind, treeLookKind, unlockHint,
   type BannerKind, type CosmeticItem, type LookSlot, type RingKind,
 } from '../../src/features/profile/cosmetics/cosmetics'
 import { PRO_UPGRADE_ENABLED } from '../../src/features/pro/flags'
 
-const SLOTS: LookSlot[] = ['banner', 'ring']
-const TAB_LABELS = ['Banner', 'Halqa'] as const
+const SLOTS: LookSlot[] = ['banner', 'ring', 'tree']
+const TAB_LABELS = ['Banner', 'Halqa', 'Daraxt'] as const
+const TREE_TILE = { w: 92, h: 112 }
+const PREVIEW_STAGE = 6
 const COLS = 3
 const PREVIEW_H = 204
 const PREVIEW_BANNER = 104
 const PREVIEW_RING = 88
 const THUMB = 84
 
-type Choice = { banner: BannerKind; ring: RingKind }
+type Choice = { banner: BannerKind; ring: RingKind; tree: TreeLook }
 
 /** The chip on a thumbnail: what the item is for you. */
 function stateChip(item: CosmeticItem, unlocked: boolean): { label: string; kind: 'owned' | 'pro' | 'glass' } {
@@ -61,24 +65,25 @@ export default function ProfileCustomize() {
 
   const [look, setLook] = useState<MyLook | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [choice, setChoice] = useState<Choice>({ banner: 'plain', ring: 'oddiy' })
-  const [tab, setTab] = useState(params.slot === 'ring' ? 1 : 0)
+  const [choice, setChoice] = useState<Choice>({ banner: 'plain', ring: 'oddiy', tree: 'tabiiy' })
+  const [tab, setTab] = useState(Math.max(0, SLOTS.indexOf(params.slot as LookSlot)))
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     profileApi.getMyLook()
       .then(l => {
         setLook(l)
-        const saved = { banner: bannerKind(l.effective.banner), ring: ringKind(l.effective.ring) }
+        const saved = { banner: bannerKind(l.effective.banner), ring: ringKind(l.effective.ring), tree: treeLookKind(l.effective.tree) }
         if (params.slot === 'banner' && params.item) saved.banner = bannerKind(params.item)
         if (params.slot === 'ring' && params.item) saved.ring = ringKind(params.item)
+        if (params.slot === 'tree' && params.item) saved.tree = treeLookKind(params.item)
         setChoice(saved)
       })
       .catch((e: any) => setError(e?.status === 503 ? 'Bezaklar tez orada ochiladi' : e?.message ?? 'Yuklanmadi'))
   }, [params.slot, params.item])
 
   const slot = SLOTS[tab]
-  const catalog: Record<string, CosmeticItem> = slot === 'banner' ? BANNERS : RINGS
+  const catalog: Record<string, CosmeticItem> = slot === 'banner' ? BANNERS : slot === 'ring' ? RINGS : TREES
   const selectedId = choice[slot]
   const selected = catalog[selectedId]
   const isUnlocked = (s: LookSlot, id: string) => !!look?.unlocked[s]?.[id]
@@ -93,7 +98,7 @@ export default function ProfileCustomize() {
   const save = async () => {
     if (!look) return
     const body: Partial<Choice> = {}
-    for (const s of SLOTS) if (isUnlocked(s, choice[s])) body[s] = choice[s] as never
+    for (const s of SLOTS) if (isUnlocked(s, choice[s])) (body as Record<LookSlot, string>)[s] = choice[s]
     setSaving(true)
     try {
       await profileApi.updateMyLook(body)
@@ -106,7 +111,7 @@ export default function ProfileCustomize() {
     setSaving(false)
   }
 
-  const reset = () => setChoice({ banner: 'plain', ring: 'oddiy' })
+  const reset = () => setChoice({ banner: 'plain', ring: 'oddiy', tree: 'tabiiy' })
 
   const bottom = useMemo(() => {
     if (!look) return null
@@ -159,6 +164,9 @@ export default function ProfileCustomize() {
                   <Text style={[typeScale.callout, { color: colors.text }]}>{streak} kun</Text>
                 </View>
               </View>
+              <View style={[styles.treeTile, { backgroundColor: colors.surfaceRaised, borderColor: colors.border }]}>
+                <MiniTree look={choice.tree} width={TREE_TILE.w} height={TREE_TILE.h} animate={focused} uid="customize-preview" />
+              </View>
             </View>
           </View>
 
@@ -188,8 +196,10 @@ export default function ProfileCustomize() {
                     <View style={[styles.thumb, { backgroundColor: colors.surfaceRaised }]}>
                       {slot === 'banner' ? (
                         <BannerScene kind={id as BannerKind} width={cellW - 12} height={THUMB} animated={false} />
-                      ) : (
+                      ) : slot === 'ring' ? (
                         <AvatarRing kind={id as RingKind} size={60} name={name} id={authUser?.telegram_id} bg={colors.surfaceRaised} animated={false} />
+                      ) : (
+                        <MiniTree look={id as TreeLook} width={THUMB * 0.8} height={THUMB} animate={false} uid={`thumb-${id}`} />
                       )}
                       <View style={[styles.chip, chipStyle(chip.kind)]}>
                         <Text style={[styles.chipText, { color: chip.kind === 'pro' ? '#3A2A00' : '#FFFFFF' }]} numberOfLines={1}>{chip.label}</Text>
@@ -224,6 +234,18 @@ export default function ProfileCustomize() {
   )
 }
 
+/** MagicTree at stage 6, scaled from its 160×200 card size to fit a tile. */
+function MiniTree({ look, width, height, animate, uid }: { look: TreeLook; width: number; height: number; animate: boolean; uid: string }) {
+  const scale = Math.min(width / 160, height / 200)
+  return (
+    <View style={{ width, height, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' }}>
+      <View style={{ width: 160, height: 200, marginBottom: -(200 - 200 * scale) / 2, transform: [{ scale }] }}>
+        <MagicTree stage={PREVIEW_STAGE} size="card" look={look} animate={animate} uid={uid} />
+      </View>
+    </View>
+  )
+}
+
 function chipStyle(kind: 'owned' | 'pro' | 'glass') {
   if (kind === 'owned') return { backgroundColor: '#1F8A4C' }
   if (kind === 'pro') return { backgroundColor: '#E4BE68' }
@@ -246,6 +268,7 @@ const styles = StyleSheet.create({
     marginTop: -PREVIEW_RING / 2, paddingHorizontal: space.md,
   },
   previewName: { fontFamily: fonts.extrabold, fontSize: 19 },
+  treeTile: { width: TREE_TILE.w, height: TREE_TILE.h, borderRadius: 18, borderWidth: 1, overflow: 'hidden', marginBottom: -space.xs },
   pill: {
     alignSelf: 'flex-start', borderWidth: 1, borderRadius: radius.full,
     paddingHorizontal: space.sm, paddingVertical: 3, marginTop: space.xxs,

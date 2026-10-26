@@ -5,11 +5,12 @@
  * → Afsonaviy material + sheen + a few particles.
  */
 import type { Scheme } from '../../../design/tokens'
+import type { TreeLook } from '../../../../lib/treeLooks'
 
 export type Rarity = 'oddiy' | 'noyob' | 'epik' | 'afsonaviy'
 export type BannerKind = 'plain' | 'tong' | 'tun' | 'oltin' | 'bahor' | 'hilol'
 export type RingKind = 'oddiy' | 'shabnam' | 'olov' | 'kometa' | 'lola' | 'oltin'
-export type LookSlot = 'banner' | 'ring'
+export type LookSlot = 'banner' | 'ring' | 'tree'
 
 /** How an item unlocks — mirrors the backend's cosmetics_service.CATALOG. */
 export type Unlock =
@@ -48,6 +49,14 @@ export const RINGS: Record<RingKind, CosmeticItem> = {
   lola: { name: 'Lola', rarity: 'epik', unlock: { kind: 'seasonal', season: 'navroz' } },
 }
 
+/** Streak tree colour looks (MagicTree palettes; the shape never changes). */
+export const TREES: Record<TreeLook, CosmeticItem> = {
+  tabiiy: { name: 'Tabiiy', rarity: 'oddiy', unlock: { kind: 'free' } },
+  sakura: { name: 'Sakura', rarity: 'noyob', unlock: { kind: 'pro' } },
+  kumush: { name: 'Kumush', rarity: 'epik', unlock: { kind: 'achievement', streakDays: 100 } },
+  oltin: { name: 'Oltin daraxt', rarity: 'afsonaviy', unlock: { kind: 'pro' } },
+}
+
 export const SEASON_LABEL = { navroz: 'Mart', ramazon: 'Ramazon' } as const
 
 /** A banner / ring id from the server, or the free fallback when unknown. */
@@ -56,6 +65,9 @@ export function bannerKind(id: string | undefined): BannerKind {
 }
 export function ringKind(id: string | undefined): RingKind {
   return id && id in RINGS ? (id as RingKind) : 'oddiy'
+}
+export function treeLookKind(id: string | undefined): TreeLook {
+  return id && id in TREES ? (id as TreeLook) : 'tabiiy'
 }
 
 /** One line on how a locked item opens. */

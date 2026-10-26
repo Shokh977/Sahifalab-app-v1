@@ -419,9 +419,9 @@ export const search = {
 import type { ProfileData, ActivityItem } from './types'
 
 export interface MyLook {
-  saved:        { banner: string; ring: string }
-  effective:    { banner: string; ring: string }
-  unlocked:     { banner: Record<string, boolean>; ring: Record<string, boolean> }
+  saved:        { banner: string; ring: string; tree: string }
+  effective:    { banner: string; ring: string; tree: string }
+  unlocked:     { banner: Record<string, boolean>; ring: Record<string, boolean>; tree: Record<string, boolean> }
   is_pro:       boolean
   pro_until:    string | null
   best_streak:  number
@@ -439,8 +439,8 @@ export const profile = {
   getMyLook: () =>
     request<MyLook>('/api/profile/me/look', { auth: true }),
 
-  /** Save banner / ring; 403 when an item is locked. */
-  updateMyLook: (body: { banner?: string; ring?: string }) =>
+  /** Save banner / ring / tree look; 403 when an item is locked. */
+  updateMyLook: (body: { banner?: string; ring?: string; tree?: string }) =>
     request<MyLook>('/api/profile/me/look', {
       method: 'PUT', body: JSON.stringify(body), auth: true,
     }),

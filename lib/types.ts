@@ -83,7 +83,7 @@ export interface ProfileData {
   education:         any[]
   profile_completeness: number
   /** Cosmetics (106_profile_looks): the look this profile renders. */
-  look?:            { banner: string; ring: string }
+  look?:            { banner: string; ring: string; tree?: string }
 }
 
 export interface TeacherProfileData {

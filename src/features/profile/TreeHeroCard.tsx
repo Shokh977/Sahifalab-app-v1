@@ -1,7 +1,8 @@
 /**
- * The profile's hero tree card: streak and stage, the streak tree in a
- * softly lit well, and progress to the next stage. The tree is the
- * existing MagicTree (tree looks come later).
+ * The profile's hero tree card: streak and stage with the tree look chip,
+ * the streak tree (MagicTree in the profile's colour look) in a softly
+ * lit well, and progress to the next stage. On someone else's profile the
+ * chip opens "Bu ko'rinishni oling".
  */
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
@@ -9,24 +10,28 @@ import { Flame } from 'lucide-react-native'
 import { Canvas, RadialGradient, Rect, vec } from '@shopify/react-native-skia'
 import { MagicTree } from '../../../components/streak/MagicTree'
 import { TREE_STAGES, stageFromStreak, type TreeState } from '../../../lib/treeTheme'
+import { treeLookPalette, type TreeLook } from '../../../lib/treeLooks'
 import { useTheme } from '../../design/ThemeProvider'
 import { radius, space } from '../../design/spacing'
 import { fonts, tabular, type as typeScale } from '../../design/typography'
-import { ProgressBar } from '../../components/ui'
+import { Pressable, ProgressBar } from '../../components/ui'
 import { uzText } from '../today/today'
+import { RARITY_COLOR, RARITY_LABEL, TREES } from './cosmetics/cosmetics'
 
 const WELL_H = 300
 const TREE_W = 232
 const HERO = { w: 280, h: 350 }   // MagicTree "hero" size, scaled down to TREE_W
 
-/** Light / dark well colour at the centre of the radial light. */
+/** Light / dark well colour for Tabiiy at the centre of the radial light. */
 const WELL = { light: '#E3F3E6', dark: '#1B2B22' }
 
-export function TreeHeroCard({ streak, state = 'alive', uid, animate = true }: {
+export function TreeHeroCard({ streak, state = 'alive', uid, animate = true, look = 'tabiiy', onLookPress }: {
   streak: number
   state?: TreeState
   uid: string
   animate?: boolean
+  look?: TreeLook
+  onLookPress?: () => void
 }) {
   const { colors, scheme, elevation } = useTheme()
   const stage = stageFromStreak(streak)
@@ -35,9 +40,14 @@ export function TreeHeroCard({ streak, state = 'alive', uid, animate = true }: {
   const progress = next && cur ? (streak - cur.streakDays) / (next.streakDays - cur.streakDays) : 1
   const scale = TREE_W / HERO.w
   const [wellW, setWellW] = React.useState(0)
+  const item = TREES[look]
+  const rarity = RARITY_COLOR[scheme][item.rarity]
+  // A look's well takes its glow colour, softened toward the card.
+  const well = look === 'tabiiy' ? WELL[scheme] : treeLookPalette(look, stage).glow + (scheme === 'dark' ? '33' : '55')
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, elevation]}>
+      <View style={styles.head}>
       <View
         accessible
         accessibilityLabel={`${streak} kunlik seriya, ${uzText(cur?.short ?? '')}, ${stage}-bosqich`}
@@ -49,6 +59,22 @@ export function TreeHeroCard({ streak, state = 'alive', uid, animate = true }: {
         </View>
         <Text style={[styles.stage, { color: colors.textMuted }]}>{uzText(cur?.short ?? '')} · {stage}-bosqich</Text>
       </View>
+      <Pressable
+        onPress={onLookPress}
+        disabled={!onLookPress || look === 'tabiiy'}
+        noFeedback={!onLookPress}
+        accessibilityLabel={`Daraxt koʻrinishi: ${item.name}, ${RARITY_LABEL[item.rarity]}`}
+        style={[
+          styles.lookChip,
+          look === 'tabiiy'
+            ? { backgroundColor: colors.surfaceRaised }
+            : { backgroundColor: rarity + (scheme === 'dark' ? '24' : '14') },
+        ]}
+      >
+        <View style={[styles.lookDot, { backgroundColor: look === 'tabiiy' ? colors.textMuted : rarity }]} />
+        <Text style={[styles.lookText, { color: look === 'tabiiy' ? colors.textMuted : rarity }]}>{item.name}</Text>
+      </Pressable>
+      </View>
 
       <View style={styles.well} onLayout={e => setWellW(e.nativeEvent.layout.width)}>
         {wellW > 0 && (
@@ -57,14 +83,14 @@ export function TreeHeroCard({ streak, state = 'alive', uid, animate = true }: {
               <RadialGradient
                 c={vec(wellW / 2, WELL_H * 0.46)}
                 r={Math.max(wellW * 0.6, WELL_H * 0.58)}
-                colors={[WELL[scheme], colors.surface]}
+                colors={[well, colors.surface]}
               />
             </Rect>
           </Canvas>
         )}
         <View style={{ width: TREE_W, height: HERO.h * scale }}>
           <View style={[styles.tree, { left: (TREE_W - HERO.w) / 2, top: (HERO.h * scale - HERO.h) / 2, transform: [{ scale }] }]}>
-            <MagicTree stage={stage} state={state} size="hero" uid={uid} animate={animate} />
+            <MagicTree stage={stage} state={state} size="hero" uid={uid} animate={animate} look={look} />
           </View>
         </View>
       </View>
@@ -90,6 +116,10 @@ export function TreeHeroCard({ streak, state = 'alive', uid, animate = true }: {
 
 const styles = StyleSheet.create({
   card: { borderRadius: 28, borderWidth: 1, padding: 18, gap: space.md, overflow: 'hidden' },
+  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: space.sm },
+  lookChip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 30, borderRadius: 15, paddingHorizontal: space.sm },
+  lookDot: { width: 7, height: 7, borderRadius: 4 },
+  lookText: { fontFamily: fonts.bold, fontSize: 13 },
   streakRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.xxs + 2 },
   streak: { fontFamily: fonts.extrabold, fontSize: 34, lineHeight: 40 },
   kun: { fontFamily: fonts.bold, fontSize: 17 },

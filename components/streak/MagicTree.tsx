@@ -17,7 +17,7 @@ import Animated, {
   withRepeat, withTiming,
   cancelAnimation, Easing, useReducedMotion,
 } from 'react-native-reanimated'
-import { stagePalettes } from '../../lib/treeTheme'
+import { treeLookColors, treeLookPalette, type TreeLook, type TreeLookColors } from '../../lib/treeLooks'
 import type { StageNumber, TreeState, SkyMood, TreeSize, StagePalette } from '../../lib/treeTheme'
 
 // ── Animated SVG primitives ────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ function pickPts(lobes: Lobe[], R: () => number, n: number) {
 
 // ── Static sub-components ─────────────────────────────────────────────────────
 
-function Gdefs({ uid, pal }: { uid: string; pal: StagePalette }) {
+function Gdefs({ uid, pal, lk }: { uid: string; pal: StagePalette; lk: TreeLookColors }) {
   return (
     <Defs>
       <RadialGradient id={`sfAura${uid}`} cx="50%" cy="45%" r="55%">
@@ -137,13 +137,13 @@ function Gdefs({ uid, pal }: { uid: string; pal: StagePalette }) {
         <Stop offset="100%" stopColor={pal.glow} stopOpacity={0} />
       </RadialGradient>
       <LinearGradient id={`sfBark${uid}`} x1="0" y1="0" x2="1" y2="1">
-        <Stop offset="0%"   stopColor="#9a7250" />
-        <Stop offset="55%"  stopColor="#6f4f36" />
-        <Stop offset="100%" stopColor="#533a27" />
+        <Stop offset="0%"   stopColor={lk.trunk[0]} />
+        <Stop offset="55%"  stopColor={lk.trunk[1]} />
+        <Stop offset="100%" stopColor={lk.trunk[2]} />
       </LinearGradient>
       <RadialGradient id={`sfSoil${uid}`} cx="50%" cy="35%" r="65%">
-        <Stop offset="0%"   stopColor="#5a4632" />
-        <Stop offset="100%" stopColor="#2f2419" />
+        <Stop offset="0%"   stopColor={lk.soil[0]} />
+        <Stop offset="100%" stopColor={lk.soil[1]} />
       </RadialGradient>
       <RadialGradient id={`sfSeedAura${uid}`} cx="50%" cy="45%" r="55%">
         <Stop offset="0%"   stopColor="#ffcf7a" stopOpacity={0.9} />
@@ -190,14 +190,14 @@ function Ground({ uid, glowy }: { uid: string; glowy: boolean }) {
   )
 }
 
-function Trunk({ uid, t }: { uid: string; t: Geom['trunk'] }) {
+function Trunk({ uid, t, branch }: { uid: string; t: Geom['trunk']; branch: string }) {
   return (
     <G>
       {t.branches.map((b, i) => (
         <Path
           key={i}
           d={`M${f(b[0])} ${f(b[1])} Q${f(b[2])} ${f(b[3])} ${f(b[4])} ${f(b[5])}`}
-          stroke="#7a5535"
+          stroke={branch}
           strokeWidth={f(b[6] ?? 7)}
           fill="none"
           strokeLinecap="round"
@@ -242,7 +242,7 @@ function Sparkles({ seed, n, opts }: {
   )
 }
 
-function Runes({ x, by, h }: { x: number; by: number; h: number }) {
+function Runes({ x, by, h, fill }: { x: number; by: number; h: number; fill: string }) {
   const pat = [
     'M-4 0 L4 0 M0 -5 L0 5',
     'M-4 -5 L4 5 M4 -5 L-4 5',
@@ -253,7 +253,7 @@ function Runes({ x, by, h }: { x: number; by: number; h: number }) {
     <G>
       {pat.map((d, i) => (
         <G key={i} transform={`translate(${x} ${f(ys[i])})`} opacity={0.9}>
-          <Path d={d} stroke="#ffe6a0" strokeWidth={1.4} fill="none" strokeLinecap="round" />
+          <Path d={d} stroke={fill} strokeWidth={1.4} fill="none" strokeLinecap="round" />
         </G>
       ))}
     </G>
@@ -272,7 +272,7 @@ function Dots({ seed, lobes, fill, n }: { seed: number; lobes: Lobe[]; fill: str
   )
 }
 
-function Blossoms({ seed, lobes, n }: { seed: number; lobes: Lobe[]; n: number }) {
+function Blossoms({ seed, lobes, n, petal, center }: { seed: number; lobes: Lobe[]; n: number; petal: string; center: string }) {
   const R = rng(seed * 71 + 9)
   return (
     <G>
@@ -284,11 +284,11 @@ function Blossoms({ seed, lobes, n }: { seed: number; lobes: Lobe[]; n: number }
               const a = k * 1.256
               const px = f(Math.cos(a)*s), py = f(Math.sin(a)*s)
               return (
-                <Ellipse key={k} cx={px} cy={py} rx={f(s*.7)} ry={f(s*1.1)} fill="#ff9ecb"
+                <Ellipse key={k} cx={px} cy={py} rx={f(s*.7)} ry={f(s*1.1)} fill={petal}
                   transform={`rotate(${f(a*57)} ${px} ${py})`} />
               )
             })}
-            <Circle r={f(s*.6)} fill="#fff0f6" />
+            <Circle r={f(s*.6)} fill={center} />
           </G>
         )
       })}
@@ -296,13 +296,13 @@ function Blossoms({ seed, lobes, n }: { seed: number; lobes: Lobe[]; n: number }
   )
 }
 
-function GoldLeaves({ seed, lobes, n }: { seed: number; lobes: Lobe[]; n: number }) {
+function GoldLeaves({ seed, lobes, n, fill }: { seed: number; lobes: Lobe[]; n: number; fill: string }) {
   const R = rng(seed * 83 + 11)
   return (
     <G>
       {pickPts(lobes, R, n).map((p, i) => {
         const s = 3 + R()*2
-        return <Path key={i} d={mkLeaf(p.x, p.y, s)} fill="#ffd86a" opacity={0.95} />
+        return <Path key={i} d={mkLeaf(p.x, p.y, s)} fill={fill} opacity={0.95} />
       })}
     </G>
   )
@@ -732,6 +732,8 @@ export interface MagicTreeProps {
    * animate=false (a badge is a static keepsake, not a live scene).
    */
   simplified?: boolean
+  /** Colour look (Tabiiy = today's tree); the shape never changes. */
+  look?:      TreeLook
 }
 
 // stage 1 → 90×112, stage 10 → 240×300  (viewBox 4:5 ratio maintained)
@@ -740,10 +742,14 @@ function autoSize(stage: number): { w: number; h: number } {
   return { w, h: Math.round(w * 1.25) }
 }
 
-export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp, animate = true, simplified = false }: MagicTreeProps) {
-  const uid     = uidProp ?? `${stage}_${state}`
+export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp, animate = true, simplified = false, look = 'tabiiy' }: MagicTreeProps) {
+  const uid     = `${uidProp ?? `${stage}_${state}`}${look}`
   const id      = Math.max(1, Math.min(10, stage)) as StageNumber
-  const pal     = stagePalettes[id]
+  const pal     = treeLookPalette(look, id)
+  const lk      = treeLookColors(look)
+  const tabiiy  = look === 'tabiiy'
+  // Fixed Tabiiy accents (dots, butterflies, motes) follow the look's palette elsewhere.
+  const tint    = (tabiiyColor: string, other: string) => (tabiiy ? tabiiyColor : other)
   const geom    = getGeom(id)
   const dims    = size === 'auto' ? autoSize(id) : SIZES[size]
   const dead    = !simplified && state === 'dead'
@@ -768,7 +774,7 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
 
   return (
     <Svg width={dims.w} height={dims.h} viewBox="0 0 320 400" preserveAspectRatio="xMidYMax meet">
-      <Gdefs uid={uid} pal={pal} />
+      <Gdefs uid={uid} pal={pal} lk={lk} />
 
       {/* All tree content wrapped in state filter; overlays rendered above without filter */}
       <G filter={stateFilter}>
@@ -796,7 +802,7 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
           <G transform={`translate(${CX} ${id === 10 ? 160 : 190})`} opacity={0.45}>
             <Sparkles
               seed={id + 40} n={10}
-              opts={{ x0:-70, y0:-70, w:140, h:140, s:2.4, fill: id === 10 ? '#ffe6a0' : '#cbb6ff' }}
+              opts={{ x0:-70, y0:-70, w:140, h:140, s:2.4, fill: tint(id === 10 ? '#ffe6a0' : '#cbb6ff', id === 10 ? lk.sparkle : pal.accent) }}
             />
           </G>
         </MaybeSpin>
@@ -820,29 +826,29 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
 
           {/* Layer 3: sway group — trunk + canopy (+ canopy decorations, dropped in badge mode) */}
           <MaybeSway still={still} dur={geom.swayDur} amt={geom.swayAmt} enabled={animEnabled}>
-            {id === 8 && !simplified && <Runes x={CX} by={geom.trunk.by} h={geom.trunk.h} />}
-            <Trunk uid={uid} t={geom.trunk} />
+            {id === 8 && !simplified && <Runes x={CX} by={geom.trunk.by} h={geom.trunk.h} fill={lk.sparkle} />}
+            <Trunk uid={uid} t={geom.trunk} branch={tint('#7a5535', lk.trunk[1])} />
             <Canopy lobes={geom.lobes} pal={pal} opacity={dead ? 0.55 : 1} />
 
             {!dead && !simplified && id === 5 && (
               <>
-                <Dots seed={id}   lobes={geom.lobes} fill="#ffe39a" n={8} />
-                <Dots seed={id+1} lobes={geom.lobes} fill="#ffd0e6" n={5} />
+                <Dots seed={id}   lobes={geom.lobes} fill={tint('#ffe39a', pal.accent)} n={8} />
+                <Dots seed={id+1} lobes={geom.lobes} fill={tint('#ffd0e6', lk.blossomPetal)} n={5} />
               </>
             )}
-            {!dead && !simplified && id === 6  && <Dots seed={id} lobes={geom.lobes} fill="#bff0ff" n={12} />}
-            {!dead && !simplified && id === 7  && <Blossoms seed={id} lobes={geom.lobes} n={14} />}
-            {!dead && !simplified && id === 8  && <GoldLeaves seed={id} lobes={geom.lobes} n={16} />}
+            {!dead && !simplified && id === 6  && <Dots seed={id} lobes={geom.lobes} fill={tint('#bff0ff', pal.accent)} n={12} />}
+            {!dead && !simplified && id === 7  && <Blossoms seed={id} lobes={geom.lobes} n={14} petal={lk.blossomPetal} center={lk.blossomCenter} />}
+            {!dead && !simplified && id === 8  && <GoldLeaves seed={id} lobes={geom.lobes} n={16} fill={lk.goldLeaf} />}
             {!dead && !simplified && id === 9  && (
               <>
-                <Dots seed={id}   lobes={geom.lobes} fill="#d7c6ff" n={14} />
-                <Dots seed={id+2} lobes={geom.lobes} fill="#bfe6ff" n={8} />
+                <Dots seed={id}   lobes={geom.lobes} fill={tint('#d7c6ff', pal.accent)} n={14} />
+                <Dots seed={id+2} lobes={geom.lobes} fill={tint('#bfe6ff', pal.rim)} n={8} />
               </>
             )}
             {!dead && !simplified && id === 10 && (
               <>
-                <GoldLeaves seed={id} lobes={geom.lobes} n={18} />
-                <Dots seed={id} lobes={geom.lobes} fill="#bfe6ff" n={14} />
+                <GoldLeaves seed={id} lobes={geom.lobes} n={18} fill={lk.goldLeaf} />
+                <Dots seed={id} lobes={geom.lobes} fill={tint('#bfe6ff', pal.rim)} n={14} />
               </>
             )}
           </MaybeSway>
@@ -857,15 +863,15 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
             <>
               {still ? (
                 <>
-                  <StillButterfly x={118} y={200} fill="#ff9ecb" />
-                  <StillButterfly x={210} y={168} fill="#ffc6e4" />
-                  <StillButterfly x={180} y={150} fill="#ff8fc0" />
+                  <StillButterfly x={118} y={200} fill={tint('#ff9ecb', lk.blossomPetal)} />
+                  <StillButterfly x={210} y={168} fill={tint('#ffc6e4', lk.blossomPetal)} />
+                  <StillButterfly x={180} y={150} fill={tint('#ff8fc0', lk.blossomPetal)} />
                 </>
               ) : (
                 <>
-                  <AnimatedButterfly x={118} y={200} fill="#ff9ecb" delay={0}   dur={8.5} enabled={animEnabled} />
-                  <AnimatedButterfly x={210} y={168} fill="#ffc6e4" delay={3.2} dur={9.0} enabled={animEnabled} />
-                  <AnimatedButterfly x={180} y={150} fill="#ff8fc0" delay={1.6} dur={8.2} enabled={animEnabled} />
+                  <AnimatedButterfly x={118} y={200} fill={tint('#ff9ecb', lk.blossomPetal)} delay={0}   dur={8.5} enabled={animEnabled} />
+                  <AnimatedButterfly x={210} y={168} fill={tint('#ffc6e4', lk.blossomPetal)} delay={3.2} dur={9.0} enabled={animEnabled} />
+                  <AnimatedButterfly x={180} y={150} fill={tint('#ff8fc0', lk.blossomPetal)} delay={1.6} dur={8.2} enabled={animEnabled} />
                 </>
               )}
             </>
@@ -878,12 +884,12 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
                 still={still}
                 seed={id}
                 n={id === 10 ? 22 : 16}
-                opts={{ x0:80, y0:300, w:160, h:160, r:1.6, fill: id===10 ? '#ffe6a0' : '#cbb6ff', op:0.9 }}
+                opts={{ x0:80, y0:300, w:160, h:160, r:1.6, fill: tint(id===10 ? '#ffe6a0' : '#cbb6ff', id===10 ? lk.sparkle : pal.accent), op:0.9 }}
                 enabled={animEnabled}
               />
               <Sparkles
                 seed={id} n={id===10 ? 14 : 10}
-                opts={{ x0:70, y0:100, w:180, h:200, s:3, fill: id===10 ? '#fff0c0' : '#d7c6ff' }}
+                opts={{ x0:70, y0:100, w:180, h:200, s:3, fill: tint(id===10 ? '#fff0c0' : '#d7c6ff', id===10 ? lk.sparkle : pal.accent) }}
               />
             </>
           ) : !dead && id >= 4 ? (
