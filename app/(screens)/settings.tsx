@@ -744,6 +744,14 @@ export default function SettingsScreen() {
               <SettingRow
                 label="Komponentlar galereyasi"
                 onPress={() => router.push('/(screens)/dev-gallery' as any)}
+              />
+              <SettingRow
+                label="Eman daraxti (Skia)"
+                onPress={() => router.push('/(screens)/oak-tree' as any)}
+              />
+              <SettingRow
+                label="Profil bezaklari (Skia)"
+                onPress={() => router.push('/(screens)/cosmetics-preview' as any)}
                 isLast
               />
             </SettingGroup>

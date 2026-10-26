@@ -1,26 +1,27 @@
 /**
- * Public profile — someone else's Profil, on the same v2 kit as yours
- * (Phase 7.5 D2): the bar (back, "Profil", share, more), the identity row
- * with the accent-ringed avatar, follower counts, mutual connections and
- * Kuzatish / Solishtirish; the gradient level card; three stat tiles; the
- * newest earned badges as tinted icon tiles. Teachers add their bio card,
+ * Public profile — someone else's Profil, on the same kit as yours (the
+ * "6-qadam" layout from Phase A): the banner header with frosted nav (back,
+ * "Profil", share, more), the ringed avatar and level chip, name, follower
+ * counts, mutual connections and Kuzatish / Solishtirish; the hero tree
+ * card; four stat tiles; the gradient level card; the newest earned badges
+ * as tinted icon tiles. Teachers add their bio card,
  * links and courses; students their finished courses. "···" opens a sheet
  * with Shikoyat qilish / Bloklash. Your own id redirects to Profil.
  */
 import React, { useCallback, useEffect, useState } from 'react'
 import { Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router'
 import {
   Award, Ban, BarChart3, BookOpen, Check, ChevronLeft, Clock, Flag, Flame, Globe, MoreHorizontal, Play, Send,
-  Share2, Star, Trophy, UserPlus, UserX,
+  Share2, Star, Timer, Trophy, UserPlus, UserX,
 } from 'lucide-react-native'
 import { RoleBadge } from '../../../components/ui/RoleBadge'
 import { CompareModal } from '../../../components/profile/CompareModal'
 import { ConfirmModal } from '../../../components/ui/ConfirmModal'
 import { ReportContentSheet } from '../../../components/ui/ReportContentSheet'
 import { shareProfile } from '../../../lib/share'
-import { LEVEL_TITLES } from '../../../lib/levelTitles'
+import { LEVEL_TITLES, getLevelInfo } from '../../../lib/levelTitles'
 import { useAuthStore } from '../../../stores/authStore'
 import { useProfileStore } from '../../../stores/profileStore'
 import { useDashboardStore } from '../../../stores/dashboardStore'
@@ -41,7 +42,9 @@ import { badgeVisual, stageArt } from '../../../src/features/profile/BadgeCell'
 import { BadgeSheet } from '../../../src/features/profile/BadgeSheet'
 import { FollowListSheet, type FollowKind } from '../../../src/features/profile/FollowListSheet'
 import { LevelHeroCard } from '../../../src/features/profile/LevelHeroCard'
-import { ProfileAvatar, ProfileStat } from '../../../src/features/profile/ProfileStat'
+import { ProfileStat } from '../../../src/features/profile/ProfileStat'
+import { ProfileHeader } from '../../../src/features/profile/ProfileHeader'
+import { TreeHeroCard } from '../../../src/features/profile/TreeHeroCard'
 import { groupThousands } from '../../../src/features/profile/profileFormat'
 
 const BADGE_COLS = 4
@@ -111,6 +114,7 @@ export default function PublicProfileScreen() {
   const { colors } = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const focused = useIsFocused()
   const { id } = useLocalSearchParams<{ id: string }>()
   const authUser = useAuthStore(s => s.user)
   const { loadPublicProfile, loadOwnProfile, patchCachedStatus, cache, ownProfile } = useProfileStore()
@@ -289,10 +293,8 @@ export default function PublicProfileScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
-      {bar}
-
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space.xxl }]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + space.xxl }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -300,9 +302,26 @@ export default function PublicProfileScreen() {
             onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false) }}
             tintColor={colors.accent}
             colors={[colors.accent]}
+            progressViewOffset={insets.top}
           />
         }
       >
+        <ProfileHeader
+          banner="plain"
+          ring="oddiy"
+          name={name}
+          id={p.telegram_id}
+          uri={p.photo_url}
+          level={level}
+          levelTitle={getLevelInfo(level).title}
+          own={false}
+          onBack={back}
+          onShare={share}
+          onMore={() => setShowMore(true)}
+          animated={focused}
+        />
+
+        <View style={styles.content}>
         {blocked && (
           <View style={[styles.blocked, { backgroundColor: colors.surfaceRaised }]}>
             <Text style={[typeScale.callout, { color: colors.textMuted }]}>Siz bu foydalanuvchini bloklagansiz.</Text>
@@ -311,22 +330,21 @@ export default function PublicProfileScreen() {
 
         {/* Identity */}
         <View style={styles.identity}>
-          <ProfileAvatar name={name} id={p.telegram_id} uri={p.photo_url} />
-          <View style={styles.flex}>
+          <View>
             <View style={styles.nameRow}>
-              <Text style={[typeScale.profileName, styles.shrink, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+              <Text style={[styles.name, styles.shrink, { color: colors.text }]} numberOfLines={1}>{name}</Text>
               <RoleBadge role={p.role ?? null} accountType={p.account_type} size={18} />
             </View>
-            {p.username ? <Text style={[typeScale.label, { color: colors.accentText }]}>@{p.username}</Text> : null}
+            {p.username ? <Text style={[styles.handle, { color: colors.accentText }]}>@{p.username}</Text> : null}
             <View style={styles.counts}>
               <Pressable noFeedback onPress={() => setFollow('followers')} accessibilityLabel={`${p.followers_count ?? 0} kuzatuvchi`}>
-                <Text style={[typeScale.callout, { color: colors.textMuted }]}>
+                <Text style={[styles.countText, { color: colors.textMuted }]}>
                   <Text style={[styles.bold, { color: colors.text }]}>{p.followers_count ?? 0}</Text> kuzatuvchi
                 </Text>
               </Pressable>
-              <Text style={[typeScale.callout, { color: colors.textMuted }]}>·</Text>
+              <Text style={[styles.countText, { color: colors.textMuted }]}>·</Text>
               <Pressable noFeedback onPress={() => setFollow('following')} accessibilityLabel={`${p.following_count ?? 0} kuzatilmoqda`}>
-                <Text style={[typeScale.callout, { color: colors.textMuted }]}>
+                <Text style={[styles.countText, { color: colors.textMuted }]}>
                   <Text style={[styles.bold, { color: colors.text }]}>{p.following_count ?? 0}</Text> kuzatilmoqda
                 </Text>
               </Pressable>
@@ -357,13 +375,20 @@ export default function PublicProfileScreen() {
           )}
         </View>
 
-        <LevelHeroCard level={level} xp={p.total_xp ?? 0} nextXp={p.next_level_xp ?? 0} />
+        <TreeHeroCard streak={p.streak_days ?? 0} uid={`profile-${p.telegram_id}`} animate={focused} />
 
-        <View style={styles.stats}>
-          <ProfileStat icon={Clock} tint="orange" value={String(Math.round((p.focus_hours ?? 0) * 10) / 10)} label="soat oʻqish" />
-          <ProfileStat icon={Flame} tint="orange" value={String(p.streak_days ?? 0)} label="kunlik seriya" />
-          <ProfileStat icon={Trophy} tint="gold" value={String(p.longest_streak ?? 0)} label="eng uzun seriya" />
+        <View style={styles.statGrid}>
+          <View style={styles.stats}>
+            <ProfileStat icon={Timer} tint="orange" value={String(Math.round((p.focus_hours ?? 0) * 10) / 10)} label="soat oʻqish" />
+            <ProfileStat icon={Flame} tint="orange" value={String(p.longest_streak ?? 0)} label="eng uzun seriya" />
+          </View>
+          <View style={styles.stats}>
+            <ProfileStat icon={Trophy} tint="gold" value={String(p.total_xp ?? 0)} label="XP" />
+            <ProfileStat icon={Award} tint="green" value={String(p.courses_completed ?? 0)} label="tugatilgan kurslar" />
+          </View>
         </View>
+
+        <LevelHeroCard level={level} xp={p.total_xp ?? 0} nextXp={p.next_level_xp ?? 0} />
 
         {/* Nishonlar */}
         <View style={styles.section}>
@@ -447,6 +472,7 @@ export default function PublicProfileScreen() {
             </Card>
           </View>
         )}
+        </View>
       </ScrollView>
 
       <BadgeSheet badge={selected} onClose={() => setSelected(null)} />
@@ -549,10 +575,14 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1 },
   center: { textAlign: 'center' },
   bold: { fontFamily: fonts.bold },
-  content: { paddingHorizontal: layout.gutter, paddingTop: space.xs, gap: space.md + 2 },
+  content: { paddingHorizontal: layout.gutter, paddingTop: space.sm, gap: space.md + 2 },
   blocked: { borderRadius: radius.md, padding: space.sm, alignItems: 'center' },
-  identity: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 2 },
+  identity: { gap: space.sm },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.xxs + 2 },
+  name: { fontFamily: fonts.extrabold, fontSize: 26, lineHeight: 32, letterSpacing: -0.4 },
+  handle: { fontFamily: fonts.semibold, fontSize: 16 },
+  countText: { fontFamily: fonts.regular, fontSize: 15 },
+  statGrid: { gap: space.sm - 2 },
   counts: { flexDirection: 'row', alignItems: 'center', gap: space.xxs + 2, marginTop: 2, flexWrap: 'wrap' },
   mutual: {
     flexDirection: 'row', alignItems: 'center', gap: space.xs, alignSelf: 'flex-start',

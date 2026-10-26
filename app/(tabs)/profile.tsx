@@ -1,26 +1,27 @@
 /**
- * Profil — redesign Phase 5, rebuilt to the v2 board in Phase 7.5 D2.
- * Opens from the avatar, with a back button. The identity row (with
- * "Tahrirlash"), the gradient level card, three stat tiles, the newest
- * earned badges as tinted icon tiles (no emoji; the full grid lives on
- * /(screens)/badges) and one menu card.
+ * Profil — redesign Phase 5, rebuilt to the v2 board in Phase 7.5 D2, and
+ * to the "6-qadam" profile in Phase A: the banner header with the ringed
+ * avatar and level chip, name and counts, "Tahrirlash", the hero tree
+ * card, four stat tiles, the gradient level card, the newest earned badges
+ * as tinted icon tiles (the full grid lives on /(screens)/badges) and one
+ * menu card. Everyone has the free look until Pro cosmetics ship.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useFocusEffect, useRouter } from 'expo-router'
-import { BarChart3, ChevronLeft, ChevronRight, Clock, Flame, GraduationCap, Heart, Lightbulb, Settings, Share2, Trophy, type LucideIcon } from 'lucide-react-native'
+import { useFocusEffect, useIsFocused, useRouter } from 'expo-router'
+import { Award, BarChart3, ChevronRight, Clock, Flame, GraduationCap, Heart, Lightbulb, Trophy, type LucideIcon } from 'lucide-react-native'
 import { shareProfile } from '../../lib/share'
 import { useProfileStore } from '../../stores/profileStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useDashboardStore } from '../../stores/dashboardStore'
 import { focusStats, leaderboard, profile as profileApi, type BadgeGroups } from '../../lib/api'
-import { LEVEL_TITLES } from '../../lib/levelTitles'
+import { LEVEL_TITLES, getLevelInfo } from '../../lib/levelTitles'
 import type { ProfileData } from '../../lib/types'
 import { useTheme } from '../../src/design/ThemeProvider'
 import { avatarSize, iconSize, iconStroke, layout, radius, space } from '../../src/design/spacing'
 import { fonts, type as typeScale } from '../../src/design/typography'
-import { BadgeTile, Button, Card, IconButton, Pressable, SkeletonBlock, SkeletonRow, SectionTitle } from '../../src/components/ui'
+import { BadgeTile, Button, Card, Pressable, SkeletonBlock, SkeletonRow, SectionTitle } from '../../src/components/ui'
 import { uzText } from '../../src/features/today/today'
 import { allBadges, summary, topEarned, type ProfileBadge } from '../../src/features/profile/badges'
 import { badgeVisual, stageArt } from '../../src/features/profile/BadgeCell'
@@ -28,7 +29,9 @@ import { BadgeSheet } from '../../src/features/profile/BadgeSheet'
 import { FollowListSheet, type FollowKind } from '../../src/features/profile/FollowListSheet'
 import { LevelHeroCard } from '../../src/features/profile/LevelHeroCard'
 import { focusHours } from '../../src/features/profile/profileFormat'
-import { ProfileAvatar, ProfileStat } from '../../src/features/profile/ProfileStat'
+import { ProfileStat } from '../../src/features/profile/ProfileStat'
+import { ProfileHeader } from '../../src/features/profile/ProfileHeader'
+import { TreeHeroCard } from '../../src/features/profile/TreeHeroCard'
 
 const BADGE_COLS = 4
 const BADGE_PREVIEW = 8
@@ -67,13 +70,15 @@ export default function ProfileTab() {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const focused = useIsFocused()
   const { ownProfile, loadOwnProfile } = useProfileStore()
   const authUser = useAuthStore(s => s.user)
   const dashData = useDashboardStore(s => s.data)
 
   // Fallbacks for when the dashboard cache doesn't have these yet.
-  const [fetched, setFetched] = useState<{ streak?: number; minutes?: number; rank?: number | null }>({})
+  const [fetched, setFetched] = useState<{ streak?: number; minutes?: number; rank?: number | null; longest?: number }>({})
   const streak = dashData?.focusStats?.streak_days ?? fetched.streak ?? 0
+  const longest = dashData?.focusStats?.longest_streak ?? fetched.longest ?? 0
   const focusMinutes = dashData?.focusStats?.total_focus_minutes ?? fetched.minutes ?? 0
   const rank = dashData?.myLeaderRank ?? fetched.rank ?? null
   const [groups, setGroups] = useState<BadgeGroups['groups'] | null>(null)
@@ -88,7 +93,7 @@ export default function ProfileTab() {
       loadOwnProfile(),
       dash?.focusStats
         ? Promise.resolve()
-        : focusStats.get().then(s => setFetched(f => ({ ...f, streak: s.streak_days ?? 0, minutes: s.total_focus_minutes ?? 0 }))),
+        : focusStats.get().then(s => setFetched(f => ({ ...f, streak: s.streak_days ?? 0, minutes: s.total_focus_minutes ?? 0, longest: s.longest_streak ?? 0 }))),
       dash?.myLeaderRank != null
         ? Promise.resolve()
         : leaderboard.weekly('week').then(r => setFetched(f => ({ ...f, rank: r.my_rank ?? null }))),
@@ -119,15 +124,8 @@ export default function ProfileTab() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
-      <View style={[styles.bar, { paddingTop: insets.top }]}>
-        <IconButton icon={ChevronLeft} accessibilityLabel="Orqaga" onPress={back} />
-        <Text style={[typeScale.headline, styles.flex, styles.center, styles.bold, { color: colors.text }]} accessibilityRole="header">Profil</Text>
-        <IconButton icon={Share2} accessibilityLabel="Profilni ulashish" onPress={share} />
-        <IconButton icon={Settings} accessibilityLabel="Sozlamalar" onPress={() => router.push('/(screens)/settings' as any)} />
-      </View>
-
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space.xxl }]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + space.xxl }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -135,45 +133,66 @@ export default function ProfileTab() {
             onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false) }}
             tintColor={colors.accent}
             colors={[colors.accent]}
+            progressViewOffset={insets.top}
           />
         }
       >
+        <ProfileHeader
+          banner="plain"
+          ring="oddiy"
+          name={name}
+          id={authUser?.telegram_id}
+          uri={p?.photo_url ?? authUser?.photo_url}
+          level={level}
+          levelTitle={getLevelInfo(level).title}
+          own
+          onBack={back}
+          onShare={share}
+          onMore={() => router.push('/(screens)/settings' as any)}
+          animated={focused}
+        />
+
+        <View style={styles.content}>
         {/* Identity */}
         <View style={styles.identity}>
-          <ProfileAvatar name={name} id={authUser?.telegram_id} uri={p?.photo_url ?? authUser?.photo_url} />
-          <View style={styles.flex}>
-            {p || authUser ? (
-              <>
-                <Text style={[typeScale.profileName, { color: colors.text }]} numberOfLines={1}>{name}</Text>
-                {p?.username ? <Text style={[typeScale.label, { color: colors.accentText }]}>@{p.username}</Text> : null}
-                <View style={styles.counts}>
-                  <Pressable noFeedback onPress={() => setFollow('followers')} accessibilityLabel={`${p?.followers_count ?? 0} kuzatuvchi`}>
-                    <Text style={[typeScale.callout, { color: colors.textMuted }]}>
-                      <Text style={[styles.bold, { color: colors.text }]}>{p?.followers_count ?? 0}</Text> kuzatuvchi
-                    </Text>
-                  </Pressable>
-                  <Text style={[typeScale.callout, { color: colors.textMuted }]}>·</Text>
-                  <Pressable noFeedback onPress={() => setFollow('following')} accessibilityLabel={`${p?.following_count ?? 0} kuzatilmoqda`}>
-                    <Text style={[typeScale.callout, { color: colors.textMuted }]}>
-                      <Text style={[styles.bold, { color: colors.text }]}>{p?.following_count ?? 0}</Text> kuzatilmoqda
-                    </Text>
-                  </Pressable>
-                </View>
-              </>
-            ) : (
-              <SkeletonRow />
-            )}
-            <Button label="Tahrirlash" variant="secondary" size="sm" onPress={() => router.push('/(screens)/edit-profile' as any)} style={styles.edit} />
+          {p || authUser ? (
+            <>
+              <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+              {p?.username ? <Text style={[styles.handle, { color: colors.accentText }]}>@{p.username}</Text> : null}
+              <View style={styles.counts}>
+                <Pressable noFeedback onPress={() => setFollow('followers')} accessibilityLabel={`${p?.followers_count ?? 0} kuzatuvchi`}>
+                  <Text style={[styles.countText, { color: colors.textMuted }]}>
+                    <Text style={[styles.bold, { color: colors.text }]}>{p?.followers_count ?? 0}</Text> kuzatuvchi
+                  </Text>
+                </Pressable>
+                <Text style={[styles.countText, { color: colors.textMuted }]}>·</Text>
+                <Pressable noFeedback onPress={() => setFollow('following')} accessibilityLabel={`${p?.following_count ?? 0} kuzatilmoqda`}>
+                  <Text style={[styles.countText, { color: colors.textMuted }]}>
+                    <Text style={[styles.bold, { color: colors.text }]}>{p?.following_count ?? 0}</Text> kuzatilmoqda
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <SkeletonRow />
+          )}
+        </View>
+        <Button label="Tahrirlash" variant="secondary" onPress={() => router.push('/(screens)/edit-profile' as any)} />
+
+        <TreeHeroCard streak={streak} uid="profile-own" animate={focused} />
+
+        <View style={styles.statGrid}>
+          <View style={styles.stats}>
+            <ProfileStat icon={Clock} tint="orange" value={String(focusHours(focusMinutes))} label="soat oʻqish" />
+            <ProfileStat icon={Flame} tint="orange" value={String(longest)} label="eng uzun seriya" />
+          </View>
+          <View style={styles.stats}>
+            <ProfileStat icon={Trophy} tint="gold" value={rank == null ? '—' : `#${rank}`} label="haftalik oʻrin" />
+            <ProfileStat icon={Award} tint="green" value={String(p?.courses_completed ?? 0)} label="tugatilgan kurslar" />
           </View>
         </View>
 
         <LevelHeroCard level={level} xp={p?.total_xp ?? authUser?.total_xp ?? 0} nextXp={p?.next_level_xp ?? 0} />
-
-        <View style={styles.stats}>
-          <ProfileStat icon={Clock} tint="orange" value={String(focusHours(focusMinutes))} label="soat oʻqish" />
-          <ProfileStat icon={Flame} tint="orange" value={String(streak)} label="kunlik seriya" />
-          <ProfileStat icon={Trophy} tint="gold" value={rank == null ? '—' : `#${rank}`} label="haftalik" />
-        </View>
 
         {/* Nishonlar */}
         <View style={styles.section}>
@@ -210,6 +229,7 @@ export default function ProfileTab() {
           <MenuRow icon={Lightbulb} title="Mening savollarim" subtitle="5 SAVOLGA savol yuboring" onPress={() => router.push('/(screens)/my-questions' as any)} />
           <MenuRow icon={GraduationCap} title={teacher.title} subtitle={teacher.subtitle} onPress={() => router.push(teacher.route as any)} />
         </Card>
+        </View>
       </ScrollView>
 
       <BadgeSheet badge={selected} onClose={() => setSelected(null)} />
@@ -225,14 +245,15 @@ export default function ProfileTab() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  bar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.xxs },
   flex: { flex: 1, minWidth: 0 },
-  center: { textAlign: 'center' },
   bold: { fontFamily: fonts.bold },
-  content: { paddingHorizontal: layout.gutter, paddingTop: space.xs, gap: space.md + 2 },
-  identity: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 2 },
+  content: { paddingHorizontal: layout.gutter, paddingTop: space.sm, gap: space.md + 2 },
+  identity: { gap: 2 },
+  name: { fontFamily: fonts.extrabold, fontSize: 26, lineHeight: 32, letterSpacing: -0.4 },
+  handle: { fontFamily: fonts.semibold, fontSize: 16 },
+  countText: { fontFamily: fonts.regular, fontSize: 15 },
   counts: { flexDirection: 'row', alignItems: 'center', gap: space.xxs + 2, marginTop: 2, flexWrap: 'wrap' },
-  edit: { marginTop: space.xs },
+  statGrid: { gap: space.sm - 2 },
   stats: { flexDirection: 'row', gap: space.sm - 2 },
   section: { gap: space.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: space.sm },
