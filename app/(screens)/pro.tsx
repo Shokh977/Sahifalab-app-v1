@@ -170,6 +170,11 @@ export default function ProScreen() {
         </View>
 
         {/* Passes */}
+        {!unavailable && plans?.some(p => p.saving_percent > 0) && (
+          <View style={[styles.promo, { backgroundColor: colors.accentSoft, borderColor: colors.orangeLine }]}>
+            <Text style={[typeScale.label, { color: colors.accentText }]}>🎉 Ochilish chegirmasi — narxlar vaqtincha arzon</Text>
+          </View>
+        )}
         {unavailable ? (
           <Text style={[typeScale.body, styles.center, { color: colors.textMuted }]}>Pro tez orada ochiladi.</Text>
         ) : !plans ? (
@@ -182,7 +187,7 @@ export default function ProScreen() {
                 <Pressable
                   key={plan.months}
                   onPress={() => setMonths(plan.months)}
-                  accessibilityLabel={`${monthsLabel(plan.months)}, ${groupDigits(plan.price)} soʻm`}
+                  accessibilityLabel={`${monthsLabel(plan.months)}, ${groupDigits(plan.price)} soʻm${plan.list_price ? `, odatda ${groupDigits(plan.list_price)} soʻm` : ''}`}
                   accessibilityState={{ selected: on }}
                   style={[styles.plan, { backgroundColor: colors.surface, borderColor: on ? colors.accent : colors.border, borderWidth: on ? 2 : 1 }]}
                 >
@@ -198,10 +203,19 @@ export default function ProScreen() {
                     </View>
                     <Text style={[typeScale.callout, { color: colors.textMuted }]}>
                       {plan.months > 1 ? `oyiga ${groupDigits(plan.per_month)} soʻm` : 'Sinab koʻrish uchun'}
-                      {plan.saving_percent > 0 ? ` · ${plan.saving_percent}% tejaysiz` : ''}
                     </Text>
                   </View>
-                  <Text style={[styles.price, tabular, { color: colors.text }]}>{groupDigits(plan.price)} soʻm</Text>
+                  <View style={styles.priceCol}>
+                    {plan.saving_percent > 0 && (
+                      <View style={[styles.discount, { backgroundColor: colors.greenSoft }]}>
+                        <Text style={[styles.discountText, { color: colors.successText }]}>−{plan.saving_percent}%</Text>
+                      </View>
+                    )}
+                    {plan.list_price ? (
+                      <Text style={[styles.listPrice, tabular, { color: colors.textMuted }]}>{groupDigits(plan.list_price)} soʻm</Text>
+                    ) : null}
+                    <Text style={[styles.price, tabular, { color: colors.text }]}>{groupDigits(plan.price)} soʻm</Text>
+                  </View>
                 </Pressable>
               )
             })}
@@ -222,6 +236,11 @@ export default function ProScreen() {
             <Text style={[typeScale.callout, styles.center, { color: colors.textMuted }]}>
               Bir martalik toʻlov — avtomatik yechilmaydi
             </Text>
+            <View style={[styles.soon, { backgroundColor: colors.surfaceRaised }]}>
+              <Text style={[typeScale.callout, styles.center, { color: colors.text }]}>
+                🔔 Oylik obuna tez orada! Hozircha bir martalik pass bilan oling.
+              </Text>
+            </View>
             <View style={styles.steps}>
               {STEPS.map((s, i) => (
                 <View key={s} style={styles.step}>
@@ -274,6 +293,12 @@ const styles = StyleSheet.create({
   best: { backgroundColor: GOLD[1], borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
   bestText: { color: '#3A2A00', fontFamily: fonts.extrabold, fontSize: 11 },
   price: { fontFamily: fonts.extrabold, fontSize: 16 },
+  priceCol: { alignItems: 'flex-end', gap: 2 },
+  listPrice: { fontFamily: fonts.semibold, fontSize: 13, textDecorationLine: 'line-through' },
+  discount: { borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 1 },
+  discountText: { fontFamily: fonts.extrabold, fontSize: 11 },
+  promo: { borderRadius: 14, borderWidth: 1, paddingHorizontal: space.md, paddingVertical: space.sm, alignItems: 'center' },
+  soon: { borderRadius: 14, paddingHorizontal: space.md, paddingVertical: space.sm },
   steps: { gap: space.xs, marginTop: space.xs },
   step: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   stepNum: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

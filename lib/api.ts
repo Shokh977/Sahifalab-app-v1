@@ -1324,6 +1324,8 @@ export interface EnrollmentCodeResponse {
 export interface ProPlan {
   months:         1 | 3 | 12
   price:          number
+  /** The regular price, shown crossed out; null when there is no discount. */
+  list_price?:    number | null
   per_month:      number
   saving_percent: number
 }
