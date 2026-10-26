@@ -81,7 +81,10 @@ export default function ProfileCustomize() {
         if (params.slot === 'tree' && params.item) saved.tree = treeLookKind(params.item)
         setChoice(saved)
       })
-      .catch((e: any) => setError(e?.status === 503 ? 'Bezaklar tez orada ochiladi' : e?.message ?? 'Yuklanmadi'))
+      // 503: migration 106 not applied; 404: a server without looks yet.
+      .catch((e: any) => setError(
+        e?.status === 503 || e?.status === 404 ? 'Bezaklar tez orada ochiladi' : 'Yuklanmadi. Qayta urinib koʻring.',
+      ))
   }, [params.slot, params.item])
 
   const slot = SLOTS[tab]
