@@ -9,6 +9,8 @@ import { ChevronLeft } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useThemeStore } from '../../stores/themeStore'
 import { THEMES, THEME_IDS } from '../../src/design/themes'
+import { useDevLookStore } from '../../stores/devLookStore'
+import { BANNERS, RINGS } from '../../src/features/profile/cosmetics/cosmetics'
 import { useAuthStore } from '../../stores/authStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useDownloadStore, type DownloadQuality } from '../../stores/downloadStore'
@@ -529,6 +531,7 @@ export default function SettingsScreen() {
   const { c }                 = useTheme()
   const router                = useRouter()
   const { preference, setPreference, themeId, setThemeId } = useThemeStore()
+  const devLook = useDevLookStore()
   const { user, logout, loginWithToken, refreshUser } = useAuthStore()
 
   // O'QISH
@@ -760,6 +763,18 @@ export default function SettingsScreen() {
                 label="Mavzuni sinash"
                 value={THEMES[themeId].name}
                 onPress={() => setThemeId(THEME_IDS[(THEME_IDS.indexOf(themeId) + 1) % THEME_IDS.length])}
+              />
+              {/* Shown on your own profile instead of the saved look, until
+                  the next app start; after the last item, back to saved. */}
+              <SettingRow
+                label="Bannerni sinash"
+                value={devLook.banner ? BANNERS[devLook.banner].name : 'Saqlangan'}
+                onPress={devLook.nextBanner}
+              />
+              <SettingRow
+                label="Halqani sinash"
+                value={devLook.ring ? RINGS[devLook.ring].name : 'Saqlangan'}
+                onPress={devLook.nextRing}
                 isLast
               />
             </SettingGroup>

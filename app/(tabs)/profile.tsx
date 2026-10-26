@@ -33,6 +33,7 @@ import { ProfileStat } from '../../src/features/profile/ProfileStat'
 import { ProfileHeader } from '../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../src/features/profile/TreeHeroCard'
 import { bannerKind, ringKind, treeLookKind } from '../../src/features/profile/cosmetics/cosmetics'
+import { useDevLookStore } from '../../stores/devLookStore'
 
 const BADGE_COLS = 4
 const BADGE_PREVIEW = 8
@@ -72,6 +73,9 @@ export default function ProfileTab() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const focused = useIsFocused()
+  // Dev builds: Settings → DEV can try a banner / ring here before it can be saved.
+  const devBanner = useDevLookStore(s => (__DEV__ ? s.banner : null))
+  const devRing = useDevLookStore(s => (__DEV__ ? s.ring : null))
   const { ownProfile, loadOwnProfile } = useProfileStore()
   const authUser = useAuthStore(s => s.user)
   const dashData = useDashboardStore(s => s.data)
@@ -139,8 +143,8 @@ export default function ProfileTab() {
         }
       >
         <ProfileHeader
-          banner={bannerKind(p?.look?.banner)}
-          ring={ringKind(p?.look?.ring)}
+          banner={devBanner ?? bannerKind(p?.look?.banner)}
+          ring={devRing ?? ringKind(p?.look?.ring)}
           name={name}
           id={authUser?.telegram_id}
           uri={p?.photo_url ?? authUser?.photo_url}
