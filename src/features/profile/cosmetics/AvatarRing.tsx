@@ -8,7 +8,7 @@
 import React, { memo, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { useDerivedValue } from 'react-native-reanimated'
-import { BlurMask, Canvas, Circle, Group, LinearGradient, Path, Skia, SweepGradient, vec } from '@shopify/react-native-skia'
+import { Canvas, Circle, Group, LinearGradient, Path, Skia, SweepGradient, vec } from '@shopify/react-native-skia'
 import { useTheme } from '../../../design/ThemeProvider'
 import { Avatar } from '../../../components/ui'
 import { RINGS, RARITY_LABEL, type RingKind } from './cosmetics'
@@ -94,14 +94,21 @@ function Ring({ kind, size, accent, bg, clock, still }: {
   )
 }
 
+/**
+ * A soft glow around the ring: three widening translucent strokes. No blur —
+ * the canvas redraws every frame while animating, and a blur is the costly
+ * part of a redraw.
+ */
 function Glow({ color, width, lo, hi, period, clock, still }: {
   color: string; width: number; lo: number; hi: number; period: number; clock: Clock; still: boolean
 }) {
   const opacity = useDerivedValue(() => breathe(clock, period, lo, hi, still))
   return (
-    <Circle cx={C} cy={C} r={R} color={color} style="stroke" strokeWidth={width} opacity={opacity}>
-      <BlurMask blur={3} style="normal" />
-    </Circle>
+    <Group opacity={opacity}>
+      <Circle cx={C} cy={C} r={R} color={color} opacity={0.18} style="stroke" strokeWidth={width * 1.9} />
+      <Circle cx={C} cy={C} r={R} color={color} opacity={0.28} style="stroke" strokeWidth={width * 1.3} />
+      <Circle cx={C} cy={C} r={R} color={color} opacity={0.4} style="stroke" strokeWidth={width * 0.8} />
+    </Group>
   )
 }
 
@@ -119,9 +126,8 @@ function Comet({ accent, clock, still }: { accent: string; clock: Clock; still: 
     <Group>
       <Circle cx={C} cy={C} r={R} color={accent} opacity={0.35} style="stroke" strokeWidth={2.4} />
       <Group transform={transform} origin={vec(C, C)}>
-        <Path path={paths.tail} color={accent} opacity={0.7} style="stroke" strokeWidth={6} strokeCap="round">
-          <BlurMask blur={3} style="normal" />
-        </Path>
+        <Path path={paths.tail} color={accent} opacity={0.22} style="stroke" strokeWidth={8} strokeCap="round" />
+        <Path path={paths.tail} color={accent} opacity={0.35} style="stroke" strokeWidth={5.5} strokeCap="round" />
         <Path path={paths.tail} color={accent} style="stroke" strokeWidth={3} strokeCap="round" />
         <Path path={paths.head} color="#FFFFFF" style="stroke" strokeWidth={3} strokeCap="round" />
       </Group>
@@ -157,9 +163,8 @@ function Gold({ size, clock, still }: { size: number; clock: Clock; still: boole
       </Circle>
       <Circle cx={C} cy={C} r={48.6} color="#FFF3CF" opacity={0.8} style="stroke" strokeWidth={0.6} />
       <Group transform={sheenTransform} origin={vec(C, C)} opacity={sheenOpacity}>
-        <Path path={sheenPath} color="#FFFFFF" style="stroke" strokeWidth={4} strokeCap="round">
-          <BlurMask blur={1.2} style="normal" />
-        </Path>
+        <Path path={sheenPath} color="#FFFFFF" opacity={0.45} style="stroke" strokeWidth={5} strokeCap="round" />
+        <Path path={sheenPath} color="#FFFFFF" style="stroke" strokeWidth={2.6} strokeCap="round" />
       </Group>
       {sparks && Array.from({ length: 6 }, (_, i) => <Spark key={i} i={i} clock={clock} still={still} />)}
     </Group>

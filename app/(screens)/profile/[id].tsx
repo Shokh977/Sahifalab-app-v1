@@ -44,7 +44,7 @@ import { BadgeSheet } from '../../../src/features/profile/BadgeSheet'
 import { FollowListSheet, type FollowKind } from '../../../src/features/profile/FollowListSheet'
 import { LevelHeroCard } from '../../../src/features/profile/LevelHeroCard'
 import { ProfileStat } from '../../../src/features/profile/ProfileStat'
-import { ProfileHeader } from '../../../src/features/profile/ProfileHeader'
+import { ProfileHeader, useHeaderOnScreen } from '../../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../../src/features/profile/TreeHeroCard'
 import { GetLookSheet, type LookTarget } from '../../../src/features/profile/GetLookSheet'
 import { bannerKind, ringKind, themeKind, treeLookKind } from '../../../src/features/profile/cosmetics/cosmetics'
@@ -128,6 +128,7 @@ function PublicProfileBody() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const focused = useIsFocused()
+  const header = useHeaderOnScreen()
   const { id } = useLocalSearchParams<{ id: string }>()
   const authUser = useAuthStore(s => s.user)
   const { loadPublicProfile, loadOwnProfile, patchCachedStatus, cache, ownProfile } = useProfileStore()
@@ -318,6 +319,7 @@ function PublicProfileBody() {
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <ScrollView
+        {...header.scrollProps}
         contentContainerStyle={{ paddingBottom: insets.bottom + space.xxl }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -342,7 +344,7 @@ function PublicProfileBody() {
           onBack={back}
           onShare={share}
           onMore={() => setShowMore(true)}
-          animated={focused}
+          animated={focused && header.onScreen}
           onBannerPress={() => openLook({ slot: 'banner', id: bannerKind(p.look?.banner) })}
           onRingPress={() => openLook({ slot: 'ring', id: ringKind(p.look?.ring) })}
         />
@@ -404,7 +406,6 @@ function PublicProfileBody() {
         <TreeHeroCard
           streak={p.streak_days ?? 0}
           uid={`profile-${p.telegram_id}`}
-          animate={focused}
           look={treeLookKind(p.look?.tree)}
           onLookPress={() => openLook({ slot: 'tree', id: treeLookKind(p.look?.tree) })}
         />

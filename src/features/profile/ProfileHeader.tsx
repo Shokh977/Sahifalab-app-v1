@@ -4,8 +4,8 @@
  * avatar centred on the banner's bottom edge with the level chip on the
  * right. Shared by Profil (yours) and the public profile.
  */
-import React from 'react'
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import React, { useCallback, useRef, useState } from 'react'
+import { StyleSheet, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { ChevronLeft, Hexagon, MoreHorizontal, Settings, Share2, type LucideIcon } from 'lucide-react-native'
@@ -21,6 +21,23 @@ const BANNER = 150     // below the status bar
 const AVATAR = 120
 const NAV_BTN = 38
 const HIT = 44
+
+/**
+ * Whether the header is still on screen, for the profile's ScrollView:
+ * spread `scrollProps` on it and animate the header only while `onScreen`
+ * (a banner and ring off screen still cost a redraw every frame).
+ */
+export function useHeaderOnScreen() {
+  const insets = useSafeAreaInsets()
+  const limit = insets.top + BANNER + AVATAR / 2
+  const [onScreen, setOnScreen] = useState(true)
+  const last = useRef(true)
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next = e.nativeEvent.contentOffset.y < limit
+    if (next !== last.current) { last.current = next; setOnScreen(next) }
+  }, [limit])
+  return { onScreen, scrollProps: { onScroll, scrollEventThrottle: 100 } }
+}
 
 function NavButton({ icon: Icon, label, dark, onPress, disabled }: {
   icon: LucideIcon; label: string; dark: boolean; onPress: () => void; disabled?: boolean

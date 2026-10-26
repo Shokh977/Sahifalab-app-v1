@@ -167,7 +167,7 @@ export default function ProfileCustomize() {
                 </View>
               </View>
               <View style={[styles.treeTile, { backgroundColor: colors.surfaceRaised, borderColor: colors.border }]}>
-                <MiniTree look={choice.tree} width={TREE_TILE.w} height={TREE_TILE.h} animate={focused} uid="customize-preview" />
+                <MiniTree look={choice.tree} width={TREE_TILE.w} height={TREE_TILE.h} animate={false} uid="customize-preview" />
               </View>
             </View>
           </View>

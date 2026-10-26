@@ -30,7 +30,7 @@ import { FollowListSheet, type FollowKind } from '../../src/features/profile/Fol
 import { LevelHeroCard } from '../../src/features/profile/LevelHeroCard'
 import { focusHours } from '../../src/features/profile/profileFormat'
 import { ProfileStat } from '../../src/features/profile/ProfileStat'
-import { ProfileHeader } from '../../src/features/profile/ProfileHeader'
+import { ProfileHeader, useHeaderOnScreen } from '../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../src/features/profile/TreeHeroCard'
 import { bannerKind, ringKind, treeLookKind } from '../../src/features/profile/cosmetics/cosmetics'
 import { useDevLookStore } from '../../stores/devLookStore'
@@ -73,6 +73,7 @@ export default function ProfileTab() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const focused = useIsFocused()
+  const header = useHeaderOnScreen()
   // Dev builds: Settings → DEV can try a banner / ring here before it can be saved.
   const devBanner = useDevLookStore(s => (__DEV__ ? s.banner : null))
   const devRing = useDevLookStore(s => (__DEV__ ? s.ring : null))
@@ -130,6 +131,7 @@ export default function ProfileTab() {
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <ScrollView
+        {...header.scrollProps}
         contentContainerStyle={{ paddingBottom: insets.bottom + space.xxl }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -154,7 +156,7 @@ export default function ProfileTab() {
           onBack={back}
           onShare={share}
           onMore={() => router.push('/(screens)/settings' as any)}
-          animated={focused}
+          animated={focused && header.onScreen}
         />
 
         <View style={styles.content}>
@@ -187,7 +189,7 @@ export default function ProfileTab() {
           <Button label="Tahrirlash" variant="secondary" size="lg" onPress={() => router.push('/(screens)/edit-profile' as any)} style={styles.editBtn} />
         </View>
 
-        <TreeHeroCard streak={streak} uid="profile-own" animate={focused} look={treeLookKind(p?.look?.tree)} />
+        <TreeHeroCard streak={streak} uid="profile-own" look={treeLookKind(p?.look?.tree)} />
 
         <View style={styles.statGrid}>
           <View style={styles.stats}>

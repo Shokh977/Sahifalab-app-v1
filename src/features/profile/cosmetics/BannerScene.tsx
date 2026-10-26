@@ -2,15 +2,19 @@
  * BannerScene — the profile banner as a quiet living scene (Skia).
  * viewBox 411 × 180, cover-fit. Layers back → front: sky → light source
  * → three landscape layers with two haze bands between them → moving
- * light → particles; film grain sits in a second, static canvas on top so
- * the noise is drawn once, never per frame.
+ * light → particles; film grain sits in a second, static canvas on top.
+ *
+ * Performance: the animated canvas redraws whole on every frame, so it has
+ * no blur (soft light is radial gradients). The grain's noise is rendered
+ * once per app run into a small tile image and repeated; the per-pixel
+ * noise shader never runs while drawing.
  */
 import React, { memo, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { useDerivedValue } from 'react-native-reanimated'
 import {
-  BlurMask, Canvas, Circle, ColorMatrix, FractalNoise, Group, LinearGradient, Path, PathOp,
-  RadialGradient, Rect, Skia, vec,
+  Canvas, Circle, Group, ImageShader, LinearGradient, Path, PathOp,
+  RadialGradient, Rect, Skia, vec, type SkImage,
 } from '@shopify/react-native-skia'
 import { useTheme } from '../../../design/ThemeProvider'
 import type { Scheme } from '../../../design/tokens'
@@ -146,27 +150,55 @@ export const BannerScene = memo(function BannerScene({ kind, width, height, anim
           </Canvas>
         )}
       />
-      <Canvas style={StyleSheet.absoluteFill}>
-        <Rect x={0} y={0} width={width} height={height}>
-          <FractalNoise freqX={0.9} freqY={0.9} octaves={2} seed={3} tileWidth={0} tileHeight={0} />
-          <ColorMatrix matrix={kind === 'plain' ? GRAIN_PLAIN : GRAIN} />
-        </Rect>
-      </Canvas>
+      <Grain width={width} height={height} alpha={kind === 'plain' ? 0.05 : 0.07} />
     </View>
   )
 })
 
-// Desaturate the noise to grey at a fixed low alpha. The alpha must live in
-// the matrix: a colour filter runs after paint opacity, so an `opacity`
-// prop on the Rect would be overwritten and the grain drawn fully opaque.
-const grain = (alpha: number) => [
-  0.33, 0.33, 0.33, 0, 0,
-  0.33, 0.33, 0.33, 0, 0,
-  0.33, 0.33, 0.33, 0, 0,
-  0, 0, 0, 0, alpha,
-]
-const GRAIN = grain(0.07)
-const GRAIN_PLAIN = grain(0.05)
+const TILE = 128
+const grainTiles = new Map<number, SkImage | null>()
+
+/**
+ * A 128 px tile of grey noise at a fixed alpha, rendered once and cached.
+ * The alpha lives in the colour matrix: a colour filter runs after paint
+ * opacity, so paint opacity would be overwritten (the grain drew opaque).
+ */
+function grainTile(alpha: number): SkImage | null {
+  if (grainTiles.has(alpha)) return grainTiles.get(alpha)!
+  let image: SkImage | null = null
+  try {
+    const surface = Skia.Surface.Make(TILE, TILE)
+    if (surface) {
+      const paint = Skia.Paint()
+      paint.setShader(Skia.Shader.MakeFractalNoise(0.9, 0.9, 2, 3, TILE, TILE))
+      paint.setColorFilter(Skia.ColorFilter.MakeMatrix([
+        0.33, 0.33, 0.33, 0, 0,
+        0.33, 0.33, 0.33, 0, 0,
+        0.33, 0.33, 0.33, 0, 0,
+        0, 0, 0, 0, alpha,
+      ]))
+      surface.getCanvas().drawRect(Skia.XYWHRect(0, 0, TILE, TILE), paint)
+      surface.flush()
+      image = surface.makeImageSnapshot()
+    }
+  } catch {
+    image = null
+  }
+  grainTiles.set(alpha, image)
+  return image
+}
+
+function Grain({ width, height, alpha }: { width: number; height: number; alpha: number }) {
+  const image = grainTile(alpha)
+  if (!image) return null
+  return (
+    <Canvas style={StyleSheet.absoluteFill}>
+      <Rect x={0} y={0} width={width} height={height}>
+        <ImageShader image={image} tx="repeat" ty="repeat" fit="none" rect={{ x: 0, y: 0, width: TILE, height: TILE }} />
+      </Rect>
+    </Canvas>
+  )
+}
 
 function Plain({ colors }: { colors: [string, string] }) {
   return (
@@ -279,8 +311,8 @@ function Moon() {
 function Crescent({ path }: { path: ReturnType<typeof crescent> }) {
   return (
     <Group>
-      <Circle cx={236} cy={52} r={40} color="#FFF3CC" opacity={0.14}>
-        <BlurMask blur={8} style="normal" />
+      <Circle cx={236} cy={52} r={40}>
+        <RadialGradient c={vec(236, 52)} r={40} colors={['rgba(255,243,204,0.22)', 'rgba(255,243,204,0)']} />
       </Circle>
       <Path path={path}>
         <LinearGradient start={vec(224, 40)} end={vec(246, 66)} colors={['#FFF3CC', '#E9B14C']} />
@@ -312,8 +344,8 @@ function GoldSun({ clock, still }: { clock: Clock; still: boolean }) {
       <Circle cx={300} cy={104} r={120} opacity={glow}>
         <RadialGradient c={vec(300, 104)} r={120} colors={['#FFF4D6', '#F2B85A', '#F2B85A00']} positions={[0, 0.3, 1]} />
       </Circle>
-      <Circle cx={300} cy={104} r={60} color="#F2B85A" opacity={halo}>
-        <BlurMask blur={8} style="normal" />
+      <Circle cx={300} cy={104} r={60} opacity={halo}>
+        <RadialGradient c={vec(300, 104)} r={60} colors={['#F2B85A', '#F2B85A00']} positions={[0.35, 1]} />
       </Circle>
       <Path path={disc}>
         <LinearGradient start={vec(282, 84)} end={vec(318, 126)} colors={['#FFF6D6', '#F2C25A', '#A86C1C']} positions={[0, 0.45, 1]} />

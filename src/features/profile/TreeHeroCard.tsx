@@ -1,7 +1,8 @@
 /**
  * The profile's hero tree card: streak and stage with the tree look chip,
- * the streak tree (MagicTree in the profile's colour look) in a softly
- * lit well, and progress to the next stage. On someone else's profile the
+ * the streak tree (MagicTree in the profile's colour look, still: like on
+ * Bugun, the animated SVG tree is too costly here) in a softly lit well,
+ * and progress to the next stage. On someone else's profile the
  * chip opens "Bu ko'rinishni oling".
  */
 import React from 'react'
@@ -25,11 +26,10 @@ const HERO = { w: 280, h: 350 }   // MagicTree "hero" size, scaled down to TREE_
 /** Light / dark well colour for Tabiiy at the centre of the radial light. */
 const WELL = { light: '#E3F3E6', dark: '#1B2B22' }
 
-export function TreeHeroCard({ streak, state = 'alive', uid, animate = true, look = 'tabiiy', onLookPress }: {
+export function TreeHeroCard({ streak, state = 'alive', uid, look = 'tabiiy', onLookPress }: {
   streak: number
   state?: TreeState
   uid: string
-  animate?: boolean
   look?: TreeLook
   onLookPress?: () => void
 }) {
@@ -90,7 +90,7 @@ export function TreeHeroCard({ streak, state = 'alive', uid, animate = true, loo
         )}
         <View style={{ width: TREE_W, height: HERO.h * scale }}>
           <View style={[styles.tree, { left: (TREE_W - HERO.w) / 2, top: (HERO.h * scale - HERO.h) / 2, transform: [{ scale }] }]}>
-            <MagicTree stage={stage} state={state} size="hero" uid={uid} animate={animate} look={look} />
+            <MagicTree stage={stage} state={state} size="hero" uid={uid} animate={false} look={look} />
           </View>
         </View>
       </View>

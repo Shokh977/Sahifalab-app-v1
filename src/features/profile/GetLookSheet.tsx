@@ -75,7 +75,7 @@ export function GetLookSheet({ target, owner, unlockedForMe, onClose }: {
             ) : target.slot === 'ring' ? (
               <AvatarRing kind={target.id as RingKind} size={140} name={owner.name} id={owner.id} uri={owner.uri} bg="#2A2118" />
             ) : (
-              <MagicTree stage={8} size="card" look={target.id as TreeLook} uid={`sheet-${target.id}`} />
+              <MagicTree stage={8} size="card" look={target.id as TreeLook} uid={`sheet-${target.id}`} animate={false} />
             )}
             <View style={styles.live}>
               <View style={styles.liveDot} />
