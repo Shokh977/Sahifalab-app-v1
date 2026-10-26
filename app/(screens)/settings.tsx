@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router'
 import { ChevronLeft } from 'lucide-react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { useThemeStore } from '../../stores/themeStore'
-import { THEMES } from '../../src/design/themes'
+import { THEMES, THEME_IDS } from '../../src/design/themes'
 import { useAuthStore } from '../../stores/authStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useDownloadStore, type DownloadQuality } from '../../stores/downloadStore'
@@ -528,7 +528,7 @@ const APP_VERSION_LABEL = `v${Constants.expoConfig?.version ?? '?'} (build ${Con
 export default function SettingsScreen() {
   const { c }                 = useTheme()
   const router                = useRouter()
-  const { preference, setPreference, themeId } = useThemeStore()
+  const { preference, setPreference, themeId, setThemeId } = useThemeStore()
   const { user, logout, loginWithToken, refreshUser } = useAuthStore()
 
   // O'QISH
@@ -753,6 +753,13 @@ export default function SettingsScreen() {
               <SettingRow
                 label="Profil bezaklari (Skia)"
                 onPress={() => router.push('/(screens)/cosmetics-preview' as any)}
+              />
+              {/* Applies any theme locally, skipping the server's unlock check;
+                  the next app start re-applies the server's theme. */}
+              <SettingRow
+                label="Mavzuni sinash"
+                value={THEMES[themeId].name}
+                onPress={() => setThemeId(THEME_IDS[(THEME_IDS.indexOf(themeId) + 1) % THEME_IDS.length])}
                 isLast
               />
             </SettingGroup>
