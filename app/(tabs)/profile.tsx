@@ -32,6 +32,7 @@ import { focusHours } from '../../src/features/profile/profileFormat'
 import { ProfileStat } from '../../src/features/profile/ProfileStat'
 import { ProfileHeader, useHeaderOnScreen } from '../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../src/features/profile/TreeHeroCard'
+import { ForestStrip } from '../../src/features/forest/ForestStrip'
 import { bannerKind, ringKind, treeLookKind } from '../../src/features/profile/cosmetics/cosmetics'
 import { useDevLookStore } from '../../stores/devLookStore'
 
@@ -190,6 +191,14 @@ export default function ProfileTab() {
         </View>
 
         <TreeHeroCard streak={streak} uid="profile-own" look={treeLookKind(p?.look?.tree)} />
+
+        <ForestStrip
+          trees={p?.forest ?? []}
+          currentStreak={streak}
+          look={treeLookKind(p?.look?.tree)}
+          idPrefix="own"
+          onOpen={() => { const tid = authUser?.telegram_id ?? p?.telegram_id; if (tid) router.push(`/(screens)/forest/${tid}` as any) }}
+        />
 
         <View style={styles.statGrid}>
           <View style={styles.stats}>

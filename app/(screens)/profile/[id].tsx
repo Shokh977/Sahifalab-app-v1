@@ -46,6 +46,7 @@ import { LevelHeroCard } from '../../../src/features/profile/LevelHeroCard'
 import { ProfileStat } from '../../../src/features/profile/ProfileStat'
 import { ProfileHeader, useHeaderOnScreen } from '../../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../../src/features/profile/TreeHeroCard'
+import { ForestStrip } from '../../../src/features/forest/ForestStrip'
 import { GetLookSheet, type LookTarget } from '../../../src/features/profile/GetLookSheet'
 import { bannerKind, ringKind, themeKind, treeLookKind } from '../../../src/features/profile/cosmetics/cosmetics'
 import { groupThousands } from '../../../src/features/profile/profileFormat'
@@ -408,6 +409,14 @@ function PublicProfileBody() {
           uid={`profile-${p.telegram_id}`}
           look={treeLookKind(p.look?.tree)}
           onLookPress={() => openLook({ slot: 'tree', id: treeLookKind(p.look?.tree) })}
+        />
+
+        <ForestStrip
+          trees={p.forest ?? []}
+          currentStreak={p.streak_days ?? 0}
+          look={treeLookKind(p.look?.tree)}
+          idPrefix={`p${p.telegram_id}`}
+          onOpen={() => router.push(`/(screens)/forest/${p.telegram_id}` as any)}
         />
 
         <View style={styles.statGrid}>
