@@ -56,6 +56,8 @@ export interface WeeklyReviewVM {
    * declared interest and isn't already a teacher — points at the app's
    * own become-teacher flow. */
   tutorSuggestion?: WeeklyReviewSpotlight | null
+  /** Free user: stats grid, study tip, category insight and AI advice are Pro. */
+  proLocked:        boolean
 }
 
 export type WeeklyReviewStatus = 'loading' | 'error' | 'ready'
@@ -121,6 +123,7 @@ function buildViewModel(res: Awaited<ReturnType<typeof aiApi.weeklyReview>>): We
     studyTip:         cw.study_tip,
     categoryInsight:  cw.category_insight,
     tutorSuggestion:  cw.tutor_suggestion,
+    proLocked:        !!res.pro_locked,
   }
 }
 

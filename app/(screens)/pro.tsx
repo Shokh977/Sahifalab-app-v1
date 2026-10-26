@@ -4,14 +4,14 @@
  * three passes, then "Proʼga oʻtish": the app asks for a PAY-XXXX-YYYY code,
  * copies it and opens the pay bot, as course purchases do. The admin gives
  * Pro after checking the receipt; this screen then shows "Pro faol".
- * Lists only what Pro opens today — the AI benefits come when they exist.
+ * Lists only what Pro opens today.
  */
 import React, { useCallback, useState } from 'react'
 import { Linking, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import { useFocusEffect, useIsFocused } from 'expo-router'
-import { Check, Copy, Palette, Send, Sparkles, TreePine, Image as ImageIcon, CircleDot, type LucideIcon } from 'lucide-react-native'
+import { ChartColumn, Check, Copy, Layers, Palette, Send, Sparkles, TreePine, Image as ImageIcon, CircleDot, type LucideIcon } from 'lucide-react-native'
 import { pro as proApi, type ProPlan, type ProStatus } from '../../lib/api'
 import { track } from '../../lib/analytics'
 import { useAuthStore } from '../../stores/authStore'
@@ -28,6 +28,8 @@ const HERO_H = 180
 const GOLD = ['#F6E3A8', '#E4BE68', '#C99A3E'] as const
 
 const BENEFITS: { icon: LucideIcon; title: string; body: string }[] = [
+  { icon: Layers, title: 'AI kartalar', body: 'Kuniga 20 tagacha AI toʻplam — Tangasiz' },
+  { icon: ChartColumn, title: 'Toʻliq haftalik sharh', body: 'AI tavsiyalari va batafsil statistika' },
   { icon: Palette, title: 'Mavzular', body: 'Tun, Zumrad va Sakura — butun ilova yangi rangda' },
   { icon: ImageIcon, title: 'Jonli bannerlar', body: 'Tun va Oltin soat — profilingiz tepasida' },
   { icon: CircleDot, title: 'Avatar halqalari', body: 'Shabnam, Kometa va Oltin halqa' },

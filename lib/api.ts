@@ -1836,11 +1836,16 @@ export const wallet = {
 // (UZS), a completely different concept from the Tanga balance. Don't merge.
 
 export interface AiLimits {
+  /** Sahifalab Pro: every action up to the daily cap is free. */
+  is_pro?:                  boolean
   free_daily_allowance:     number
   free_remaining_today:     number
   hard_daily_cap:           number
   actions_used_today:       number
   actions_remaining_today:  number
+  /** Free users: Tanga-paid actions allowed / left today (null = no limit). */
+  paid_daily_limit?:        number | null
+  paid_remaining_today?:    number | null
   prices: {
     flashcard_gen?:  number
     explanation?:    number
@@ -1970,6 +1975,8 @@ export const ai = {
       review: WeeklyReview | null
       live_stats: WeeklyReviewStats | null
       current_week_progress: CurrentWeekProgress
+      /** Free user: the AI advice and advanced stats are Sahifalab Pro (zeroed / omitted). */
+      pro_locked?: boolean
     }>('/api/ai/weekly-review', { auth: true }),
 }
 

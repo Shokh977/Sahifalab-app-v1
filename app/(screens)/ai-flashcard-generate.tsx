@@ -14,6 +14,7 @@ import type { AiLimits, GeneratedFlashcard } from '../../lib/api'
 import { ConfirmModal } from '../../components/ui/ConfirmModal'
 import { typography, spacing, radius } from '../../lib/constants'
 import { track } from '../../lib/analytics'
+import { UpgradeSheet } from '../../src/features/pro/UpgradeSheet'
 
 type InputMode = 'text' | 'image'
 type Step = 'input' | 'preview'
@@ -92,6 +93,11 @@ export default function AiFlashcardGenerateScreen() {
   const hasInput = mode === 'text' ? text.trim().length >= 30 : !!imageUri
   const capReached = limits ? limits.actions_remaining_today <= 0 : false
   const willCostTanga = limits ? limits.free_remaining_today <= 0 : false
+  // A free user past today's free deck and Tanga-paid deck: Sahifalab Pro.
+  const needsPro = !!limits && !limits.is_pro && limits.free_remaining_today <= 0 && limits.paid_remaining_today === 0
+  const [proOpen, setProOpen] = useState(false)
+  const [proReason, setProReason] = useState<string | undefined>(undefined)
+  const offerPro = (reason: string) => { setProReason(reason); setProOpen(true) }
   const price = limits?.prices?.flashcard_gen ?? 100
 
   // ai_quota_exhausted: once per screen visit per reason. 'free' (the daily
@@ -109,6 +115,7 @@ export default function AiFlashcardGenerateScreen() {
   }, [capReached, willCostTanga])
 
   function onGeneratePressed() {
+    if (needsPro) { offerPro('Bugungi bepul va Tanga bilan toʻplamlar tugadi'); return }
     if (!hasInput || capReached || generating) return
     if (willCostTanga) {
       setShowConfirm(true)
@@ -144,9 +151,16 @@ export default function AiFlashcardGenerateScreen() {
       // re-pull limits so the UI reflects the post-refund state, not a
       // stale pre-charge one.
       const msg = String(e?.message ?? '')
-      if (msg.includes('Tanga yetarli emas')) trackQuota('balance')
-      else if (msg.includes('AI limitiga')) trackQuota('daily_cap')
-      Alert.alert('Xatolik', friendlyError(e))
+      if (msg.includes('Pro bilan')) {
+        trackQuota('free')
+        offerPro('Bugungi bepul va Tanga bilan toʻplamlar tugadi')
+      } else if (msg.includes('Tanga yetarli emas')) {
+        trackQuota('balance')
+        offerPro(`Tanga yetarli emas — ${price} Tanga kerak edi`)
+      } else {
+        if (msg.includes('AI limitiga')) trackQuota('daily_cap')
+        Alert.alert('Xatolik', friendlyError(e))
+      }
       await loadLimits()
     } finally {
       setGenerating(false)
@@ -208,6 +222,13 @@ export default function AiFlashcardGenerateScreen() {
                 <Text style={[s.limitsText, { color: c.textMuted }]}>Limit ma'lumoti yuklanmadi</Text>
               ) : !limits ? (
                 <ActivityIndicator size="small" color={accent} />
+              ) : needsPro ? (
+                <Pressable onPress={() => offerPro('Bugungi bepul va Tanga bilan toʻplamlar tugadi')} accessibilityRole="button">
+                  <Text style={[s.limitsText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
+                    Bugungi bepul va Tanga bilan toʻplamlar tugadi.{' '}
+                    <Text style={{ color: accent, fontFamily: typography.fontFamily.bold }}>Pro bilan cheksiz ›</Text>
+                  </Text>
+                </Pressable>
               ) : capReached ? (
                 <Text style={[s.limitsText, { color: c.warning, fontFamily: typography.fontFamily.semibold }]}>
                   Bugungi AI limitiga yetdingiz ({limits.hard_daily_cap}/kun). Ertaga qayta urinib ko'ring.
@@ -219,7 +240,9 @@ export default function AiFlashcardGenerateScreen() {
                 </Text>
               ) : (
                 <Text style={[s.limitsText, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>
-                  ✨ Bugun <Text style={{ color: accent, fontFamily: typography.fontFamily.bold }}>{limits.free_remaining_today} ta bepul</Text> amal qoldi
+                  ✨ {limits.is_pro ? 'Pro · bugun ' : 'Bugun '}<Text style={{ color: accent, fontFamily: typography.fontFamily.bold }}>
+                    {limits.free_remaining_today} ta{limits.is_pro ? '' : ' bepul'}
+                  </Text> amal qoldi
                 </Text>
               )}
             </View>
@@ -371,6 +394,7 @@ export default function AiFlashcardGenerateScreen() {
         onConfirm={doGenerate}
         onCancel={() => setShowConfirm(false)}
       />
+      <UpgradeSheet visible={proOpen} source="ai_flashcard_limit" title={proReason} onClose={() => setProOpen(false)} />
     </SafeAreaView>
   )
 }

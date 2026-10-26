@@ -147,7 +147,7 @@ export function MyDecksTab({ onOpenDeck, onCreateDeck, onEditDeck, onBrowsePubli
         onShare={d => shareFlashcardDeck({ id: d.id, title: d.title })}
         onDelete={setDeleteTarget}
       />
-      <UpgradeSheet visible={proOpen} source="kartalar_ai_card" onClose={() => setProOpen(false)} onUpgrade={() => setProOpen(false)} />
+      <UpgradeSheet visible={proOpen} source="kartalar_ai_card" onClose={() => setProOpen(false)} />
 
       <ConfirmModal
         visible={deleteTarget != null}

@@ -1,9 +1,9 @@
 /**
- * Pro is not launched yet (AGENT.md Phase 6): the upgrade sheet and the
- * "Pro bilan cheksiz" footer exist but stay hidden until this is true.
- * Flipping it needs an app update / OTA.
+ * The AI upsell: the upgrade sheet and the "Pro bilan cheksiz" footer on the
+ * AI card. On since the AI limits (backend 108_ai_pro_limits) made the AI
+ * benefits real. Flipping it needs an app update / OTA.
  */
-export const PRO_UPGRADE_ENABLED = false
+export const PRO_UPGRADE_ENABLED = true
 
 /**
  * The Pro purchase screen (/(screens)/pro) and the "Pro bilan oching"

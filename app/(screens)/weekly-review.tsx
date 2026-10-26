@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -17,12 +17,16 @@ import { WeeklyReviewSkeleton } from '../../components/weekly-review/Skeleton'
 import { StudyMethodCard } from '../../components/weekly-review/StudyMethodCard'
 import { CategoryInsightCard } from '../../components/weekly-review/CategoryInsightCard'
 import { TutorOpportunityCard } from '../../components/weekly-review/TutorOpportunityCard'
+import { ProLocked } from '../../components/weekly-review/ProLocked'
+import { UpgradeSheet } from '../../src/features/pro/UpgradeSheet'
 
 export default function WeeklyReviewScreen() {
   const { c, theme, toggle } = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { data, status, error, refetch } = useWeeklyReview()
+  const [proOpen, setProOpen] = useState(false)
+  const unlock = () => setProOpen(true)
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: c.bgPrimary }]} edges={['top', 'bottom']}>
@@ -64,25 +68,38 @@ export default function WeeklyReviewScreen() {
           contentContainerStyle={[s.scroll, { paddingBottom: spacing.xl * 2 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[s.freeBadge, { backgroundColor: c.accentPrimaryMuted, borderColor: c.accentPrimary + '44' }]}>
-            <Sparkles size={13} color={c.accentPrimary} />
-            <Text style={[s.freeBadgeText, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
-              Har doim bepul
-            </Text>
-          </View>
+          {!data.proLocked && (
+            <View style={[s.freeBadge, { backgroundColor: c.accentPrimaryMuted, borderColor: c.accentPrimary + '44' }]}>
+              <Sparkles size={13} color={c.accentPrimary} />
+              <Text style={[s.freeBadgeText, { color: c.accentPrimary, fontFamily: typography.fontFamily.semibold }]}>
+                Pro · toʻliq sharh
+              </Text>
+            </View>
+          )}
 
           <Hero vm={data} c={c} />
           <FocusCard vm={data} c={c} />
           <DailyActivityCard vm={data} c={c} />
-          <StatsGrid stats={data.stats} c={c} />
-          {data.studyTip && <StudyMethodCard tip={data.studyTip} c={c} />}
-          {data.categoryInsight && <CategoryInsightCard insight={data.categoryInsight} c={c} />}
-          <CoursesCta stats={data.stats} c={c} />
-          <TavsiyaCard vm={data} c={c} />
+          {data.proLocked ? (
+            <>
+              <ProLocked title="Toʻliq statistika" subtitle="XP, kartalar aniqligi, kurslar, testlar" kind="grid" c={c} onUnlock={unlock} />
+              <ProLocked title="Shaxsiy AI tavsiya" subtitle="Haftangizga qarab AI maslahati" kind="text" c={c} onUnlock={unlock} />
+              <ProLocked title="Oʻqish usuli va qiziqishlar" subtitle="Siz uchun tanlangan usul va maslahat" kind="text" c={c} onUnlock={unlock} />
+            </>
+          ) : (
+            <>
+              <StatsGrid stats={data.stats} c={c} />
+              {data.studyTip && <StudyMethodCard tip={data.studyTip} c={c} />}
+              {data.categoryInsight && <CategoryInsightCard insight={data.categoryInsight} c={c} />}
+              <CoursesCta stats={data.stats} c={c} />
+              <TavsiyaCard vm={data} c={c} />
+            </>
+          )}
           {data.tutorSuggestion && <TutorOpportunityCard suggestion={data.tutorSuggestion} c={c} />}
           <LastWeekSummary lastWeek={data.lastWeek} c={c} />
         </ScrollView>
       ) : null}
+      <UpgradeSheet visible={proOpen} source="weekly_review" title="Haftalik sharhning toʻliq versiyasi" onClose={() => setProOpen(false)} />
     </SafeAreaView>
   )
 }

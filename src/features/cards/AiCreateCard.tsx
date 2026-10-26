@@ -26,7 +26,9 @@ export function AiCreateCard({ onOpen, onPro }: { onOpen: () => void; onPro: () 
   }, []))
 
   const free = limits?.free_remaining_today
-  const sub = free == null ? 'Matn yoki rasmdan' : `Matn yoki rasmdan · bugun ${free} ta bepul`
+  const sub = free == null ? 'Matn yoki rasmdan'
+    : limits?.is_pro ? `Matn yoki rasmdan · Pro · bugun ${free} ta`
+    : `Matn yoki rasmdan · bugun ${free} ta bepul`
 
   return (
     <Card variant="pressable" onPress={onOpen} accessibilityLabel={`AI bilan karta yaratish. ${sub}`}>
@@ -39,7 +41,7 @@ export function AiCreateCard({ onOpen, onPro }: { onOpen: () => void; onPro: () 
           <Text style={[typeScale.callout, { color: colors.textMuted }]}>{sub}</Text>
         </View>
       </View>
-      {PRO_UPGRADE_ENABLED && (
+      {PRO_UPGRADE_ENABLED && !limits?.is_pro && (
         <Pressable noFeedback onPress={onPro} accessibilityLabel="Pro bilan cheksiz" style={[styles.footer, { borderTopColor: colors.border }]}>
           <Badge kind="pro" />
           <Text style={[typeScale.callout, { color: colors.accentText }]}>Pro bilan cheksiz</Text>
