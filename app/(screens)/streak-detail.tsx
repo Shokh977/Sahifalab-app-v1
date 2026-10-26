@@ -16,7 +16,7 @@ import { FreezeSheet } from '../../components/streak/FreezeSheet'
 import { StreakLostModal } from '../../components/streak/StreakLostModal'
 import { StreakAtRiskModal } from '../../components/streak/StreakAtRiskModal'
 import { EvolutionModal } from '../../components/streak/EvolutionModal'
-import { MagicTree } from '../../components/streak/MagicTree'
+import { MyMagicTree } from '../../components/streak/MyMagicTree'
 import { StreakHeroBackground } from '../../components/streak/StreakHeroBackground'
 import { stageFromStreak, TREE_STAGES } from '../../lib/treeTheme'
 import type { TreeState, StageNumber } from '../../lib/treeTheme'
@@ -356,7 +356,7 @@ export default function StreakDetailScreen() {
                     </Text>
                   </View>
 
-                  <MagicTree stage={stage} state={treeState} size="auto" uid="sd_hero" />
+                  <MyMagicTree stage={stage} state={treeState} size="auto" uid="sd_hero" />
 
                   {/* Big streak number */}
                   <View style={styles.heroTextRow} accessible accessibilityLabel={`${streakDays} kunlik seriya`}>

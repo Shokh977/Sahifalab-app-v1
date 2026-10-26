@@ -1,9 +1,10 @@
 /**
- * Profilni bezash — pick your banner, avatar ring and tree look (Claude Design
+ * Profilni bezash — pick your app theme, banner, avatar ring and tree look (Claude Design
  * "6-qadam" §5). A live preview on top updates on every tap, even for
  * locked items (try before you unlock); the bottom bar says how a locked
  * item opens. Saving sends only unlocked choices — the server checks them
- * again (PUT /api/profile/me/look). The Mavzu tab comes with themes.
+ * again (PUT /api/profile/me/look). A saved theme applies to the whole app
+ * at once; the preview card shows the chosen one before saving.
  * Opens with ?slot=ring&item=kometa to preselect an item.
  */
 import React, { useEffect, useMemo, useState } from 'react'
@@ -13,10 +14,13 @@ import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router'
 import { Check, RotateCcw, Sparkles } from 'lucide-react-native'
 import { profile as profileApi, type MyLook } from '../../lib/api'
 import { MagicTree } from '../../components/streak/MagicTree'
+import { useThemeStore } from '../../stores/themeStore'
+import { useMyLookStore } from '../../stores/myLookStore'
+import { type ThemeId } from '../../src/design/themes'
 import type { TreeLook } from '../../lib/treeLooks'
 import { useAuthStore } from '../../stores/authStore'
 import { useProfileStore } from '../../stores/profileStore'
-import { useTheme } from '../../src/design/ThemeProvider'
+import { ThemeProvider, useTheme } from '../../src/design/ThemeProvider'
 import { layout, radius, space } from '../../src/design/spacing'
 import { fonts, type as typeScale } from '../../src/design/typography'
 import {
@@ -26,15 +30,14 @@ import { uzText } from '../../src/features/today/today'
 import { BannerScene } from '../../src/features/profile/cosmetics/BannerScene'
 import { AvatarRing } from '../../src/features/profile/cosmetics/AvatarRing'
 import {
-  BANNERS, RARITY_COLOR, RARITY_LABEL, RINGS, SEASON_LABEL, TREES, bannerKind, ringKind, treeLookKind, unlockHint,
+  BANNERS, RARITY_COLOR, RARITY_LABEL, RINGS, SEASON_LABEL, THEME_ITEMS, TREES, bannerKind, ringKind, themeKind, treeLookKind, unlockHint,
   type BannerKind, type CosmeticItem, type LookSlot, type RingKind,
 } from '../../src/features/profile/cosmetics/cosmetics'
 import { PRO_PURCHASE_ENABLED } from '../../src/features/pro/flags'
 
-/** The profile's own slots; the app theme has its own screen (Mavzu). */
-type Slot = Exclude<LookSlot, 'theme'>
-const SLOTS: Slot[] = ['banner', 'ring', 'tree']
-const TAB_LABELS = ['Banner', 'Halqa', 'Daraxt'] as const
+type Slot = LookSlot
+const SLOTS: Slot[] = ['theme', 'banner', 'ring', 'tree']
+const TAB_LABELS = ['Mavzu', 'Banner', 'Halqa', 'Daraxt'] as const
 const TREE_TILE = { w: 92, h: 112 }
 const PREVIEW_STAGE = 6
 const COLS = 3
@@ -43,7 +46,7 @@ const PREVIEW_BANNER = 104
 const PREVIEW_RING = 88
 const THUMB = 84
 
-type Choice = { banner: BannerKind; ring: RingKind; tree: TreeLook }
+type Choice = { theme: ThemeId; banner: BannerKind; ring: RingKind; tree: TreeLook }
 
 /** The chip on a thumbnail: what the item is for you. */
 function stateChip(item: CosmeticItem, unlocked: boolean): { label: string; kind: 'owned' | 'pro' | 'glass' } {
@@ -67,7 +70,9 @@ export default function ProfileCustomize() {
 
   const [look, setLook] = useState<MyLook | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [choice, setChoice] = useState<Choice>({ banner: 'plain', ring: 'oddiy', tree: 'tabiiy' })
+  const [choice, setChoice] = useState<Choice>({ theme: 'standart', banner: 'plain', ring: 'oddiy', tree: 'tabiiy' })
+  const setThemeId = useThemeStore(st => st.setThemeId)
+  const setMyLook = useMyLookStore(st => st.set)
   const [tab, setTab] = useState(Math.max(0, SLOTS.indexOf(params.slot as Slot)))
   const [saving, setSaving] = useState(false)
 
@@ -75,10 +80,14 @@ export default function ProfileCustomize() {
     profileApi.getMyLook()
       .then(l => {
         setLook(l)
-        const saved = { banner: bannerKind(l.effective.banner), ring: ringKind(l.effective.ring), tree: treeLookKind(l.effective.tree) }
+        const saved = {
+          theme: themeKind(l.effective.theme), banner: bannerKind(l.effective.banner),
+          ring: ringKind(l.effective.ring), tree: treeLookKind(l.effective.tree),
+        }
         if (params.slot === 'banner' && params.item) saved.banner = bannerKind(params.item)
         if (params.slot === 'ring' && params.item) saved.ring = ringKind(params.item)
         if (params.slot === 'tree' && params.item) saved.tree = treeLookKind(params.item)
+        if (params.slot === 'theme' && params.item) saved.theme = themeKind(params.item)
         setChoice(saved)
       })
       // 503: migration 106 not applied; 404: a server without looks yet.
@@ -88,7 +97,8 @@ export default function ProfileCustomize() {
   }, [params.slot, params.item])
 
   const slot = SLOTS[tab]
-  const catalog: Record<string, CosmeticItem> = slot === 'banner' ? BANNERS : slot === 'ring' ? RINGS : TREES
+  const catalog: Record<string, CosmeticItem> =
+    slot === 'theme' ? THEME_ITEMS : slot === 'banner' ? BANNERS : slot === 'ring' ? RINGS : TREES
   const selectedId = choice[slot]
   const selected = catalog[selectedId]
   const isUnlocked = (s: Slot, id: string) => !!look?.unlocked[s]?.[id]
@@ -106,7 +116,10 @@ export default function ProfileCustomize() {
     for (const s of SLOTS) if (isUnlocked(s, choice[s])) (body as Record<Slot, string>)[s] = choice[s]
     setSaving(true)
     try {
-      await profileApi.updateMyLook(body)
+      const saved = await profileApi.updateMyLook(body)
+      // Apply at once: the app theme, and your ring / tree look everywhere.
+      setThemeId(themeKind(saved.effective.theme))
+      setMyLook({ banner: saved.effective.banner, ring: saved.effective.ring, tree: saved.effective.tree })
       await loadOwnProfile()
       showToast('success', 'Saqlandi')
       router.back()
@@ -116,7 +129,7 @@ export default function ProfileCustomize() {
     setSaving(false)
   }
 
-  const reset = () => setChoice({ banner: 'plain', ring: 'oddiy', tree: 'tabiiy' })
+  const reset = () => setChoice({ theme: 'standart', banner: 'plain', ring: 'oddiy', tree: 'tabiiy' })
 
   const bottom = useMemo(() => {
     if (!look) return null
@@ -156,30 +169,13 @@ export default function ProfileCustomize() {
         <EmptyState icon={Sparkles} title={error} body="Profilingiz hozircha oddiy koʻrinishda." action={{ label: 'Orqaga', onPress: () => router.back() }} />
       ) : (
         <ScrollView contentContainerStyle={[styles.body, { paddingBottom: space.xxl }]}>
-          {/* Live preview */}
-          <View style={[styles.preview, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <BannerScene kind={choice.banner} width={cardW} height={PREVIEW_BANNER} animated={focused} />
-            <View style={[styles.live, { backgroundColor: 'rgba(0,0,0,0.35)' }]}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>JONLI</Text>
-            </View>
-            <View style={styles.previewRow}>
-              <AvatarRing
-                kind={choice.ring} size={PREVIEW_RING} name={name} id={authUser?.telegram_id}
-                uri={ownProfile?.photo_url ?? authUser?.photo_url} bg={colors.surface} animated={focused}
-              />
-              <View style={styles.flex}>
-                <Text style={[styles.previewName, { color: colors.text }]} numberOfLines={1}>{name}</Text>
-                {ownProfile?.username ? <Text style={[typeScale.label, { color: colors.accentText }]}>@{ownProfile.username}</Text> : null}
-                <View style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                  <Text style={[typeScale.callout, { color: colors.text }]}>{streak} kun</Text>
-                </View>
-              </View>
-              <View style={[styles.treeTile, { backgroundColor: colors.surfaceRaised, borderColor: colors.border }]}>
-                <MiniTree look={choice.tree} width={TREE_TILE.w} height={TREE_TILE.h} animate={false} uid="customize-preview" />
-              </View>
-            </View>
-          </View>
+          {/* Live preview, in the chosen theme */}
+          <ThemeProvider themeId={choice.theme}>
+            <PreviewCard
+              choice={choice} width={cardW} animated={focused} name={name} streak={streak}
+              id={authUser?.telegram_id} uri={ownProfile?.photo_url ?? authUser?.photo_url} username={ownProfile?.username}
+            />
+          </ThemeProvider>
 
           <SegmentedControl segments={TAB_LABELS} index={tab} onChange={setTab} size="md" />
 
@@ -205,7 +201,9 @@ export default function ProfileCustomize() {
                     ]}
                   >
                     <View style={[styles.thumb, { backgroundColor: colors.surfaceRaised }]}>
-                      {slot === 'banner' ? (
+                      {slot === 'theme' ? (
+                        <ThemeProvider themeId={id as ThemeId}><ThemeSwatch width={cellW - 12} /></ThemeProvider>
+                      ) : slot === 'banner' ? (
                         <BannerScene kind={id as BannerKind} width={cellW - 12} height={THUMB} animated={false} />
                       ) : slot === 'ring' ? (
                         <AvatarRing kind={id as RingKind} size={60} name={name} id={authUser?.telegram_id} bg={colors.surfaceRaised} animated={false} />
@@ -245,6 +243,50 @@ export default function ProfileCustomize() {
   )
 }
 
+/** The preview card: banner, ring, name, streak and tree in the surrounding theme. */
+function PreviewCard({ choice, width, animated, name, streak, id, uri, username }: {
+  choice: Choice; width: number; animated: boolean; name: string; streak: number
+  id?: number | null; uri?: string | null; username?: string | null
+}) {
+  const { colors } = useTheme()
+  return (
+    <View style={[styles.preview, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <BannerScene kind={choice.banner} width={width} height={PREVIEW_BANNER} animated={animated} />
+      <View style={[styles.live, { backgroundColor: 'rgba(0,0,0,0.35)' }]}>
+        <View style={styles.liveDot} />
+        <Text style={styles.liveText}>JONLI</Text>
+      </View>
+      <View style={styles.previewRow}>
+        <AvatarRing kind={choice.ring} size={PREVIEW_RING} name={name} id={id} uri={uri} bg={colors.surface} animated={animated} />
+        <View style={styles.flex}>
+          <Text style={[styles.previewName, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+          {username ? <Text style={[typeScale.label, { color: colors.accentText }]}>@{username}</Text> : null}
+          <View style={[styles.pill, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+            <Text style={[typeScale.callout, { color: colors.text }]}>{streak} kun</Text>
+          </View>
+        </View>
+        <View style={[styles.treeTile, { backgroundColor: colors.surfaceRaised, borderColor: colors.border }]}>
+          <MiniTree look={choice.tree} width={TREE_TILE.w} height={TREE_TILE.h} animate={false} uid="customize-preview" />
+        </View>
+      </View>
+    </View>
+  )
+}
+
+/** A theme thumbnail: its background, a card with an accent bar and text lines. */
+function ThemeSwatch({ width }: { width: number }) {
+  const { colors } = useTheme()
+  return (
+    <View style={[styles.swatch, { width, backgroundColor: colors.bg }]}>
+      <View style={[styles.swatchCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.swatchBar, { backgroundColor: colors.accent }]} />
+        <View style={[styles.swatchLine, { backgroundColor: colors.text, width: '70%' }]} />
+        <View style={[styles.swatchLine, { backgroundColor: colors.textMuted, width: '45%' }]} />
+      </View>
+    </View>
+  )
+}
+
 /** MagicTree at stage 6, scaled from its 160×200 card size to fit a tile. */
 function MiniTree({ look, width, height, animate, uid }: { look: TreeLook; width: number; height: number; animate: boolean; uid: string }) {
   const scale = Math.min(width / 160, height / 200)
@@ -279,6 +321,10 @@ const styles = StyleSheet.create({
     marginTop: -PREVIEW_RING / 2, paddingHorizontal: space.md,
   },
   previewName: { fontFamily: fonts.extrabold, fontSize: 19 },
+  swatch: { height: THUMB, padding: 8, justifyContent: 'center' },
+  swatchCard: { borderRadius: 10, borderWidth: 1, padding: 8, gap: 5 },
+  swatchBar: { height: 8, borderRadius: 4, width: '55%' },
+  swatchLine: { height: 4, borderRadius: 2, opacity: 0.8 },
   treeTile: { width: TREE_TILE.w, height: TREE_TILE.h, borderRadius: 18, borderWidth: 1, overflow: 'hidden', marginBottom: -space.xs },
   pill: {
     alignSelf: 'flex-start', borderWidth: 1, borderRadius: radius.full,

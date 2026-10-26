@@ -13,12 +13,15 @@ import { useAuthStore } from '../../../stores/authStore'
 import { useNotificationStore } from '../../../stores/notificationStore'
 import { TangaInfoSheet } from '../../../components/dashboard/TangaInfoSheet'
 import { useTheme } from '../../design/ThemeProvider'
-import { layout, space } from '../../design/spacing'
+import { layout, space, avatarSize } from '../../design/spacing'
 import { type as typeScale } from '../../design/typography'
-import { Avatar, Badge, CoinPill, IconButton, Pressable } from '../../components/ui'
+import { Badge, CoinPill, IconButton, Pressable } from '../../components/ui'
+import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
+import { useMyLookStore } from '../../../stores/myLookStore'
 import { uzText } from './today'
 
 export function TodayHeader({ offline }: { offline: boolean; now?: number }) {
+  const myRing = useMyLookStore(st => st.ring)
   const { colors } = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -51,7 +54,7 @@ export function TodayHeader({ offline }: { offline: boolean; now?: number }) {
           accessibilityLabel="Profil"
           style={styles.avatarTarget}
         >
-          <Avatar name={user?.first_name ?? '?'} id={user?.telegram_id} uri={user?.photo_url} size="header" level={user?.level} />
+          <RingedAvatar ring={myRing} name={user?.first_name ?? '?'} id={user?.telegram_id} uri={user?.photo_url} diameter={avatarSize.header} level={user?.level} />
         </Pressable>
       </View>
 

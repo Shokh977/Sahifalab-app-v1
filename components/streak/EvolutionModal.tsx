@@ -15,7 +15,7 @@ import Animated, {
   Easing,
   type SharedValue,
 } from 'react-native-reanimated'
-import { MagicTree } from './MagicTree'
+import { MyMagicTree } from './MyMagicTree'
 import { TREE_STAGES } from '../../lib/treeTheme'
 import type { StageNumber } from '../../lib/treeTheme'
 import { typography, spacing, radius } from '../../lib/constants'
@@ -202,7 +202,7 @@ export function EvolutionModal({ visible, toStage, bonusXp = 0, bonusTanga = 0, 
 
           {/* Old tree (fades during anticipation) */}
           <Animated.View style={[StyleSheet.absoluteFill, styles.treeCentered, oldTreeStyle]}>
-            <MagicTree stage={Math.max(1, toStage - 1) as StageNumber} state="alive" size="card" uid="evo_old" />
+            <MyMagicTree stage={Math.max(1, toStage - 1) as StageNumber} state="alive" size="card" uid="evo_old" />
           </Animated.View>
 
           {/* Burst particles (positioned at center of tree area) */}
@@ -214,7 +214,7 @@ export function EvolutionModal({ visible, toStage, bonusXp = 0, bonusTanga = 0, 
 
           {/* New tree (springs in during reveal) */}
           <Animated.View style={[StyleSheet.absoluteFill, styles.treeCentered, newTreeStyle]}>
-            <MagicTree stage={toStage} state="alive" size="card" uid="evo_new" />
+            <MyMagicTree stage={toStage} state="alive" size="card" uid="evo_new" />
           </Animated.View>
 
           {/* "STAGE X UNLOCKED" badge */}

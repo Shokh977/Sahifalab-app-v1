@@ -1160,6 +1160,8 @@ export interface LeaderboardEntry {
   is_me:        boolean
   account_type?: string
   top_badge?:   TopBadge | null
+  /** Avatar ring (Pro / earned / seasonal); absent or null = the plain one. */
+  ring?:        string | null
 }
 
 type _OldLbRow = {
@@ -1193,6 +1195,8 @@ export interface WeeklyLeaderboard {
   total?: number | null
   /** Your row and its neighbours when you're outside `entries` (newer backends). */
   around_me?: LeaderboardEntry[]
+  /** Your own avatar ring, for the "Siz" bar. */
+  my_ring?: string | null
 }
 
 export const leaderboard = {

@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { MagicTree } from './MagicTree'
+import { MyMagicTree } from './MyMagicTree'
 import { stageFromStreak } from '../../lib/treeTheme'
 import { moveSpring } from '../../src/design/rnMotion'
 
@@ -63,7 +63,7 @@ export function GoalCompleteModal({ visible, streakDays, xpEarned, tangaEarned =
               StagesPath), not the separate lower-fidelity ui/TreeStage illustration
               this modal used to render, which visibly broke "this is my tree"
               continuity at exactly this celebratory moment. */}
-          <MagicTree stage={stage} state="alive" size="card" animate={false} />
+          <MyMagicTree stage={stage} state="alive" size="card" animate={false} />
 
           {/* Title */}
           <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>

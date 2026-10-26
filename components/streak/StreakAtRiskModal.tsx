@@ -16,7 +16,7 @@ import {
 } from 'react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { MagicTree } from './MagicTree'
+import { MyMagicTree } from './MyMagicTree'
 import { stageFromStreak } from '../../lib/treeTheme'
 import { moveSpring } from '../../src/design/rnMotion'
 
@@ -78,7 +78,7 @@ export function StreakAtRiskModal({
           styles.card,
           { backgroundColor: c.bgSecondary, borderColor: '#f5a62355', transform: [{ scale: scaleAnim }] },
         ]}>
-          <MagicTree stage={stageFromStreak(Math.max(1, streakDays))} state="at_risk" size="card" animate />
+          <MyMagicTree stage={stageFromStreak(Math.max(1, streakDays))} state="at_risk" size="card" animate />
 
           <Text style={[styles.title, { color: '#f5a623', fontFamily: typography.fontFamily.bold }]}>
             🔥 Seriya xavf ostida!

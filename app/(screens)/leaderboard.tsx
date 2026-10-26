@@ -196,7 +196,7 @@ export default function LeaderboardScreen() {
               <ThemeDecor variant="podium" radius={CARD_RADIUS} />
               <ThemeDecor variant="border" radius={CARD_RADIUS} />
               <Podium
-                entries={podium.map(e => ({ id: e.telegram_id, rank: e.rank, name: e.is_me ? 'Siz' : e.first_name || e.username || '', photoUrl: e.photo_url, xp: e.score }))}
+                entries={podium.map(e => ({ id: e.telegram_id, rank: e.rank, name: e.is_me ? 'Siz' : e.first_name || e.username || '', photoUrl: e.photo_url, xp: e.score, ring: e.ring }))}
                 onPress={id => { const e = podium.find(p => p.telegram_id === id); if (e) setPerson(e) }}
               />
               <Text style={[typeScale.callout, tabular, styles.center, { color: colors.textMuted }]} numberOfLines={2}>{meta}</Text>

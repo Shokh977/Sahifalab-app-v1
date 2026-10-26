@@ -11,7 +11,8 @@ import type { LeaderboardEntry } from '../../../lib/api'
 import { useTheme } from '../../design/ThemeProvider'
 import { avatarSize, radius, space } from '../../design/spacing'
 import { fonts, tabular, type as typeScale } from '../../design/typography'
-import { Avatar, Pressable } from '../../components/ui'
+import { Pressable } from '../../components/ui'
+import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
 import { groupDigits } from '../courses/courses'
 import { uzText } from '../today/today'
 import { hoursLabel } from './bellashuv'
@@ -46,7 +47,7 @@ export function RankingRow({ e, mine, note, first, dense, onPress }: {
       <Text style={[typeScale.label, tabular, styles.rank, dense && styles.denseRank, { color: mine ? colors.accentText : colors.textMuted, fontFamily: mine ? fonts.extrabold : fonts.bold }]}>
         {e.rank}
       </Text>
-      <Avatar name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={dense ? avatarSize.sm : ROW_AVATAR} />
+      <RingedAvatar ring={e.ring} name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={dense ? avatarSize.sm : ROW_AVATAR} />
       <View style={styles.flex}>
         <Text style={[titleType, styles.bold, mine && styles.heavy, { color: colors.text }]} numberOfLines={1}>{name}</Text>
         <Text style={[typeScale.small, tabular, { color: note ? colors.accentText : colors.textMuted, fontFamily: note ? fonts.semibold : fonts.regular }]} numberOfLines={2}>

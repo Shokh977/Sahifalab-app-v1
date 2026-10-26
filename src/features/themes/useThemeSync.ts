@@ -1,7 +1,8 @@
 /**
- * Keeps the applied app theme in line with what the server allows, once
- * per sign-in. The theme itself is applied before the first paint from
- * local storage (themeStore.loadTheme); this only corrects it afterwards:
+ * Once per sign-in: loads your own look (myLookStore) and keeps the
+ * applied app theme in line with what the server allows. The theme itself
+ * is applied before the first paint from local storage
+ * (themeStore.loadTheme); this only corrects it afterwards:
  *
  * - The server's effective theme differs from the local one (Pro ended or
  *   the season closed): apply it, and once per lapse show
@@ -16,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { profile as profileApi } from '../../../lib/api'
 import { useThemeStore } from '../../../stores/themeStore'
 import { useNotifToastStore } from '../../../stores/notifToastStore'
+import { useMyLookStore } from '../../../stores/myLookStore'
 import { themeKind } from '../profile/cosmetics/cosmetics'
 
 const TOASTED_KEY = 'sahifalab_theme_fallback_toasted'
@@ -27,6 +29,8 @@ export function useThemeSync(enabled: boolean) {
     profileApi.getMyLook()
       .then(async look => {
         if (cancelled) return
+        // Your own ring and tree look, for Bugun, the streak screens and Reyting.
+        useMyLookStore.getState().set({ banner: look.effective.banner, ring: look.effective.ring, tree: look.effective.tree })
         const { themeId, setThemeId } = useThemeStore.getState()
         const effective = themeKind(look.effective.theme)
         const saved = themeKind(look.saved.theme)

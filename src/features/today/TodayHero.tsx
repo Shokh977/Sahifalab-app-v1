@@ -25,7 +25,7 @@ import { scheduleOnRN } from 'react-native-worklets'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { Check } from 'lucide-react-native'
 import type { StreakCalendarDay, StreakState } from '../../../lib/api'
-import { MagicTree } from '../../../components/streak/MagicTree'
+import { MyMagicTree } from '../../../components/streak/MyMagicTree'
 import { TREE_STAGES, stageFromStreak, type TreeState } from '../../../lib/treeTheme'
 import { useTheme } from '../../design/ThemeProvider'
 import { ThemeDecor } from '../themes/ThemeDecor'
@@ -161,7 +161,7 @@ export function TodayHero({
           <TreeGlow />
           <ThemeDecor variant="tile" radius={TREE_RADIUS} />
           <Animated.View style={treeStyle}>
-            <MagicTree stage={stage} state={treeState} size="thumb" uid="today" animate={false} />
+            <MyMagicTree stage={stage} state={treeState} size="thumb" uid="today" animate={false} />
           </Animated.View>
         </View>
 

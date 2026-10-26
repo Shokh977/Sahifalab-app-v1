@@ -12,7 +12,8 @@ import { useTheme } from '../../design/ThemeProvider'
 import { springs } from '../../design/motion'
 import { avatarSize, radius, space } from '../../design/spacing'
 import { fonts, tabular, type as typeScale } from '../../design/typography'
-import { Avatar, RollingNumber } from '../../components/ui'
+import { RollingNumber } from '../../components/ui'
+import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
 import { groupDigits } from '../courses/courses'
 import { uzText } from './today'
 
@@ -23,6 +24,8 @@ export interface RivalRow {
   rank: number
   xp: number
   isMe?: boolean
+  /** Avatar ring (Pro / earned / seasonal). */
+  ring?: string | null
 }
 
 const layoutTransition = LinearTransition.springify().duration(springs.ui.duration).dampingRatio(springs.ui.dampingRatio)
@@ -58,7 +61,7 @@ export function RivalLadder({ rows, footer }: { rows: readonly RivalRow[]; foote
                 r.isMe && { backgroundColor: colors.accentSoft, borderColor: colors.orangeLine, borderWidth: 1.5 },
               ]}
             >
-              <Avatar name={r.name || '?'} id={r.id} uri={r.photoUrl} size="row" />
+              <RingedAvatar ring={r.ring} name={r.name || '?'} id={r.id} uri={r.photoUrl} diameter={avatarSize.row} />
               <View style={styles.text}>
                 <Text style={[typeScale.rowTitle, r.isMe && styles.heavy, { color: colors.text }]} numberOfLines={1}>{name}</Text>
                 <Text style={[typeScale.small, tabular, r.isMe && styles.semi, { color: r.isMe ? colors.accentText : colors.textMuted }]} numberOfLines={1}>

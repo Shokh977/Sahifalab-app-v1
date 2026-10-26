@@ -14,11 +14,13 @@ import { avatarSize, iconSize, iconStroke, radius, space } from '../../design/sp
 import { medal } from '../../design/tokens'
 import { fonts, tabular, type as typeScale } from '../../design/typography'
 import { Avatar, Pressable } from '../../components/ui'
+import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
+import { ringKind } from '../profile/cosmetics/cosmetics'
 import { groupDigits } from '../courses/courses'
 import { uzText } from '../today/today'
 import { podiumColumns } from './podiumOrder'
 
-export interface PodiumEntry { id: number; rank: number; name: string; photoUrl?: string | null; xp: number }
+export interface PodiumEntry { id: number; rank: number; name: string; photoUrl?: string | null; xp: number; ring?: string | null }
 
 const RING = 3
 const AVATAR: Record<1 | 2 | 3, number> = { 1: avatarSize.podium, 2: avatarSize.lg, 3: avatarSize.lg }
@@ -47,8 +49,10 @@ export function Podium({ entries, onPress }: { entries: readonly PodiumEntry[]; 
             accessibilityLabel={`${r}-oʻrin, ${uzText(e.name)}, ${e.xp} XP`}
           >
             {first && <Crown size={iconSize.sm} color={medal.ring[1]} fill={medal.ring[1]} strokeWidth={iconStroke} />}
-            <View style={[styles.ring, { width: d, height: d, borderColor: medal.ring[r] }]}>
-              <Avatar name={e.name || '?'} id={e.id} uri={e.photoUrl} diameter={d - RING * 2} />
+            <View style={[styles.ring, { width: d, height: d }, ringKind(e.ring ?? undefined) === 'oddiy' ? { borderColor: medal.ring[r] } : styles.noBorder]}>
+              {ringKind(e.ring ?? undefined) === 'oddiy'
+                ? <Avatar name={e.name || '?'} id={e.id} uri={e.photoUrl} diameter={d - RING * 2} />
+                : <RingedAvatar ring={e.ring} name={e.name || '?'} id={e.id} uri={e.photoUrl} diameter={d} animated={r === 1} />}
               <View style={[styles.coin, { width: COIN[r], height: COIN[r], backgroundColor: medal.ring[r], bottom: -space.xs }]}>
                 <Text style={[typeScale.levelBadge, tabular, { color: medal.coinText[r] }]}>{r}</Text>
               </View>
@@ -77,6 +81,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: space.xs, paddingBottom: space.xs },
   col: { flex: 1, alignItems: 'center', gap: space.xxs + 2 },
   ring: { borderRadius: radius.full, borderWidth: RING, alignItems: 'center', justifyContent: 'center' },
+  noBorder: { borderWidth: 0 },
   coin: { position: 'absolute', borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   name: { marginTop: space.xs, maxWidth: '100%' },
   block: { width: '100%', borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md, borderBottomLeftRadius: space.xxs + 2, borderBottomRightRadius: space.xxs + 2 },

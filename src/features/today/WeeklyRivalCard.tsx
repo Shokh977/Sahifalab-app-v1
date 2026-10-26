@@ -12,7 +12,8 @@ import type { LeaderboardEntry } from '../../../lib/api'
 import { useTheme } from '../../design/ThemeProvider'
 import { iconSize, iconStroke, radius, space } from '../../design/spacing'
 import { fonts, tabular, type as typeScale } from '../../design/typography'
-import { Avatar, Card, Pressable, SectionTitle } from '../../components/ui'
+import { Card, Pressable, SectionTitle } from '../../components/ui'
+import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
 import { groupDigits } from '../courses/courses'
 import { RivalLadder } from './RivalLadder'
 import { TrophyIcon } from './TrophyIcon'
@@ -50,7 +51,7 @@ export function WeeklyRivalCard({ entries, around, myRank, total, todayMinutes, 
 
   const ladder = ladderFor(entries, around, myRank)
   const rows = ladder.map(e => ({
-    id: e.telegram_id, name: e.first_name || e.username || '', photoUrl: e.photo_url, rank: e.rank, xp: e.score, isMe: e.is_me,
+    id: e.telegram_id, name: e.first_name || e.username || '', photoUrl: e.photo_url, rank: e.rank, xp: e.score, isMe: e.is_me, ring: e.ring,
   }))
   const gap = gapAbove(ladder)
   const me = ladder.find(e => e.is_me)
@@ -92,7 +93,7 @@ export function WeeklyRivalCard({ entries, around, myRank, total, todayMinutes, 
             <View style={styles.stack}>
               {top.map((e, i) => (
                 <View key={e.telegram_id} style={[styles.stackItem, i > 0 && styles.overlap, { borderColor: colors.surface }]}>
-                  <Avatar name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={STACK - STACK_BORDER * 2} />
+                  <RingedAvatar ring={e.ring} name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={STACK - STACK_BORDER * 2} />
                 </View>
               ))}
               {more > 0 && (

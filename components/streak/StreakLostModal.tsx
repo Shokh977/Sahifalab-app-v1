@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import { useTheme } from '../../hooks/useTheme'
 import { typography, spacing, radius } from '../../lib/constants'
-import { MagicTree } from './MagicTree'
+import { MyMagicTree } from './MyMagicTree'
 import { stageFromStreak } from '../../lib/treeTheme'
 import { moveSpring } from '../../src/design/rnMotion'
 
@@ -62,7 +62,7 @@ export function StreakLostModal({ visible, prevStreak, freezeCount, onClose, onU
               tree-stages, StagesPath), not the separate lower-fidelity ui/TreeStage
               illustration this modal used to render, which visibly broke "this is
               my tree" continuity at exactly this emotionally-loaded moment. */}
-          <MagicTree stage={stageFromStreak(Math.max(1, prevStreak))} state="dead" size="card" animate={false} />
+          <MyMagicTree stage={stageFromStreak(Math.max(1, prevStreak))} state="dead" size="card" animate={false} />
 
           <Text style={[styles.title, { color: c.textPrimary, fontFamily: typography.fontFamily.bold }]}>
             Seriya uzildi

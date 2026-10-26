@@ -16,7 +16,8 @@ import { useProfileStore } from '../../../stores/profileStore'
 import { useTheme } from '../../design/ThemeProvider'
 import { avatarSize, radius, space } from '../../design/spacing'
 import { tabular, type as typeScale } from '../../design/typography'
-import { Avatar, Button, Sheet } from '../../components/ui'
+import { Button, Sheet } from '../../components/ui'
+import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
 import { groupDigits } from '../courses/courses'
 import { uzText } from '../today/today'
 import { hoursLabel } from './bellashuv'
@@ -83,7 +84,7 @@ export function PersonSheet({ entry, periodLabel, onClose, onOpenProfile }: {
       {e ? (
         <View style={styles.body}>
           <View style={styles.who}>
-            <Avatar name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} size="md" />
+            <RingedAvatar ring={e.ring} name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={avatarSize.md} />
             <View style={styles.flex}>
               <Text style={[typeScale.headline, { color: colors.text }]} numberOfLines={2} accessibilityRole="header">{name}</Text>
               <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>

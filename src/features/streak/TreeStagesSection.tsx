@@ -9,7 +9,7 @@
 import React, { useEffect, useState } from 'react'
 import { InteractionManager, StyleSheet, Text, View } from 'react-native'
 import { Lock } from 'lucide-react-native'
-import { MagicTree } from '../../../components/streak/MagicTree'
+import { MyMagicTree } from '../../../components/streak/MyMagicTree'
 import { TREE_STAGES, stageFromStreak } from '../../../lib/treeTheme'
 import { useTheme } from '../../design/ThemeProvider'
 import { avatarSize, iconSize, iconStroke, radius, space } from '../../design/spacing'
@@ -60,7 +60,7 @@ export function TreeStagesSection({ streakDays }: { streakDays: number }) {
               </View>
               <View style={styles.tree}>
                 {ready
-                  ? <MagicTree stage={s.id} state={locked ? 'dead' : 'alive'} size="thumb" uid={`ts_${s.id}`} animate={false} />
+                  ? <MyMagicTree stage={s.id} state={locked ? 'dead' : 'alive'} size="thumb" uid={`ts_${s.id}`} animate={false} />
                   : <View style={styles.tree} />}
                 {locked && (
                   <View style={[styles.lock, { backgroundColor: colors.surface, borderColor: colors.border }]}>

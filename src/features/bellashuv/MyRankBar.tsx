@@ -10,9 +10,11 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Timer } from 'lucide-react-native'
 import type { LeaderboardEntry } from '../../../lib/api'
 import { useTheme } from '../../design/ThemeProvider'
-import { iconSize, iconStroke, layout, radius, space } from '../../design/spacing'
+import { iconSize, iconStroke, layout, radius, space, avatarSize } from '../../design/spacing'
 import { fonts, tabular, type as typeScale } from '../../design/typography'
-import { Avatar, Pressable } from '../../components/ui'
+import { Pressable } from '../../components/ui'
+import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
+import { useMyLookStore } from '../../../stores/myLookStore'
 
 const RANK_COL = 26
 
@@ -26,6 +28,7 @@ export function MyRankBar({ me, note, name, photoUrl, id, onPress, onFocus }: {
   onPress?: () => void
   onFocus: () => void
 }) {
+  const myRing = useMyLookStore(st => st.ring)
   const { colors, elevation } = useTheme()
   const sub = me ? note ?? (me.rank === 1 ? 'Siz birinchisiz' : undefined) : 'Fokus XP beradi'
   const label = me ? `Siz ${me.rank}-oʻrindasiz, ${me.score} XP${sub ? `, ${sub}` : ''}` : 'Siz hali reytingda yoʻqsiz'
@@ -34,7 +37,7 @@ export function MyRankBar({ me, note, name, photoUrl, id, onPress, onFocus }: {
     <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.orangeLine }, elevation]}>
       <Pressable onPress={onPress} disabled={!onPress} noFeedback accessibilityLabel={label} style={styles.who}>
         <Text style={[typeScale.label, tabular, styles.rank, { color: colors.accentText }]}>{me ? me.rank : '–'}</Text>
-        <Avatar name={name || '?'} id={id} uri={photoUrl} size="sm" />
+        <RingedAvatar ring={me?.ring ?? myRing} name={name || '?'} id={id} uri={photoUrl} diameter={avatarSize.sm} />
         <View style={styles.flex}>
           <Text style={[typeScale.label, styles.heavy, { color: colors.text }]} numberOfLines={1}>
             {me ? 'Siz' : 'Hali reytingda yoʻqsiz'}
