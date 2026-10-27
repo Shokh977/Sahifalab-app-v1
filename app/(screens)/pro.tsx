@@ -156,24 +156,6 @@ export default function ProScreen() {
             ))}
           </View>
         )}
-        {pending && (
-          <View style={[styles.state, { backgroundColor: colors.surface, borderColor: colors.orangeLine }]}>
-            <View style={styles.flex}>
-              <Text style={[typeScale.headline, { color: colors.text }]}>
-                {pending.status === 'paid' ? 'Chek tekshirilmoqda' : 'Toʻlov kutilmoqda'} · {monthsLabel(pending.months)}
-              </Text>
-              <Text style={[typeScale.callout, { color: colors.textMuted }]}>
-                {pending.status === 'paid'
-                  ? 'Odatda 5–30 daqiqa. Tasdiqlangach Pro ochiladi va xabar keladi.'
-                  : `Kodni botga yuboring, ${groupDigits(pending.amount)} soʻm toʻlab, chek rasmini joʻnating.`}
-              </Text>
-              <Pressable onPress={copyCode} accessibilityLabel={`Kodni nusxalash: ${pending.reference_code}`} style={[styles.code, { backgroundColor: colors.surfaceRaised }]}>
-                <Text style={[styles.codeText, tabular, { color: colors.text }]}>{pending.reference_code}</Text>
-                <Copy size={16} color={colors.textMuted} />
-              </Pressable>
-            </View>
-          </View>
-        )}
 
         {/* What Pro opens */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -244,6 +226,27 @@ export default function ProScreen() {
                 </Pressable>
               )
             })}
+          </View>
+        )}
+
+        {/* Open request: the PAY code, right above the button that made it,
+            so it appears where the user is looking. */}
+        {pending && (
+          <View style={[styles.state, { backgroundColor: colors.surface, borderColor: colors.orangeLine }]}>
+            <View style={styles.flex}>
+              <Text style={[typeScale.headline, { color: colors.text }]}>
+                {pending.status === 'paid' ? 'Chek tekshirilmoqda' : 'Toʻlov kutilmoqda'} · {monthsLabel(pending.months)}
+              </Text>
+              <Text style={[typeScale.callout, { color: colors.textMuted }]}>
+                {pending.status === 'paid'
+                  ? 'Odatda 5–30 daqiqa. Tasdiqlangach Pro ochiladi va xabar keladi.'
+                  : `Kodni botga yuboring, ${groupDigits(pending.amount)} soʻm toʻlab, chek rasmini joʻnating.`}
+              </Text>
+              <Pressable onPress={copyCode} accessibilityLabel={`Kodni nusxalash: ${pending.reference_code}`} style={[styles.code, { backgroundColor: colors.surfaceRaised }]}>
+                <Text style={[styles.codeText, tabular, { color: colors.text }]}>{pending.reference_code}</Text>
+                <Copy size={16} color={colors.textMuted} />
+              </Pressable>
+            </View>
           </View>
         )}
 
