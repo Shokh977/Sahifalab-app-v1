@@ -13,6 +13,7 @@ import { avatarSize, radius, space } from '../../design/spacing'
 import { fonts, tabular, type as typeScale } from '../../design/typography'
 import { Pressable } from '../../components/ui'
 import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
+import { ProName } from '../profile/names/ProName'
 import { groupDigits } from '../courses/courses'
 import { uzText } from '../today/today'
 import { hoursLabel } from './bellashuv'
@@ -49,7 +50,10 @@ export function RankingRow({ e, mine, note, first, dense, onPress }: {
       </Text>
       <RingedAvatar ring={e.ring} name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={dense ? avatarSize.sm : ROW_AVATAR} />
       <View style={styles.flex}>
-        <Text style={[titleType, styles.bold, mine && styles.heavy, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+        <ProName
+          text={name} nameStyle={e.name_style} badge={e.badge} context="list"
+          textStyle={[titleType, styles.bold, mine && styles.heavy, { color: colors.text }]}
+        />
         <Text style={[typeScale.small, tabular, { color: note ? colors.accentText : colors.textMuted, fontFamily: note ? fonts.semibold : fonts.regular }]} numberOfLines={2}>
           {note ?? `Lv.${e.level} · ${hoursLabel(e.minutes)}`}
         </Text>

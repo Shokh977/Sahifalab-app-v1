@@ -16,11 +16,16 @@ import { fonts, tabular, type as typeScale } from '../../design/typography'
 import { Avatar, Pressable } from '../../components/ui'
 import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
 import { ringKind } from '../profile/cosmetics/cosmetics'
+import { ProName } from '../profile/names/ProName'
 import { groupDigits } from '../courses/courses'
 import { uzText } from '../today/today'
 import { podiumColumns } from './podiumOrder'
 
-export interface PodiumEntry { id: number; rank: number; name: string; photoUrl?: string | null; xp: number; ring?: string | null }
+export interface PodiumEntry {
+  id: number; rank: number; name: string; photoUrl?: string | null; xp: number; ring?: string | null
+  /** Pro name colour and badge ids. */
+  nameStyle?: string | null; badge?: string | null
+}
 
 const RING = 3
 const AVATAR: Record<1 | 2 | 3, number> = { 1: avatarSize.podium, 2: avatarSize.lg, 3: avatarSize.lg }
@@ -57,12 +62,12 @@ export function Podium({ entries, onPress }: { entries: readonly PodiumEntry[]; 
                 <Text style={[typeScale.levelBadge, tabular, { color: medal.coinText[r] }]}>{r}</Text>
               </View>
             </View>
-            <Text
-              style={[typeScale.callout, styles.name, { color: colors.text, fontFamily: first ? fonts.extrabold : fonts.bold }]}
-              numberOfLines={1}
-            >
-              {uzText(e.name || 'Foydalanuvchi')}
-            </Text>
+            <View style={styles.name}>
+              <ProName
+                text={uzText(e.name || 'Foydalanuvchi')} nameStyle={e.nameStyle} badge={e.badge} context="podium"
+                textStyle={[typeScale.callout, { color: colors.text, fontFamily: first ? fonts.extrabold : fonts.bold }]}
+              />
+            </View>
             <Text style={[typeScale.small, tabular, { color: colors.textMuted }]}>{groupDigits(e.xp)} XP</Text>
             <LinearGradient
               colors={medal.block[scheme][r]}

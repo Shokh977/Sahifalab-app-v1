@@ -24,6 +24,7 @@ import { LinkText } from '../ui/LinkText'
 import { typography, spacing, radius } from '../../lib/constants'
 import { ConfirmModal } from '../ui/ConfirmModal'
 import { RoleBadge } from '../ui/RoleBadge'
+import { ProName } from '../../src/features/profile/names/ProName'
 import type { Post } from '../../lib/types'
 import { moveSpring } from '../../src/design/rnMotion'
 
@@ -170,9 +171,10 @@ function CommentRow({ thread, myId, onLike, onReply, onDelete, c }: {
 
           {/* Parent comment */}
           <View style={styles.metaRow}>
-            <Text numberOfLines={1} style={[styles.authorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}>
-              {comment.author.full_name}
-            </Text>
+            <ProName
+              text={comment.author.full_name} nameStyle={comment.author.name_style} badge={comment.author.badge} context="comment"
+              textStyle={[styles.authorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold }]}
+            />
             <RoleBadge role={comment.author.role} accountType={comment.author.account_type} size={13} />
             <Text style={[styles.timeText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
               {formatTime(comment.created_at)}
@@ -224,9 +226,10 @@ function CommentRow({ thread, myId, onLike, onReply, onDelete, c }: {
                 <Avatar uri={r.author.photo_url} name={r.author.full_name} size={REPLY_AVATAR} />
                 <View style={{ flex: 1 }}>
                   <View style={styles.metaRow}>
-                    <Text numberOfLines={1} style={[styles.authorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold, fontSize: typography.size.xs }]}>
-                      {r.author.full_name}
-                    </Text>
+                    <ProName
+                      text={r.author.full_name} nameStyle={r.author.name_style} badge={r.author.badge} context="comment" badgeSize={14}
+                      textStyle={[styles.authorName, { color: c.textPrimary, fontFamily: typography.fontFamily.semibold, fontSize: typography.size.xs }]}
+                    />
                     <RoleBadge role={r.author.role} accountType={r.author.account_type} size={12} />
                     <Text style={[styles.timeText, { color: c.textMuted, fontFamily: typography.fontFamily.regular }]}>
                       {formatTime(r.created_at)}

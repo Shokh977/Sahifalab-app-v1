@@ -18,6 +18,7 @@ import { avatarSize, radius, space } from '../../design/spacing'
 import { tabular, type as typeScale } from '../../design/typography'
 import { Button, Sheet } from '../../components/ui'
 import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
+import { ProName } from '../profile/names/ProName'
 import { groupDigits } from '../courses/courses'
 import { uzText } from '../today/today'
 import { hoursLabel } from './bellashuv'
@@ -86,7 +87,7 @@ export function PersonSheet({ entry, periodLabel, onClose, onOpenProfile }: {
           <View style={styles.who}>
             <RingedAvatar ring={e.ring} name={e.first_name || '?'} id={e.telegram_id} uri={e.photo_url} diameter={avatarSize.md} />
             <View style={styles.flex}>
-              <Text style={[typeScale.headline, { color: colors.text }]} numberOfLines={2} accessibilityRole="header">{name}</Text>
+              <ProName text={name} nameStyle={e.name_style} badge={e.badge} context="list" textStyle={[typeScale.headline, { color: colors.text }]} />
               <Text style={[typeScale.callout, { color: colors.textMuted }]} numberOfLines={1}>
                 {e.rank}-oʻrin · {getLevelInfo(e.level).title}
               </Text>

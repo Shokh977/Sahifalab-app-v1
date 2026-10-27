@@ -34,6 +34,7 @@ import { ProfileHeader, useHeaderOnScreen } from '../../src/features/profile/Pro
 import { TreeHeroCard } from '../../src/features/profile/TreeHeroCard'
 import { ForestStrip } from '../../src/features/forest/ForestStrip'
 import { ProPill } from '../../src/features/pro/ProPill'
+import { ProName } from '../../src/features/profile/names/ProName'
 import { bannerKind, ringKind, treeLookKind } from '../../src/features/profile/cosmetics/cosmetics'
 import { useDevLookStore } from '../../stores/devLookStore'
 
@@ -168,7 +169,10 @@ export default function ProfileTab() {
           {p || authUser ? (
             <>
               <View style={styles.nameRow}>
-                <Text style={[styles.name, styles.shrink, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+                <ProName
+                  text={name} nameStyle={p?.look?.name_style} badge={p?.look?.badge} context="profile" announceBadge
+                  textStyle={[styles.name, { color: colors.text }]}
+                />
                 {p?.is_pro ? <ProPill onPress={() => router.push('/(screens)/pro' as any)} /> : null}
               </View>
               {p?.username ? <Text style={[styles.handle, { color: colors.accentText }]}>@{p.username}</Text> : null}

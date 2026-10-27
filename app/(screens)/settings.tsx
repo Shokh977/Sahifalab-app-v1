@@ -768,6 +768,10 @@ export default function SettingsScreen() {
                 label="Profil bezaklari (Skia)"
                 onPress={() => router.push('/(screens)/cosmetics-preview' as any)}
               />
+              <SettingRow
+                label="Ism uslublari va belgilar"
+                onPress={() => router.push('/(screens)/name-styles-preview' as any)}
+              />
               {/* Applies any theme locally, skipping the server's unlock check;
                   the next app start re-applies the server's theme. */}
               <SettingRow

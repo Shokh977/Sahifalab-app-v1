@@ -83,7 +83,7 @@ export interface ProfileData {
   education:         any[]
   profile_completeness: number
   /** Cosmetics (106_profile_looks): the look this profile renders. */
-  look?:            { banner: string; ring: string; tree?: string; theme?: string }
+  look?:            { banner: string; ring: string; tree?: string; theme?: string; name_style?: string; badge?: string }
   /** Sahifalab Pro is active — the PRO mark beside the name. */
   is_pro?:          boolean
   /** O'rmon: finished streaks of 3+ days, newest first; the live one is streak_days. */
@@ -118,6 +118,9 @@ export interface PostAuthor {
   level:        number
   headline:     string | null
   is_verified:  boolean
+  /** Pro name colour and badge ids (comment authors, 110); null = plain. */
+  name_style?:  string | null
+  badge?:       string | null
 }
 
 export interface Post {

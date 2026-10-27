@@ -19,6 +19,7 @@ import { useThemeStore } from '../../../stores/themeStore'
 import { useNotifToastStore } from '../../../stores/notifToastStore'
 import { useMyLookStore } from '../../../stores/myLookStore'
 import { themeKind } from '../profile/cosmetics/cosmetics'
+import { useBadgeCatalog } from '../profile/names/badgeCatalog'
 
 const TOASTED_KEY = 'sahifalab_theme_fallback_toasted'
 
@@ -26,11 +27,16 @@ export function useThemeSync(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
     let cancelled = false
+    // Name badges are a server catalog; fetch it once per sign-in.
+    useBadgeCatalog.getState().load()
     profileApi.getMyLook()
       .then(async look => {
         if (cancelled) return
         // Your own ring and tree look, for Bugun, the streak screens and Reyting.
-        useMyLookStore.getState().set({ banner: look.effective.banner, ring: look.effective.ring, tree: look.effective.tree, isPro: look.is_pro })
+        useMyLookStore.getState().set({
+          banner: look.effective.banner, ring: look.effective.ring, tree: look.effective.tree, isPro: look.is_pro,
+          nameStyle: look.effective.name_style ?? 'oddiy', badge: look.effective.badge ?? 'none',
+        })
         const { themeId, setThemeId } = useThemeStore.getState()
         const effective = themeKind(look.effective.theme)
         const saved = themeKind(look.saved.theme)

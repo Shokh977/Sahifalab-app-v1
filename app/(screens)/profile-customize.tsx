@@ -1,6 +1,6 @@
 /**
- * Profilni bezash — pick your app theme, banner, avatar ring and tree look (Claude Design
- * "6-qadam" §5). A live preview on top updates on every tap, even for
+ * Profilni bezash — pick your app theme, banner, avatar ring, tree look (Claude Design
+ * "6-qadam" §5) and, on the Ism tab, your name colour and badge ("9-qadam" §5). A live preview on top updates on every tap, even for
  * locked items (try before you unlock); the bottom bar says how a locked
  * item opens. Saving sends only unlocked choices — the server checks them
  * again (PUT /api/profile/me/look). A saved theme applies to the whole app
@@ -35,10 +35,19 @@ import {
   type BannerKind, type CosmeticItem, type LookSlot, type RingKind,
 } from '../../src/features/profile/cosmetics/cosmetics'
 import { PRO_PURCHASE_ENABLED } from '../../src/features/pro/flags'
+import { LinearGradient } from 'expo-linear-gradient'
+import type { Scheme } from '../../src/design/tokens'
+import { nameStyleKind, type NameStyleId } from '../../src/features/profile/names/nameStyles'
+import { useBadgeDef } from '../../src/features/profile/names/badgeCatalog'
+import { BadgeGrid, NamePreviewCard, NameStyleGrid, nameBottom } from '../../src/features/profile/names/NameStylePicker'
 
 type Slot = LookSlot
 const SLOTS: Slot[] = ['theme', 'banner', 'ring', 'tree']
-const TAB_LABELS = ['Mavzu', 'Banner', 'Halqa', 'Daraxt'] as const
+const TAB_LABELS = ['Mavzu', 'Banner', 'Halqa', 'Daraxt', 'Ism'] as const
+/** The Ism tab: name colour + badge, its own grids. */
+const NAME_TAB = 4
+type SaveSlot = Slot | 'name_style' | 'badge'
+const SAVE_SLOTS: SaveSlot[] = [...SLOTS, 'name_style', 'badge']
 const TREE_TILE = { w: 92, h: 112 }
 const PREVIEW_STAGE = 6
 const COLS = 3
@@ -47,7 +56,8 @@ const PREVIEW_BANNER = 104
 const PREVIEW_RING = 88
 const THUMB = 84
 
-type Choice = { theme: ThemeId; banner: BannerKind; ring: RingKind; tree: TreeLook }
+type Choice = { theme: ThemeId; banner: BannerKind; ring: RingKind; tree: TreeLook; name_style: NameStyleId; badge: string }
+const DEFAULT_CHOICE: Choice = { theme: 'standart', banner: 'plain', ring: 'oddiy', tree: 'tabiiy', name_style: 'oddiy', badge: 'none' }
 
 /** The chip on a thumbnail: what the item is for you. */
 function stateChip(item: CosmeticItem, unlocked: boolean): { label: string; kind: 'owned' | 'pro' | 'glass' } {
@@ -71,10 +81,14 @@ export default function ProfileCustomize() {
 
   const [look, setLook] = useState<MyLook | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [choice, setChoice] = useState<Choice>({ theme: 'standart', banner: 'plain', ring: 'oddiy', tree: 'tabiiy' })
+  const [choice, setChoice] = useState<Choice>(DEFAULT_CHOICE)
+  // Ism tab: preview the light or the dark value of the name colour.
+  const [nameMode, setNameMode] = useState<Scheme>(scheme)
   const setThemeId = useThemeStore(st => st.setThemeId)
   const setMyLook = useMyLookStore(st => st.set)
-  const [tab, setTab] = useState(Math.max(0, SLOTS.indexOf(params.slot as Slot)))
+  const [tab, setTab] = useState(
+    params.slot === 'name_style' || params.slot === 'badge' ? NAME_TAB : Math.max(0, SLOTS.indexOf(params.slot as Slot)),
+  )
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -84,11 +98,14 @@ export default function ProfileCustomize() {
         const saved = {
           theme: themeKind(l.effective.theme), banner: bannerKind(l.effective.banner),
           ring: ringKind(l.effective.ring), tree: treeLookKind(l.effective.tree),
+          name_style: nameStyleKind(l.effective.name_style), badge: l.effective.badge ?? 'none',
         }
         if (params.slot === 'banner' && params.item) saved.banner = bannerKind(params.item)
         if (params.slot === 'ring' && params.item) saved.ring = ringKind(params.item)
         if (params.slot === 'tree' && params.item) saved.tree = treeLookKind(params.item)
         if (params.slot === 'theme' && params.item) saved.theme = themeKind(params.item)
+        if (params.slot === 'name_style' && params.item) saved.name_style = nameStyleKind(params.item)
+        if (params.slot === 'badge' && params.item) saved.badge = params.item
         setChoice(saved)
       })
       // 503: migration 106 not applied; 404: a server without looks yet.
@@ -97,14 +114,16 @@ export default function ProfileCustomize() {
       ))
   }, [params.slot, params.item])
 
-  const slot = SLOTS[tab]
+  const nameTab = tab === NAME_TAB
+  const slot = SLOTS[Math.min(tab, SLOTS.length - 1)]
   const catalog: Record<string, CosmeticItem> =
     slot === 'theme' ? THEME_ITEMS : slot === 'banner' ? BANNERS : slot === 'ring' ? RINGS : TREES
   const selectedId = choice[slot]
   const selected = catalog[selectedId]
-  const isUnlocked = (s: Slot, id: string) => !!look?.unlocked[s]?.[id]
-  const lockedElsewhere = SLOTS.some(s => s !== slot && !isUnlocked(s, choice[s]))
-  const dirty = !!look && SLOTS.some(s => isUnlocked(s, choice[s]) && choice[s] !== look.effective[s])
+  const isUnlocked = (s: SaveSlot, id: string) => !!look?.unlocked[s]?.[id]
+  const lockedElsewhere = SAVE_SLOTS.some(s => s !== slot && !isUnlocked(s, choice[s]))
+  const dirty = !!look && SAVE_SLOTS.some(s => isUnlocked(s, choice[s]) && choice[s] !== (look.effective[s] ?? DEFAULT_CHOICE[s]))
+  const badgeDef = useBadgeDef(choice.badge)
 
   const name = uzText(ownProfile?.first_name ?? authUser?.first_name ?? '')
   const streak = look?.best_streak ?? 0
@@ -114,13 +133,16 @@ export default function ProfileCustomize() {
   const save = async () => {
     if (!look) return
     const body: Partial<Choice> = {}
-    for (const s of SLOTS) if (isUnlocked(s, choice[s])) (body as Record<Slot, string>)[s] = choice[s]
+    for (const s of SAVE_SLOTS) if (isUnlocked(s, choice[s])) (body as Record<SaveSlot, string>)[s] = choice[s]
     setSaving(true)
     try {
       const saved = await profileApi.updateMyLook(body)
       // Apply at once: the app theme, and your ring / tree look everywhere.
       setThemeId(themeKind(saved.effective.theme))
-      setMyLook({ banner: saved.effective.banner, ring: saved.effective.ring, tree: saved.effective.tree })
+      setMyLook({
+        banner: saved.effective.banner, ring: saved.effective.ring, tree: saved.effective.tree,
+        nameStyle: saved.effective.name_style ?? 'oddiy', badge: saved.effective.badge ?? 'none',
+      })
       // A DEV "Bannerni / Halqani sinash" override would hide what was just saved.
       useDevLookStore.getState().clear()
       await loadOwnProfile()
@@ -132,10 +154,24 @@ export default function ProfileCustomize() {
     setSaving(false)
   }
 
-  const reset = () => setChoice({ theme: 'standart', banner: 'plain', ring: 'oddiy', tree: 'tabiiy' })
+  const reset = () => setChoice(DEFAULT_CHOICE)
 
   const bottom = useMemo(() => {
     if (!look) return null
+    if (nameTab) {
+      const b = nameBottom({ look, nameStyle: choice.name_style, badge: choice.badge, badgeDef })
+      if (b.action === 'save') {
+        const otherLocked = SLOTS.some(s => !isUnlocked(s, choice[s]))
+        return {
+          info: otherLocked ? 'Boshqa tanlovingizda qulflangan bezak bor — faqat ochiqlari saqlanadi' : b.info,
+          button: <Button label="Saqlash" size="lg" fullWidth onPress={save} loading={saving} disabled={!dirty} />,
+        }
+      }
+      if (b.action === 'pro' && PRO_PURCHASE_ENABLED) {
+        return { info: b.info, button: <GoldButton label="Pro bilan oching" onPress={() => router.push('/(screens)/pro' as any)} /> }
+      }
+      return { info: b.info, button: <Button label={b.action === 'pro' ? 'Tez orada' : 'Mavsum boshlanganda'} size="lg" fullWidth disabled onPress={() => {}} /> }
+    }
     if (isUnlocked(slot, selectedId)) {
       return {
         info: lockedElsewhere ? 'Boshqa tanlovingizda qulflangan bezak bor — faqat ochiqlari saqlanadi' : `${selected.name} · ${RARITY_LABEL[selected.rarity]}`,
@@ -159,7 +195,7 @@ export default function ProfileCustomize() {
     }
     // save closes over the latest choice; recomputing on these is enough
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [look, slot, selectedId, lockedElsewhere, dirty, saving, choice])
+  }, [look, slot, selectedId, lockedElsewhere, dirty, saving, choice, nameTab, badgeDef])
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
@@ -172,17 +208,44 @@ export default function ProfileCustomize() {
         <EmptyState icon={Sparkles} title={error} body="Profilingiz hozircha oddiy koʻrinishda." action={{ label: 'Orqaga', onPress: () => router.back() }} />
       ) : (
         <ScrollView contentContainerStyle={[styles.body, { paddingBottom: space.xxl }]}>
-          {/* Live preview, in the chosen theme */}
-          <ThemeProvider themeId={choice.theme}>
-            <PreviewCard
-              choice={choice} width={cardW} animated={focused} name={name} streak={streak}
-              id={authUser?.telegram_id} uri={ownProfile?.photo_url ?? authUser?.photo_url} username={ownProfile?.username}
-            />
-          </ThemeProvider>
+          {nameTab ? (
+            // Ism: the light / dark value of the colour, on that mode's surface.
+            <ThemeProvider themeId="standart" scheme={nameMode}>
+              <NamePreviewCard
+                name={name} username={ownProfile?.username} ring={choice.ring} nameStyle={choice.name_style} badge={choice.badge}
+                id={authUser?.telegram_id} uri={ownProfile?.photo_url ?? authUser?.photo_url} animated={focused}
+              />
+            </ThemeProvider>
+          ) : (
+            // Live preview, in the chosen theme
+            <ThemeProvider themeId={choice.theme}>
+              <PreviewCard
+                choice={choice} width={cardW} animated={focused} name={name} streak={streak}
+                id={authUser?.telegram_id} uri={ownProfile?.photo_url ?? authUser?.photo_url} username={ownProfile?.username}
+              />
+            </ThemeProvider>
+          )}
 
           <SegmentedControl segments={TAB_LABELS} index={tab} onChange={setTab} size="md" />
 
-          {!look ? (
+          {look && nameTab ? (
+            <>
+              <SegmentedControl
+                segments={MODE_LABELS} index={nameMode === 'light' ? 0 : 1}
+                onChange={i => setNameMode(i === 0 ? 'light' : 'dark')} style={styles.modeToggle}
+              />
+              <ThemeProvider themeId="standart" scheme={nameMode}>
+                <NameStyleGrid
+                  value={choice.name_style} onChange={id => setChoice(c => ({ ...c, name_style: id }))}
+                  unlocked={id => isUnlocked('name_style', id)} sample={firstWord(name) || 'Nigora'} width={cardW}
+                />
+                <BadgeGrid
+                  value={choice.badge} onChange={id => setChoice(c => ({ ...c, badge: id }))}
+                  unlocked={id => isUnlocked('badge', id)} width={cardW}
+                />
+              </ThemeProvider>
+            </>
+          ) : !look ? (
             <View style={styles.grid}>
               {Array.from({ length: 6 }, (_, i) => <SkeletonBlock key={i} width={cellW} height={cellW + 52} borderRadius={18} />)}
             </View>
@@ -243,6 +306,22 @@ export default function ProfileCustomize() {
       )}
       <ToastHost />
     </View>
+  )
+}
+
+const MODE_LABELS = ['Yorugʻ', 'Qorongʻi'] as const
+
+function firstWord(s: string) {
+  return s.trim().split(/\s+/)[0] ?? ''
+}
+
+/** The gold "Pro bilan oching" button (the Pro items' call to action). */
+function GoldButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.gold}>
+      <LinearGradient colors={['#F6E3A8', '#E4BE68', '#C99A3E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <Text style={styles.goldText}>{label}</Text>
+    </Pressable>
   )
 }
 
@@ -343,4 +422,7 @@ const styles = StyleSheet.create({
   rarity: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 4 },
   dot: { width: 7, height: 7, borderRadius: 4 },
   bar: { borderTopWidth: 1, paddingHorizontal: layout.gutter, paddingTop: space.sm, gap: space.sm },
+  modeToggle: { alignSelf: 'flex-end', width: 180 },
+  gold: { height: 52, borderRadius: radius.lg, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  goldText: { color: '#3A2A00', fontFamily: fonts.extrabold, fontSize: 16 },
 })

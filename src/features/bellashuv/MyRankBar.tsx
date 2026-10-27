@@ -14,6 +14,7 @@ import { iconSize, iconStroke, layout, radius, space, avatarSize } from '../../d
 import { fonts, tabular, type as typeScale } from '../../design/typography'
 import { Pressable } from '../../components/ui'
 import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
+import { ProName } from '../profile/names/ProName'
 import { useMyLookStore } from '../../../stores/myLookStore'
 
 const RANK_COL = 26
@@ -29,6 +30,8 @@ export function MyRankBar({ me, note, name, photoUrl, id, onPress, onFocus }: {
   onFocus: () => void
 }) {
   const myRing = useMyLookStore(st => st.ring)
+  const myNameStyle = useMyLookStore(st => st.nameStyle)
+  const myBadge = useMyLookStore(st => st.badge)
   const { colors, elevation } = useTheme()
   const sub = me ? note ?? (me.rank === 1 ? 'Siz birinchisiz' : undefined) : 'Fokus XP beradi'
   const label = me ? `Siz ${me.rank}-oʻrindasiz, ${me.score} XP${sub ? `, ${sub}` : ''}` : 'Siz hali reytingda yoʻqsiz'
@@ -39,9 +42,15 @@ export function MyRankBar({ me, note, name, photoUrl, id, onPress, onFocus }: {
         <Text style={[typeScale.label, tabular, styles.rank, { color: colors.accentText }]}>{me ? me.rank : '–'}</Text>
         <RingedAvatar ring={me?.ring ?? myRing} name={name || '?'} id={id} uri={photoUrl} diameter={avatarSize.sm} />
         <View style={styles.flex}>
-          <Text style={[typeScale.label, styles.heavy, { color: colors.text }]} numberOfLines={1}>
-            {me ? 'Siz' : 'Hali reytingda yoʻqsiz'}
-          </Text>
+          {me ? (
+            // "Siz" in your own name colour and badge.
+            <ProName
+              text="Siz" nameStyle={me.name_style ?? myNameStyle} badge={me.badge ?? myBadge} context="siz"
+              textStyle={[typeScale.label, styles.heavy, { color: colors.text }]}
+            />
+          ) : (
+            <Text style={[typeScale.label, styles.heavy, { color: colors.text }]} numberOfLines={1}>Hali reytingda yoʻqsiz</Text>
+          )}
           {sub ? (
             <Text style={[typeScale.small, tabular, styles.semi, { color: colors.accentText }]} numberOfLines={2}>{sub}</Text>
           ) : null}

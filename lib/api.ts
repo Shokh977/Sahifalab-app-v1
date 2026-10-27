@@ -418,16 +418,43 @@ export const search = {
 
 import type { ProfileData, ActivityItem } from './types'
 
+/** A look's slots. name_style / badge come from servers with migration 110 ("none" = no badge). */
+export interface LookSlots {
+  banner: string; ring: string; tree: string; theme: string
+  name_style?: string; badge?: string
+}
+
 export interface MyLook {
-  saved:        { banner: string; ring: string; tree: string; theme: string }
-  effective:    { banner: string; ring: string; tree: string; theme: string }
+  saved:        LookSlots
+  effective:    LookSlots
   unlocked:     {
     banner: Record<string, boolean>; ring: Record<string, boolean>; tree: Record<string, boolean>; theme: Record<string, boolean>
+    name_style?: Record<string, boolean>; badge?: Record<string, boolean>
   }
   is_pro:       boolean
   pro_until:    string | null
   best_streak:  number
   open_seasons: string[]
+}
+
+/** A Pro name badge from the server catalog (110). URLs may be relative to the API host. */
+export interface NameBadgeDef {
+  id:          string
+  title:       string
+  unlock:      'free' | 'pro' | 'seasonal' | 'achievement'
+  season:      'navroz' | 'ramazon' | null
+  streak_days: number | null
+  /** Animated WebP for dark surfaces. */
+  dark:        string
+  /** Animated WebP for light surfaces (softer glow). */
+  light:       string
+  /** A still frame: pickers and Reduce Motion. */
+  static:      string
+}
+
+export const cosmetics = {
+  /** Active name badges, catalog order (empty before migration 110; 404 on older servers). */
+  badges: () => request<{ badges: NameBadgeDef[] }>('/api/cosmetics/badges'),
 }
 
 export const profile = {
@@ -441,8 +468,8 @@ export const profile = {
   getMyLook: () =>
     request<MyLook>('/api/profile/me/look', { auth: true }),
 
-  /** Save banner / ring / tree look / theme; 403 when an item is locked. */
-  updateMyLook: (body: { banner?: string; ring?: string; tree?: string; theme?: string }) =>
+  /** Save banner / ring / tree look / theme / name colour / badge; 403 when an item is locked. */
+  updateMyLook: (body: Partial<LookSlots>) =>
     request<MyLook>('/api/profile/me/look', {
       method: 'PUT', body: JSON.stringify(body), auth: true,
     }),
@@ -1162,6 +1189,10 @@ export interface LeaderboardEntry {
   top_badge?:   TopBadge | null
   /** Avatar ring (Pro / earned / seasonal); absent or null = the plain one. */
   ring?:        string | null
+  /** Name colour id; absent or null = plain. */
+  name_style?:  string | null
+  /** Name badge id; absent or null = none. */
+  badge?:       string | null
 }
 
 type _OldLbRow = {
@@ -1195,8 +1226,10 @@ export interface WeeklyLeaderboard {
   total?: number | null
   /** Your row and its neighbours when you're outside `entries` (newer backends). */
   around_me?: LeaderboardEntry[]
-  /** Your own avatar ring, for the "Siz" bar. */
+  /** Your own avatar ring, name colour and badge, for the "Siz" bar. */
   my_ring?: string | null
+  my_name_style?: string | null
+  my_badge?: string | null
 }
 
 export const leaderboard = {
