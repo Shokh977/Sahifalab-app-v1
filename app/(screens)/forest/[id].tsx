@@ -4,6 +4,7 @@
  * (daraxtlar, eng uzun seriya, jami kunlar); "Manzara" shows the trees
  * standing in a landscape, "Roʻyxat" as a grid. Renders in the owner's app
  * theme, like their profile. Open to everyone (free, and public).
+ * Dev builds: /(screens)/forest/demo shows a sample forest (Settings → DEV).
  */
 import React, { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
@@ -24,6 +25,17 @@ import { themeKind, treeLookKind } from '../../../src/features/profile/cosmetics
 import { TREE_STAGES } from '../../../lib/treeTheme'
 
 const VIEWS = ['Manzara', 'Roʻyxat'] as const
+
+/** Dev only: a sample forest — a live 42-day streak and seven finished ones. */
+const DEMO_FOREST: ProfileData['forest'] = [
+  { start: '2026-08-02', end: '2026-09-14', days: 44 },
+  { start: '2026-06-20', end: '2026-07-24', days: 35 },
+  { start: '2026-05-01', end: '2026-05-17', days: 17 },
+  { start: '2026-03-01', end: '2026-03-08', days: 8 },
+  { start: '2025-10-10', end: '2026-02-11', days: 125 },
+  { start: '2025-08-01', end: '2025-08-04', days: 4 },
+  { start: '2025-02-01', end: '2025-06-24', days: 220 },
+]
 const LAND_H = 300
 
 export default function ForestScreen() {
@@ -32,8 +44,14 @@ export default function ForestScreen() {
   const own = useProfileStore(s => s.ownProfile) as ProfileData | null
   const cached = useProfileStore(s => s.cache[Number(id)]?.data ?? null)
   const loadPublicProfile = useProfileStore(s => s.loadPublicProfile)
-  const isOwn = !!me && Number(id) === me
-  const p = isOwn ? own : cached
+  const demo = __DEV__ && id === 'demo'
+  const isOwn = demo || (!!me && Number(id) === me)
+  const p = demo
+    ? ({
+        ...(own ?? {}), streak_days: 42, forest: DEMO_FOREST,
+        forest_stats: { trees: DEMO_FOREST!.length + 1, longest: 220, total_days: DEMO_FOREST!.reduce((n, t) => n + t.days, 42) },
+      } as ProfileData)
+    : isOwn ? own : cached
 
   useEffect(() => {
     if (!p && id && !isOwn) loadPublicProfile(id).catch(() => {})

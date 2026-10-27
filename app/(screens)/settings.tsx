@@ -783,6 +783,10 @@ export default function SettingsScreen() {
                 onPress={devLook.nextBanner}
               />
               <SettingRow
+                label="Oʻrmon (namuna)"
+                onPress={() => router.push('/(screens)/forest/demo' as any)}
+              />
+              <SettingRow
                 label="Halqani sinash"
                 value={devLook.ring ? RINGS[devLook.ring].name : 'Saqlangan'}
                 onPress={devLook.nextRing}
