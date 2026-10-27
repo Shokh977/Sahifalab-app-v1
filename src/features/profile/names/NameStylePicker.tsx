@@ -160,6 +160,9 @@ export function BadgeGrid({ value, onChange, unlocked, width }: {
           )
         })}
       </View>
+      {order.length === 0 && (
+        <Text style={[typeScale.callout, { color: colors.textMuted }]}>Belgilar hali yuklanmadi — internetni tekshirib, qayta oching.</Text>
+      )}
     </View>
   )
 }
