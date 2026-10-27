@@ -6,7 +6,7 @@
  * theme, like their profile. Open to everyone (free, and public).
  * Dev builds: /(screens)/forest/demo shows a sample forest (Settings → DEV).
  */
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams } from 'expo-router'
@@ -46,12 +46,12 @@ export default function ForestScreen() {
   const loadPublicProfile = useProfileStore(s => s.loadPublicProfile)
   const demo = __DEV__ && id === 'demo'
   const isOwn = demo || (!!me && Number(id) === me)
-  const p = demo
+  const p = useMemo(() => (demo
     ? ({
         ...(own ?? {}), streak_days: 42, forest: DEMO_FOREST,
         forest_stats: { trees: DEMO_FOREST!.length + 1, longest: 220, total_days: DEMO_FOREST!.reduce((n, t) => n + t.days, 42) },
       } as ProfileData)
-    : isOwn ? own : cached
+    : isOwn ? own : cached), [demo, isOwn, own, cached])
 
   useEffect(() => {
     if (!p && id && !isOwn) loadPublicProfile(id).catch(() => {})
