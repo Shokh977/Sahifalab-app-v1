@@ -284,6 +284,9 @@ export default function RootLayout() {
           daily_quiz:       '/(screens)/daily-quiz',   // 090_daily_quiz — publish + reminder pushes
           teacher_dashboard:'/(screens)/teacher-dashboard',
           notifications:    '/(tabs)/notifications',
+          streak:           '/(screens)/streak-detail',   // tree stage-ups
+          pro:              '/(screens)/pro',             // Sahifalab Pro activated
+          competitions:     '/(tabs)/musobaqalar',
         }
         let route: string | null = null
         // Dynamic routes first (actor profile, course, test, certificate)

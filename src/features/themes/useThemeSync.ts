@@ -30,7 +30,7 @@ export function useThemeSync(enabled: boolean) {
       .then(async look => {
         if (cancelled) return
         // Your own ring and tree look, for Bugun, the streak screens and Reyting.
-        useMyLookStore.getState().set({ banner: look.effective.banner, ring: look.effective.ring, tree: look.effective.tree })
+        useMyLookStore.getState().set({ banner: look.effective.banner, ring: look.effective.ring, tree: look.effective.tree, isPro: look.is_pro })
         const { themeId, setThemeId } = useThemeStore.getState()
         const effective = themeKind(look.effective.theme)
         const saved = themeKind(look.saved.theme)

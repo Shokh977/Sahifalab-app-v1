@@ -30,6 +30,10 @@ function resolveRoute(data?: Record<string, any>): string | null {
     case 'certificate':  return data.code      ? `/(screens)/certificate/${data.code}` : null
     case 'leaderboard':  return '/(screens)/leaderboard'
     case 'profile':      return '/(tabs)/profile'
+    case 'streak':       return '/(screens)/streak-detail'
+    case 'pro':          return '/(screens)/pro'
+    case 'challenge':    return data.slug ? `/(screens)/challenge/${data.slug}` : '/(tabs)/musobaqalar'
+    case 'competitions': return '/(tabs)/musobaqalar'
     default:             return null
   }
 }

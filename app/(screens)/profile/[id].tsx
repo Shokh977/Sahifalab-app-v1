@@ -47,6 +47,7 @@ import { ProfileStat } from '../../../src/features/profile/ProfileStat'
 import { ProfileHeader, useHeaderOnScreen } from '../../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../../src/features/profile/TreeHeroCard'
 import { ForestStrip } from '../../../src/features/forest/ForestStrip'
+import { ProPill } from '../../../src/features/pro/ProPill'
 import { GetLookSheet, type LookTarget } from '../../../src/features/profile/GetLookSheet'
 import { bannerKind, ringKind, themeKind, treeLookKind } from '../../../src/features/profile/cosmetics/cosmetics'
 import { groupThousands } from '../../../src/features/profile/profileFormat'
@@ -364,6 +365,7 @@ function PublicProfileBody() {
             <View style={styles.nameRow}>
               <Text style={[styles.name, styles.shrink, { color: colors.text }]} numberOfLines={1}>{name}</Text>
               <RoleBadge role={p.role ?? null} accountType={p.account_type} size={18} />
+              {p.is_pro ? <ProPill /> : null}
             </View>
             {p.username ? <Text style={[styles.handle, { color: colors.accentText }]}>@{p.username}</Text> : null}
             <View style={styles.counts}>

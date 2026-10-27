@@ -11,6 +11,8 @@ interface DevLookState {
   ring:   RingKind | null
   nextBanner: () => void
   nextRing:   () => void
+  /** Back to the saved look (after a real save, so the save shows). */
+  clear:      () => void
 }
 
 const BANNER_IDS = Object.keys(BANNERS) as BannerKind[]
@@ -28,4 +30,5 @@ export const useDevLookStore = create<DevLookState>((set, get) => ({
   ring:   null,
   nextBanner: () => set({ banner: next(BANNER_IDS, get().banner) }),
   nextRing:   () => set({ ring: next(RING_IDS, get().ring) }),
+  clear:      () => set({ banner: null, ring: null }),
 }))

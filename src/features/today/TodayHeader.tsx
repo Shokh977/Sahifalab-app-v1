@@ -17,11 +17,13 @@ import { layout, space, avatarSize } from '../../design/spacing'
 import { type as typeScale } from '../../design/typography'
 import { Badge, CoinPill, IconButton, Pressable } from '../../components/ui'
 import { RingedAvatar } from '../profile/cosmetics/RingedAvatar'
+import { ProPill } from '../pro/ProPill'
 import { useMyLookStore } from '../../../stores/myLookStore'
 import { uzText } from './today'
 
 export function TodayHeader({ offline }: { offline: boolean; now?: number }) {
   const myRing = useMyLookStore(st => st.ring)
+  const isPro = useMyLookStore(st => st.isPro)
   const { colors } = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -36,6 +38,7 @@ export function TodayHeader({ offline }: { offline: boolean; now?: number }) {
         <Text style={[typeScale.screenTitle, styles.name, { color: colors.text }]} numberOfLines={1} maxFontSizeMultiplier={1.15} accessibilityRole="header">
           {name}
         </Text>
+        {isPro && <ProPill small onPress={() => router.push('/(screens)/pro' as any)} />}
         {offline && <Badge kind="status" status="neutral" label="oflayn" />}
       </View>
 

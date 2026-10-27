@@ -9,8 +9,10 @@ import { useRouter } from 'expo-router'
 import {
   Flame, Trophy, TrendingUp, Video, Info, Bell,
   Users, Heart, MessageCircle, Repeat2, Bookmark,
-  AtSign, Zap, Award, CheckCircle, GraduationCap, Snowflake,
+  AtSign, Zap, Award, CheckCircle, GraduationCap, Snowflake, Sparkles, TreePine, Swords,
 } from 'lucide-react-native'
+import { TREE_STAGES } from '../../lib/treeTheme'
+import { getLevelInfo } from '../../lib/levelTitles'
 import { useTheme } from '../../hooks/useTheme'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { notifs, type NotifItem } from '../../lib/api'
@@ -31,7 +33,7 @@ const TITLES: Record<string, string> = {
   connection_request:  "Ulanish so'rovi",
   connection_accepted: "So'rov qabul qilindi",
   level_up:            "Yangi daraja",
-  achievement:         "Yutuq ochildi",
+  achievement:         "🌳 Daraxtingiz yangi bosqichda",
   xp_reward:           "XP mukofot",
   course_complete:     "Kurs yakunlandi",
   certificate:         "Sertifikat tayyor",
@@ -53,6 +55,18 @@ const TITLES: Record<string, string> = {
   course_granted:       'Kurs ochildi! 🎉',
   streak_freeze_applied: '🧊 Seriya muzlatildi',
   streak_at_risk:        '🔥 Seriyangiz xavf ostida!',
+  pro_granted:           '✨ Sahifalab Pro faol',
+  challenge_started:       'Bellashuv boshlandi',
+  challenge_midpoint:      'Bellashuv yarmiga yetdi',
+  challenge_final_stretch: 'Bellashuv tugashiga oz qoldi',
+  challenge_sprint_rank:   'Bellashuvdagi oʻrningiz',
+  challenge_team_standing: 'Jamoangiz holati',
+  challenge_team_result:   'Bellashuv natijasi',
+  challenge_ended:         'Bellashuv tugadi',
+  challenge_completed:     'Bellashuv bajarildi! 🏆',
+  challenge_cancelled:     'Bellashuv bekor qilindi',
+  consistency_reminder:    'Bugungi minimumni bajaring',
+  consistency_failed:      'Bellashuvdan chiqdingiz',
 }
 
 function notifTitle(type: string): string {
@@ -61,6 +75,7 @@ function notifTitle(type: string): string {
 
 function notifBody(type: string, meta: Record<string, any>): string {
   const actor = meta.actor_name ?? meta.first_name ?? 'Kimdir'
+  const title = meta.title ?? 'Bellashuv'
   const map: Record<string, string> = {
     follow:              `${actor} sizga obuna bo'ldi.`,
     like:                `${actor} postingizga layk bosdi.`,
@@ -71,8 +86,10 @@ function notifBody(type: string, meta: Record<string, any>): string {
     mention:             `${actor} sizni eslatib o'tdi.`,
     connection_request:  `${actor} sizga ulanish so'rovi yubordi.`,
     connection_accepted: `${actor} ulanish so'rovingizni qabul qildi.`,
-    level_up:            "Tabriklaymiz! Yangi darajaga ko'tarildingiz.",
-    achievement:         "Yangi yutuq ochildi — davom eting!",
+    level_up:            meta.level
+      ? `Tabriklaymiz! ${meta.level}-darajaga ko'tarildingiz — endi siz ${getLevelInfo(Number(meta.level)).title}.`
+      : "Tabriklaymiz! Yangi darajaga ko'tarildingiz.",
+    achievement:         stageBody(meta),
     xp_reward:           "Postingiz ko'p ko'rindi — XP mukofot oldiniz.",
     course_complete:     "Kurs muvaffaqiyatli yakunlandi.",
     certificate:         "Sertifikatingiz tayyor — yuklab oling.",
@@ -112,8 +129,36 @@ function notifBody(type: string, meta: Record<string, any>): string {
     streak_at_risk: meta.streak_days
       ? `${meta.streak_days} kunlik seriyangiz bugun kechqurun tugaydi. Saqlab qolish uchun hozir o'qing!`
       : 'Seriyangiz bugun kechqurun tugaydi. Saqlab qolish uchun hozir o\'qing!',
+    pro_granted: meta.pro_until
+      ? `${meta.months ?? ''} oylik Pro ochildi — ${proDate(meta.pro_until)} gacha. Mavzular, bannerlar, halqalar, AI kartalar va toʻliq haftalik sharh endi sizda.`
+      : 'Sahifalab Pro ochildi. Mavzular, bannerlar, halqalar va AI imkoniyatlari endi sizda.',
+    challenge_started:       `«${title}» boshlandi — birinchi daqiqalaringizni hozir yozing!`,
+    challenge_midpoint:      `«${title}»: ${meta.progress_value ?? 0}/${meta.target_value ?? '?'}. ${meta.days_left ?? ''} kun qoldi.`,
+    challenge_final_stretch: `«${title}»: ${meta.days_left ?? ''} kun qoldi — ${meta.progress_value ?? 0}/${meta.target_value ?? '?'}. Oxirgi kuch!`,
+    challenge_sprint_rank:   `«${title}»: siz ${meta.rank ?? '?'}-oʻrindasiz${meta.final ? ' — yakuniy natija.' : '.'}`,
+    challenge_team_standing: `«${title}»: jamoangiz ${meta.my_total ?? 0}, raqib ${meta.other_total ?? 0}. ${meta.ahead ? 'Oldindasiz!' : 'Quvib yeting!'}`,
+    challenge_team_result:   meta.won ? `«${title}»: jamoangiz yutdi! 🎉` : `«${title}» tugadi — natijani koʻring.`,
+    challenge_ended:         `«${title}» tugadi. Natijangiz: ${meta.progress_value ?? 0}.`,
+    challenge_completed:     `Bellashuvni bajardingiz! +${meta.reward_xp ?? 0} XP.`,
+    challenge_cancelled:     `«${title}» bekor qilindi.`,
+    consistency_reminder:    `«${title}»: bugun yana ${meta.remaining ?? ''} daqiqa kerak.`,
+    consistency_failed:      `«${title}»: kunlik minimum bajarilmadi.`,
   }
   return map[type] ?? 'Yangi bildirishnoma'
+}
+
+/** "Daraxtingiz 5-bosqichga — Gullayotgan daraxt — yetdi! +50 XP, +20 Tanga." */
+function stageBody(meta: Record<string, any>): string {
+  const n = Number(meta.stage_number)
+  const name = TREE_STAGES.find(s => s.id === n)?.name
+  const bonus = [meta.bonus_xp ? `+${meta.bonus_xp} XP` : '', meta.bonus_tanga ? `+${meta.bonus_tanga} Tanga` : ''].filter(Boolean).join(', ')
+  if (!n) return 'Daraxtingiz yangi bosqichga yetdi — davom eting!'
+  return `Daraxtingiz ${n}-bosqichga${name ? ` — ${name} —` : ''} yetdi!${bonus ? ` ${bonus}.` : ''}`
+}
+
+function proDate(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function resolveRoute(type: string, meta: Record<string, any>): string | null {
@@ -131,11 +176,28 @@ function resolveRoute(type: string, meta: Record<string, any>): string | null {
       return meta.course_id ? `/(screens)/course/${meta.course_id}` : '/(tabs)/profile'
     case 'quiz_pass':
       return meta.test_id ? `/(screens)/test/${meta.test_id}` : null
-    case 'level_up':
     case 'achievement':
+      return '/(screens)/streak-detail'
+    case 'pro_granted':
+      return '/(screens)/pro'
+    case 'level_up':
     case 'xp_reward':
     case 'welcome':
       return '/(tabs)/profile'
+    case 'challenge_started':
+    case 'challenge_midpoint':
+    case 'challenge_final_stretch':
+    case 'challenge_sprint_rank':
+    case 'challenge_team_standing':
+    case 'challenge_team_result':
+    case 'challenge_ended':
+    case 'challenge_completed':
+    case 'challenge_cancelled':
+    case 'consistency_reminder':
+    case 'consistency_failed': {
+      const ref = meta.slug || meta.challenge_id
+      return ref ? `/(screens)/challenge/${ref}` : '/(tabs)/musobaqalar'
+    }
     case 'leaderboard_rank':
       return '/(screens)/leaderboard'
     case 'streak_reminder':
@@ -183,6 +245,21 @@ function getIconCfg(type: string): { Icon: LucideIcon; color: string; bg: string
     case 'streak_reminder':
       return { Icon: Flame,          color: '#FFB830', bg: 'rgba(255,184,48,0.15)'  }
     case 'achievement':
+      return { Icon: TreePine,       color: '#3DC47A', bg: 'rgba(61,196,122,0.14)'  }
+    case 'pro_granted':
+      return { Icon: Sparkles,       color: '#E4BE68', bg: 'rgba(228,190,104,0.16)' }
+    case 'challenge_started':
+    case 'challenge_midpoint':
+    case 'challenge_final_stretch':
+    case 'challenge_sprint_rank':
+    case 'challenge_team_standing':
+    case 'challenge_team_result':
+    case 'challenge_ended':
+    case 'challenge_cancelled':
+    case 'consistency_reminder':
+    case 'consistency_failed':
+      return { Icon: Swords,         color: '#F5A623', bg: 'rgba(245,166,35,0.12)'  }
+    case 'challenge_completed':
     case 'leaderboard_rank':
     case 'deck_clone_milestone':
       return { Icon: Trophy,         color: '#FFD700', bg: 'rgba(255,215,0,0.12)'   }

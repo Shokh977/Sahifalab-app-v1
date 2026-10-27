@@ -10,11 +10,12 @@ import React, { useCallback, useState } from 'react'
 import { Linking, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
-import { useFocusEffect, useIsFocused } from 'expo-router'
-import { ChartColumn, Check, Copy, Layers, Palette, Send, Sparkles, TreePine, Image as ImageIcon, CircleDot, type LucideIcon } from 'lucide-react-native'
+import { useFocusEffect, useIsFocused, useRouter } from 'expo-router'
+import { ChartColumn, Check, ChevronRight, Copy, Layers, Palette, Send, Sparkles, TreePine, Image as ImageIcon, CircleDot, type LucideIcon } from 'lucide-react-native'
 import { pro as proApi, type ProPlan, type ProStatus } from '../../lib/api'
 import { track } from '../../lib/analytics'
 import { useAuthStore } from '../../stores/authStore'
+import { useMyLookStore } from '../../stores/myLookStore'
 import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, radius, space } from '../../src/design/spacing'
 import { fonts, tabular, type as typeScale } from '../../src/design/typography'
@@ -34,6 +35,14 @@ const BENEFITS: { icon: LucideIcon; title: string; body: string }[] = [
   { icon: ImageIcon, title: 'Jonli bannerlar', body: 'Tun va Oltin soat — profilingiz tepasida' },
   { icon: CircleDot, title: 'Avatar halqalari', body: 'Shabnam, Kometa va Oltin halqa' },
   { icon: TreePine, title: 'Daraxt koʻrinishlari', body: 'Sakura va Oltin daraxt — seriyangiz daraxti' },
+]
+
+/** Your Pro: where each thing it opens lives. */
+const MANAGE: { icon: LucideIcon; title: string; body: string; route: string }[] = [
+  { icon: Palette, title: 'Mavzu', body: 'Tun, Zumrad, Sakura', route: '/(screens)/themes' },
+  { icon: Sparkles, title: 'Profilni bezash', body: 'Banner, halqa, daraxt koʻrinishi', route: '/(screens)/profile-customize' },
+  { icon: Layers, title: 'AI kartalar', body: 'Kuniga 20 tagacha, Tangasiz', route: '/(screens)/ai-flashcard-generate' },
+  { icon: ChartColumn, title: 'Haftalik sharh', body: 'AI tavsiyalari va toʻliq statistika', route: '/(screens)/weekly-review' },
 ]
 
 const STEPS = [
@@ -60,6 +69,7 @@ export default function ProScreen() {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const focused = useIsFocused()
+  const router = useRouter()
   const { width } = useWindowDimensions()
   const user = useAuthStore(s => s.user)
   const [plans, setPlans] = useState<ProPlan[] | null>(null)
@@ -73,7 +83,7 @@ export default function ProScreen() {
     // instead of an endless skeleton and a disabled button.
     proApi.plans().then(r => setPlans(r.plans)).catch(() => setUnavailable(true))
     proApi.status()
-      .then(s => { setStatus(s); if (s.pending) setMonths(s.pending.months) })
+      .then(s => { setStatus(s); useMyLookStore.getState().set({ isPro: s.is_pro }); if (s.pending) setMonths(s.pending.months) })
       .catch((e: any) => { if (e?.status === 503 || e?.status === 404) setUnavailable(true) })
   }, [])
   useFocusEffect(useCallback(() => { load() }, [load]))
@@ -121,14 +131,29 @@ export default function ProScreen() {
 
         {/* Your Pro / open request */}
         {status?.is_pro && (
-          <View style={[styles.state, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.stateIcon, { backgroundColor: colors.greenSoft }]}>
-              <Check size={18} color={colors.successText} strokeWidth={3} />
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.planTitleRow}>
+              <View style={[styles.stateIcon, { backgroundColor: colors.greenSoft }]}>
+                <Check size={18} color={colors.successText} strokeWidth={3} />
+              </View>
+              <View style={styles.flex}>
+                <Text style={[typeScale.headline, { color: colors.text }]}>Sizda Sahifalab Pro · {status.days_left} kun qoldi</Text>
+                <Text style={[typeScale.callout, { color: colors.textMuted }]}>{dateLabel(status.pro_until)} gacha. Uzaytirsangiz, kunlar ustiga qoʻshiladi.</Text>
+              </View>
             </View>
-            <View style={styles.flex}>
-              <Text style={[typeScale.headline, { color: colors.text }]}>Pro faol · {status.days_left} kun qoldi</Text>
-              <Text style={[typeScale.callout, { color: colors.textMuted }]}>{dateLabel(status.pro_until)} gacha. Uzaytirsangiz, kunlar ustiga qoʻshiladi.</Text>
-            </View>
+            <Text style={[typeScale.overline, { color: colors.textMuted }]}>Pro bilan ochilgan</Text>
+            {MANAGE.map(m => (
+              <Pressable key={m.title} onPress={() => router.push(m.route as any)} accessibilityLabel={m.title} style={styles.benefit}>
+                <View style={[styles.benefitIcon, { backgroundColor: colors.accentSoft }]}>
+                  <m.icon size={18} color={colors.accentText} />
+                </View>
+                <View style={styles.flex}>
+                  <Text style={[typeScale.label, { color: colors.text }]}>{m.title}</Text>
+                  <Text style={[typeScale.callout, { color: colors.textMuted }]}>{m.body}</Text>
+                </View>
+                <ChevronRight size={18} color={colors.textMuted} />
+              </Pressable>
+            ))}
           </View>
         )}
         {pending && (

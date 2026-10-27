@@ -11,12 +11,15 @@ interface MyLookState {
   banner: string
   ring:   string
   tree:   string
-  set:    (look: Partial<{ banner: string; ring: string; tree: string }>) => void
+  /** Sahifalab Pro is active (the PRO tag on Bugun). */
+  isPro:  boolean
+  set:    (look: Partial<{ banner: string; ring: string; tree: string; isPro: boolean }>) => void
 }
 
 export const useMyLookStore = create<MyLookState>(set => ({
   banner: 'plain',
   ring:   'oddiy',
   tree:   'tabiiy',
+  isPro:  false,
   set:    look => set(look),
 }))

@@ -84,6 +84,8 @@ export interface ProfileData {
   profile_completeness: number
   /** Cosmetics (106_profile_looks): the look this profile renders. */
   look?:            { banner: string; ring: string; tree?: string; theme?: string }
+  /** Sahifalab Pro is active — the PRO mark beside the name. */
+  is_pro?:          boolean
   /** O'rmon: finished streaks of 3+ days, newest first; the live one is streak_days. */
   forest?:          { start: string; end: string; days: number }[]
   forest_stats?:    { trees: number; longest: number; total_days: number }

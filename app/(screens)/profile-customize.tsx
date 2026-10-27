@@ -16,6 +16,7 @@ import { profile as profileApi, type MyLook } from '../../lib/api'
 import { MagicTree } from '../../components/streak/MagicTree'
 import { useThemeStore } from '../../stores/themeStore'
 import { useMyLookStore } from '../../stores/myLookStore'
+import { useDevLookStore } from '../../stores/devLookStore'
 import { type ThemeId } from '../../src/design/themes'
 import type { TreeLook } from '../../lib/treeLooks'
 import { useAuthStore } from '../../stores/authStore'
@@ -120,6 +121,8 @@ export default function ProfileCustomize() {
       // Apply at once: the app theme, and your ring / tree look everywhere.
       setThemeId(themeKind(saved.effective.theme))
       setMyLook({ banner: saved.effective.banner, ring: saved.effective.ring, tree: saved.effective.tree })
+      // A DEV "Bannerni / Halqani sinash" override would hide what was just saved.
+      useDevLookStore.getState().clear()
       await loadOwnProfile()
       showToast('success', 'Saqlandi')
       router.back()
