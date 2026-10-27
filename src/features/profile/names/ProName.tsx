@@ -95,12 +95,13 @@ function build(provider: SkTypefaceFontProvider, text: string, style: TextStyle,
   const fontSize = style.fontSize ?? 15
   const family = SKIA_FAMILIES.includes(style.fontFamily ?? '') ? style.fontFamily! : fonts.bold
   return Skia.ParagraphBuilder.Make({ maxLines: 1, ellipsis: '…' }, provider)
+    // Native side rejects undefined numbers: only set the optional ones when present.
     .pushStyle({
       color: Skia.Color(color),
       fontFamilies: [family],
       fontSize,
-      letterSpacing: style.letterSpacing,
-      heightMultiplier: style.lineHeight ? style.lineHeight / fontSize : undefined,
+      ...(style.letterSpacing != null ? { letterSpacing: style.letterSpacing } : {}),
+      ...(style.lineHeight ? { heightMultiplier: style.lineHeight / fontSize } : {}),
     })
     .addText(text)
     .build()
