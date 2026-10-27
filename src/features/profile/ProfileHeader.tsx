@@ -52,7 +52,7 @@ function NavButton({ icon: Icon, label, dark, onPress, disabled }: {
 }
 
 export function ProfileHeader({
-  banner, ring, name, id, uri, level, levelTitle, own, onBack, onShare, onMore, shareDisabled, animated = true, onBannerPress, onRingPress,
+  banner, ring, name, id, uri, level, levelTitle, own, onBack, onShare, onMore, shareDisabled, animated = true, paused = false, onBannerPress, onRingPress,
 }: {
   banner: BannerKind
   ring: RingKind
@@ -67,7 +67,10 @@ export function ProfileHeader({
   onShare: () => void
   onMore: () => void
   shareDisabled?: boolean
+  /** The screen is focused (status bar follows the banner). */
   animated?: boolean
+  /** Off screen: the banner and ring stop in place (no rebuild, no flash). */
+  paused?: boolean
   /** Someone else's profile: tapping a banner chip / ring opens "Bu ko'rinishni oling". */
   onBannerPress?: () => void
   onRingPress?: () => void
@@ -83,7 +86,7 @@ export function ProfileHeader({
       {/* While on screen, the status bar reads on the banner, not the theme. */}
       {animated && <StatusBar style={dark ? 'light' : 'dark'} />}
       <View style={{ height }}>
-        <BannerScene kind={banner} width={width} height={height} animated={animated} />
+        <BannerScene kind={banner} width={width} height={height} paused={paused || !animated} />
         <View style={[styles.nav, { top: insets.top }]}>
           <NavButton icon={ChevronLeft} label="Orqaga" dark={dark} onPress={onBack} />
           <Text
@@ -111,7 +114,7 @@ export function ProfileHeader({
 
       <View style={styles.avatarRow}>
         <Pressable onPress={onRingPress} disabled={!onRingPress || ring === 'oddiy'} noFeedback>
-          <AvatarRing kind={ring} size={AVATAR} name={name} id={id} uri={uri} bg={colors.bg} animated={animated} />
+          <AvatarRing kind={ring} size={AVATAR} name={name} id={id} uri={uri} bg={colors.bg} paused={paused || !animated} />
         </Pressable>
         <View
           style={[styles.levelChip, { backgroundColor: colors.surface, borderColor: colors.border }]}

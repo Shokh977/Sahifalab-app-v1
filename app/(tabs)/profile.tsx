@@ -157,7 +157,8 @@ export default function ProfileTab() {
           onBack={back}
           onShare={share}
           onMore={() => router.push('/(screens)/settings' as any)}
-          animated={focused && header.onScreen}
+          animated={focused}
+          paused={!header.onScreen}
         />
 
         <View style={styles.content}>

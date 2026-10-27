@@ -18,16 +18,25 @@ import {
 } from '@shopify/react-native-skia'
 import { useTheme } from '../../../design/ThemeProvider'
 import type { Scheme } from '../../../design/tokens'
+import type { ThemeId } from '../../../design/themes'
 import type { BannerKind } from './cosmetics'
 import { TAU, WithClock, breathe, lifeProgress, secs, sweep, type Clock } from './motion'
 
 const W = 411
 const H = 180
 
-/** Plain banner: the theme gradient (light / dark). */
+/** Plain banner: Standart's own gradient per light / dark … */
 const PLAIN: Record<Scheme, [string, string]> = {
   light: ['#FCE3CF', '#F4C7A0'],
   dark: ['#2B1D16', '#4A2C1C'],
+}
+/** … and each app theme's, so the free banner always matches the theme. */
+const PLAIN_THEME: Partial<Record<ThemeId, [string, string]>> = {
+  tun: ['#1A2850', '#33508F'],
+  zumrad: ['#132C23', '#2E5A47'],
+  sakura: ['#FCE8EF', '#F2BCD0'],
+  ramazon: ['#1F1A49', '#3A2E78'],
+  navroz: ['#E3F1DA', '#A9D8A6'],
 }
 
 interface Layer { y: number; amp: number; ph: number; colors: [string, string] }
@@ -127,24 +136,27 @@ function crescent() {
 }
 
 // ── component ────────────────────────────────────────────────────────────────
-export const BannerScene = memo(function BannerScene({ kind, width, height, animated = true }: {
+export const BannerScene = memo(function BannerScene({ kind, width, height, animated = true, paused = false }: {
   kind: BannerKind
   width: number
   height: number
   animated?: boolean
+  /** Stop the motion in place (off screen); the scene isn't rebuilt. */
+  paused?: boolean
 }) {
-  const { scheme } = useTheme()
+  const { scheme, themeId } = useTheme()
   const s = Math.max(width / W, height / H)
   const fit = [{ translateX: (width - W * s) / 2 }, { translateY: (height - H * s) / 2 }, { scale: s }]
   return (
     <View style={{ width, height, overflow: 'hidden' }} pointerEvents="none">
       <WithClock
         animated={animated && kind !== 'plain'}
+        paused={paused}
         render={(clock, still) => (
           <Canvas style={{ width, height }}>
             <Group transform={fit}>
               {kind === 'plain'
-                ? <Plain colors={PLAIN[scheme]} />
+                ? <Plain colors={PLAIN_THEME[themeId] ?? PLAIN[scheme]} />
                 : <Scene kind={kind} clock={clock} still={still} />}
             </Group>
           </Canvas>

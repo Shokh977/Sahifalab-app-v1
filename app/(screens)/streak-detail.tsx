@@ -9,6 +9,7 @@ import { ChevronLeft, Map, Info, X, Share2 } from 'lucide-react-native'
 import ViewShot, { type ViewShotRef } from 'react-native-view-shot'
 import * as Sharing from 'expo-sharing'
 import { useTheme } from '../../hooks/useTheme'
+import { useThemeStore } from '../../stores/themeStore'
 import { typography, spacing, radius } from '../../lib/constants'
 import { streaks as streaksApi, focusStages } from '../../lib/api'
 import type { StreakDetail } from '../../lib/api'
@@ -241,6 +242,7 @@ export default function StreakDetailScreen() {
   // the background and the tree's frost coloring always transition together.
   const heroHealth: 'healthy' | 'frozen' = treeState === 'frozen' ? 'frozen' : 'healthy'
   const heroTheme  = devHeroOverride?.theme  ?? theme
+  const appThemeId = useThemeStore(st => st.themeId)
   const heroHealthResolved = devHeroOverride?.health ?? heroHealth
   const nextTrackBg = 'rgba(255,255,255,0.10)'
 
@@ -278,7 +280,7 @@ export default function StreakDetailScreen() {
         {/* ── Hero ──────────────────────────────────────────────────────── */}
         <View>
           <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
-          <StreakHeroBackground theme={heroTheme} health={heroHealthResolved} topInset={insets.top}>
+          <StreakHeroBackground theme={heroTheme} health={heroHealthResolved} topInset={insets.top} themeId={appThemeId}>
             {(hc) => (
               <>
                 {/* Floating header — replaces the old separate top bar so the

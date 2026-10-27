@@ -24,7 +24,7 @@ function arc(r: number, start: number, sweepDeg: number) {
   return p
 }
 
-export const AvatarRing = memo(function AvatarRing({ kind, size, name, id, uri, bg, animated = true }: {
+export const AvatarRing = memo(function AvatarRing({ kind, size, name, id, uri, bg, animated = true, paused = false }: {
   kind: RingKind
   size: number
   name: string
@@ -33,6 +33,8 @@ export const AvatarRing = memo(function AvatarRing({ kind, size, name, id, uri, 
   /** The page colour behind the avatar. */
   bg?: string
   animated?: boolean
+  /** Stop the motion in place (off screen); the ring isn't rebuilt. */
+  paused?: boolean
 }) {
   const { colors } = useTheme()
   const canvas = size * (1 + (PAD * 2) / 100)
@@ -46,6 +48,7 @@ export const AvatarRing = memo(function AvatarRing({ kind, size, name, id, uri, 
     >
       <WithClock
         animated={animated && kind !== 'oddiy'}
+        paused={paused}
         render={(clock, still) => (
           <Canvas style={[styles.canvas, { width: canvas, height: canvas, left: -size * PAD / 100, top: -size * PAD / 100 }]}>
             <Group transform={[{ scale: size / 100 }, { translateX: PAD }, { translateY: PAD }]}>

@@ -1,7 +1,9 @@
 /* ============================================================
    Sahifalab — StreakHeroBackground (step-16)
    Replaces the flat hero-card background with 4 living variants,
-   resolved from (theme × health). Guarantees status-bar contrast
+   resolved from (theme × health). Under an app theme other than
+   Standart (and not frozen), the card is that theme's own animated
+   scene instead (ThemeHeroScene). Guarantees status-bar contrast
    by keeping the darkest gradient stop at the very top edge.
    ============================================================ */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -14,6 +16,9 @@ import Animated, {
   withRepeat, withTiming, withSequence, withDelay,
   cancelAnimation, Easing, useReducedMotion, runOnJS,
 } from 'react-native-reanimated'
+
+import { ThemeHeroScene } from '../../src/features/themes/ThemeHeroScene'
+import { THEMES, type ThemeId } from '../../src/design/themes'
 
 const SCREEN_W = Dimensions.get('window').width
 
@@ -32,6 +37,8 @@ interface Props {
   theme:     HeroTheme
   health:    HeroHealth
   topInset:  number
+  /** The app theme; anything but Standart draws its own scene. */
+  themeId?:  ThemeId
   minHeight?: number
   children:  (colors: HeroContentColors) => React.ReactNode
 }
@@ -357,7 +364,7 @@ function BackgroundLayer({ variant, reducedMotion, height }: { variant: HeroVari
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export function StreakHeroBackground({ theme, health, topInset, minHeight = 380, children }: Props) {
+export function StreakHeroBackground({ theme, health, topInset, themeId = 'standart', minHeight = 380, children }: Props) {
   const reducedMotion = useReducedMotion()
   const variant = resolveVariant(theme, health)
 
@@ -384,15 +391,19 @@ export function StreakHeroBackground({ theme, health, topInset, minHeight = 380,
 
   const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }))
 
-  const colors = CONTENT_COLORS[variant]
   const cardHeight = minHeight
+  const themed = themeId !== 'standart' && health === 'healthy' ? themeId : null
+  const themeDark = themed ? THEMES[themed].mode === 'dark' : false
+  const colors = themed ? themeContent(themed) : CONTENT_COLORS[variant]
 
   return (
     <View style={[styles.card, { minHeight: cardHeight }]}>
-      <StatusBar style={STATUS_BAR_STYLE[variant]} />
+      <StatusBar style={themed ? (themeDark ? 'light' : 'dark') : STATUS_BAR_STYLE[variant]} />
 
-      <BackgroundLayer variant={renderVariant} reducedMotion={reducedMotion} height={cardHeight} />
-      {incomingVariant && (
+      {themed ? <ThemeHeroScene themeId={themed} /> : (
+        <BackgroundLayer variant={renderVariant} reducedMotion={reducedMotion} height={cardHeight} />
+      )}
+      {!themed && incomingVariant && (
         <Animated.View style={[StyleSheet.absoluteFill, fadeStyle]}>
           <BackgroundLayer variant={incomingVariant} reducedMotion={reducedMotion} height={cardHeight} />
         </Animated.View>
@@ -403,6 +414,12 @@ export function StreakHeroBackground({ theme, health, topInset, minHeight = 380,
       </View>
     </View>
   )
+}
+
+/** Text colours on a theme scene: the theme's own text and muted text. */
+function themeContent(id: Exclude<ThemeId, 'standart'>): HeroContentColors {
+  const c = THEMES[id].colors!
+  return { isDark: THEMES[id].mode === 'dark', primary: c.text, secondary: c.textMuted, faint: c.textMuted + 'AA' }
 }
 
 const styles = StyleSheet.create({

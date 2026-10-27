@@ -1,12 +1,12 @@
 /**
  * Shared timing for the Skia cosmetics (banner scenes, avatar rings).
- * A cosmetic gets one clock: a live Skia clock while it animates, a
- * frozen one otherwise. Worklet helpers turn the clock into loops; with
+ * A cosmetic gets one clock: a shared value advanced by a frame callback
+ * while it animates. Pausing (off screen, screen not focused) stops the
+ * callback in place — the canvas is never rebuilt, so nothing flashes. Worklet helpers turn the clock into loops; with
  * `still` set they return the brightest keyframe, as Reduce Motion asks.
  */
-import React from 'react'
-import { useReducedMotion, useSharedValue, type SharedValue } from 'react-native-reanimated'
-import { useClock } from '@shopify/react-native-skia'
+import React, { useEffect } from 'react'
+import { useFrameCallback, useReducedMotion, useSharedValue, type SharedValue } from 'react-native-reanimated'
 
 export type Clock = SharedValue<number>
 export const TAU = Math.PI * 2
@@ -60,19 +60,28 @@ export function lifeProgress(clock: Clock, life: number, delay: number) {
 
 type Render = (clock: Clock, still: boolean) => React.ReactElement
 
-function LiveClock({ render }: { render: Render }) {
-  return render(useClock(), false)
-}
-
-function StillClock({ render }: { render: Render }) {
-  return render(useSharedValue(0), true)
-}
-
 /**
- * Renders `render(clock, still)` with a live clock when `animated` and
- * Reduce Motion is off, otherwise with a frozen one (no frame callback).
+ * Renders `render(clock, still)`. `still` (no animation at all: thumbnails,
+ * Reduce Motion) draws the brightest keyframe. `paused` stops the clock
+ * where it is without rebuilding anything, for a scene scrolled off screen
+ * or on a screen that isn't focused.
  */
-export function WithClock({ animated, render }: { animated: boolean; render: Render }) {
+export function WithClock({ animated, paused = false, render }: { animated: boolean; paused?: boolean; render: Render }) {
   const reduceMotion = useReducedMotion()
-  return animated && !reduceMotion ? <LiveClock render={render} /> : <StillClock render={render} />
+  const still = !animated || reduceMotion
+  const clock = useSharedValue(0)
+  const last = useSharedValue(-1)
+  const frame = useFrameCallback(info => {
+    'worklet'
+    // Advance by the real time between frames, so a resume continues smoothly.
+    const t = info.timestamp
+    if (last.value >= 0) clock.value += Math.min(t - last.value, 100)
+    last.value = t
+  }, false)
+  useEffect(() => {
+    const run = !still && !paused
+    if (!run) last.set(-1)
+    frame.setActive(run)
+  }, [still, paused, frame, last])
+  return render(clock, still)
 }

@@ -345,7 +345,8 @@ function PublicProfileBody() {
           onBack={back}
           onShare={share}
           onMore={() => setShowMore(true)}
-          animated={focused && header.onScreen}
+          animated={focused}
+          paused={!header.onScreen}
           onBannerPress={() => openLook({ slot: 'banner', id: bannerKind(p.look?.banner) })}
           onRingPress={() => openLook({ slot: 'ring', id: ringKind(p.look?.ring) })}
         />

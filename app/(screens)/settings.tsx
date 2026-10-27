@@ -822,17 +822,24 @@ export default function SettingsScreen() {
           />
           <View style={[s.row, { paddingBottom: 8 }]}>
             <Text style={[s.rowLabel, { color: c.textPrimary, fontFamily: typography.fontFamily.medium }]}>Rejim</Text>
-            {themeId !== 'standart' && (
-              <Text style={[s.rowValue, { color: c.textSecondary, fontFamily: typography.fontFamily.regular }]}>Standart mavzuda</Text>
-            )}
           </View>
+          {/* A theme other than Standart has its own fixed light or dark look, so
+              the mode only applies to Standart — say so instead of a switch that
+              silently does nothing. */}
+          {themeId !== 'standart' && (
+            <Text style={[s.rowValue, { color: c.textSecondary, fontFamily: typography.fontFamily.regular, paddingHorizontal: spacing.base, paddingBottom: 8 }]}>
+              {THEMES[themeId].name} mavzusi {THEMES[themeId].mode === 'dark' ? 'qorongʻi' : 'yorugʻ'} — Qorongʻi / Yorugʻ / Tizim faqat Standart mavzuga taʼsir qiladi.
+            </Text>
+          )}
           <View style={[s.themeRow, { paddingHorizontal: spacing.base, paddingBottom: spacing.base }]}>
             {THEME_OPTIONS.map(opt => (
               <Pressable
                 key={opt.key}
                 onPress={() => applyTheme(opt.key)}
+                disabled={themeId !== 'standart'}
                 style={[
                   s.themeOption,
+                  themeId !== 'standart' && { opacity: 0.4 },
                   {
                     borderColor:     themeChoice === opt.key ? c.accentPrimary : c.border,
                     backgroundColor: themeChoice === opt.key ? c.accentPrimaryMuted : c.bgTertiary,
