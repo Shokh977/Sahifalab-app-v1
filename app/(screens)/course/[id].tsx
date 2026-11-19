@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { rememberCourse } from '../../../src/features/today/lastCourse'
 import {
   View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Linking, Animated,
   TextInput, Dimensions, Modal, KeyboardAvoidingView, Platform,
@@ -935,6 +936,8 @@ export default function CourseDetailScreen() {
   const insets   = useSafeAreaInsets()
   const { id, startLessonId } = useLocalSearchParams<{ id: string; startLessonId?: string }>()
   const courseId = Number(id)
+  // Bugun's course card follows the course you opened last.
+  useEffect(() => { rememberCourse(courseId) }, [courseId])
 
   const { checkEnrollment, enroll, loadProgress, markComplete, enrollmentCache, progressCache } = useCourseStore()
   const downloadStore = useDownloadStore()

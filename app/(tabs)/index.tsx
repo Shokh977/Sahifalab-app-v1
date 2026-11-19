@@ -24,7 +24,8 @@ import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, space } from '../../src/design/spacing'
 import { Card, EmptyState, SkeletonRow } from '../../src/components/ui'
 import { getPrimaryAction } from '../../src/features/today/primaryAction'
-import { isMonday, localDateKey, nextTileKey, pickCurrentCourse } from '../../src/features/today/today'
+import { isMonday, localDateKey, nextTileKey } from '../../src/features/today/today'
+import { pickPlanCourse, useLastCourseStore } from '../../src/features/today/lastCourse'
 import type { PlanCard } from '../../src/features/today/planCards'
 import { estMinutes } from '../../src/features/flashcards/queueMath'
 import { useMinuteClock } from '../../src/features/today/useMinuteClock'
@@ -35,16 +36,19 @@ import { WeeklyRivalCard } from '../../src/features/today/WeeklyRivalCard'
 import { ExtraSlot } from '../../src/features/today/ExtraSlot'
 import { AnnouncementCard } from '../../src/features/today/AnnouncementCard'
 import { QuestionLaunchCard } from '../../src/features/questions/QuestionLaunchCard'
+import { hideInFocusMode } from '../../src/features/focusMode/hideInFocusMode'
 
 /** Shortest timer the Fokus preset will set from Home. */
 const MIN_FOCUS_PRESET = 5
 
-export default function HomeTab() {
+function HomeTab() {
   const { colors } = useTheme()
   const router = useRouter()
   const user = useAuthStore(s => s.user)
   const isOnline = useOnline()
   const now = useMinuteClock()
+  const lastCourseId = useLastCourseStore(s => s.id)
+  useEffect(() => { useLastCourseStore.getState().load() }, [])
   const {
     fetch, refresh, refreshToday, loadLastWeek, data, loading, refreshing, error,
     streakLostSeen, markStreakLostSeen,
@@ -138,7 +142,8 @@ export default function HomeTab() {
   const quizSecondsLeft = quiz
     ? Math.max(0, quiz.seconds_remaining - Math.floor((now - (data.quizFetchedAt ?? now)) / 1000))
     : 0
-  const current = pickCurrentCourse(data.enrolled)
+  // One course on Bugun: the one opened last (else the furthest along).
+  const current = pickPlanCourse(data.enrolled, lastCourseId)
   const currentCourse = current?.courses
     ? {
         id: current.course_id, title: current.courses.title, progress: current.progress,
@@ -231,9 +236,7 @@ export default function HomeTab() {
               due: data.flashcardDueCount, reviewed: data.flashcardReviewedToday ?? 0,
               estMinutes: estMinutes(data.flashcardDueCount),
             } : null,
-            courses: data.enrolled
-              .filter(e => e.courses)
-              .map(e => ({ id: e.course_id, title: e.courses!.title, progress: e.progress, totalLessons: e.courses!.total_lessons ?? 0 })),
+            courses: currentCourse ? [currentCourse] : [],
             competitions: competition ? [{
               id: competition.id, slug: competition.slug, title: competition.title, rank: competition.rank,
               participants: competition.participant_count, startsAt: competition.starts_at, endsAt: competition.ends_at,
@@ -301,3 +304,5 @@ const styles = StyleSheet.create({
     gap: space.lg,
   },
 })
+
+export default hideInFocusMode(HomeTab, 'index')

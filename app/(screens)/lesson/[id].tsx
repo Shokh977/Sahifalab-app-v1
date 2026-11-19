@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { rememberCourse } from '../../../src/features/today/lastCourse'
 import {
   View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator,
   Alert, Linking, TextInput, Dimensions,
@@ -500,6 +501,8 @@ export default function LessonPlayerScreen() {
   const { markComplete, progressCache } = useCourseStore()
 
   const [lesson,           setLesson]           = useState<Lesson | null>(null)
+  // Bugun's course card follows the course you opened last.
+  useEffect(() => { if (lesson?.course_id) rememberCourse(lesson.course_id) }, [lesson?.course_id])
   const [course,           setCourse]           = useState<Course | null>(null)
   const [siblingLessons,   setSiblingLessons]   = useState<Lesson[]>([])
   const [loading,          setLoading]          = useState(true)
