@@ -81,7 +81,8 @@ export function FocusModeControls() {
   }
 
   const openDetails = () => {
-    if (access === 'pro') { setEnableOnSave(false); setSheet('custom') }
+    // Pro, and a free user during their try (the try is the full feature).
+    if (access === 'pro' || (access === 'trialActive' && s.on)) { setEnableOnSave(false); setSheet('custom') }
     else if (access === 'trialUsed') setSheet('upsell')
     else if (!s.on) setSheet('intro')
   }
@@ -107,11 +108,10 @@ export function FocusModeControls() {
         </View>
         <Pressable
           onPress={openDetails}
-          noFeedback={access === 'trialActive' && s.on}
           style={styles.text}
           accessibilityRole="button"
           accessibilityLabel={`${s.on ? 'Fokus rejimi yoqilgan' : 'Fokus rejimi'}, ${subtitle.a11y ?? `${subtitle.chip ?? ''} ${subtitle.text}`}`}
-          accessibilityHint={access === 'pro' ? 'Qaysi boʻlimlar qolishini tanlash' : undefined}
+          accessibilityHint={access === 'pro' || access === 'trialActive' ? 'Qaysi boʻlimlar qolishini tanlash' : undefined}
         >
           <Text style={[typeScale.headline, { color: colors.text }]} numberOfLines={1}>
             {s.on ? 'Fokus rejimi yoqilgan' : 'Fokus rejimi'}
@@ -193,7 +193,7 @@ export function FocusModeControls() {
           const st = useFocusModeStore.getState()
           if (enableOnSave) {
             st.markIntroSeen()
-            st.enable(keep)
+            st.enable(keep, { trial: access !== 'pro' })
             haptics.selection()
           } else st.setKeep(keep)
           setSheet(null)
@@ -221,19 +221,17 @@ function IntroSheet({ visible, trial, onClose, onPreset, onCustom }: {
   const [choice, setChoice] = useState<'preset' | 'custom'>('preset')
   useEffect(() => { if (visible) setChoice('preset') }, [visible])
   const previewW = 300
-  // The free try is the one-tap preset; choosing tabs is Pro.
-  const choices = trial
-    ? [{ id: 'preset' as const, title: 'Faqat Fokus va Bellashuv', sub: 'Tavsiya etiladi' }]
-    : [
-        { id: 'preset' as const, title: 'Faqat Fokus va Bellashuv', sub: 'Tavsiya etiladi' },
-        { id: 'custom' as const, title: 'Oʻzim tanlayman', sub: 'Qaysi boʻlimlar qolishini belgilang' },
-      ]
-  const cta = trial ? 'Bepul sinab koʻrish' : choice === 'custom' ? 'Davom etish' : 'Yoqish'
+  // The free try is the whole feature, choosing tabs included.
+  const choices = [
+    { id: 'preset' as const, title: 'Faqat Fokus va Bellashuv', sub: 'Tavsiya etiladi' },
+    { id: 'custom' as const, title: 'Oʻzim tanlayman', sub: 'Qaysi boʻlimlar qolishini belgilang' },
+  ]
+  const cta = choice === 'custom' ? 'Davom etish' : trial ? 'Bepul sinab koʻrish' : 'Yoqish'
   return (
-    <Sheet visible={visible} onClose={onClose} title="Ilova bir chetga chiqadi">
+    <Sheet visible={visible} onClose={onClose} title="Ilova soddalashadi">
       <View style={styles.sheetBody}>
         <Text style={[typeScale.body, { color: colors.textMuted }]}>
-          Oʻqishga kerakli boʻlimlar qoladi. Qolganlari va ularning bildirishnomalari dam oladi.
+          Oʻqishga kerakli boʻlimlar qoladi. Qolganlari va ularning bildirishnomalari koʻrinmaydi.
         </Text>
         <View
           accessible

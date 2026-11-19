@@ -11,7 +11,7 @@ import { Linking, ScrollView, StyleSheet, Text, View, useWindowDimensions } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import { useFocusEffect, useIsFocused, useRouter } from 'expo-router'
-import { ChartColumn, Check, ChevronRight, Copy, Layers, Palette, Send, Sparkles, TreePine, Image as ImageIcon, CircleDot, type LucideIcon } from 'lucide-react-native'
+import { ChartColumn, Check, ChevronRight, Copy, Layers, Leaf, Palette, Send, Sparkles, TreePine, Image as ImageIcon, CircleDot, type LucideIcon } from 'lucide-react-native'
 import { pro as proApi, type ProPlan, type ProStatus } from '../../lib/api'
 import { track } from '../../lib/analytics'
 import { useAuthStore } from '../../stores/authStore'
@@ -31,6 +31,7 @@ const GOLD = ['#F6E3A8', '#E4BE68', '#C99A3E'] as const
 const BENEFITS: { icon: LucideIcon; title: string; body: string }[] = [
   { icon: Layers, title: 'AI kartalar', body: 'Kuniga 20 tagacha AI toʻplam — Tangasiz' },
   { icon: ChartColumn, title: 'Toʻliq haftalik sharh', body: 'AI tavsiyalari va batafsil statistika' },
+  { icon: Leaf, title: 'Fokus rejimi', body: 'Faqat kerakli boʻlimlar qoladi — chalgʻimasdan oʻqing' },
   { icon: Palette, title: 'Mavzular', body: 'Tun, Zumrad va Sakura — butun ilova yangi rangda' },
   { icon: ImageIcon, title: 'Jonli bannerlar', body: 'Tun va Oltin soat — profilingiz tepasida' },
   { icon: CircleDot, title: 'Avatar halqalari', body: 'Shabnam, Kometa va Oltin halqa' },
@@ -43,6 +44,7 @@ const MANAGE: { icon: LucideIcon; title: string; body: string; route: string }[]
   { icon: Sparkles, title: 'Profilni bezash', body: 'Banner, halqa, daraxt koʻrinishi', route: '/(screens)/profile-customize' },
   { icon: Layers, title: 'AI kartalar', body: 'Kuniga 20 tagacha, Tangasiz', route: '/(screens)/ai-flashcard-generate' },
   { icon: ChartColumn, title: 'Haftalik sharh', body: 'AI tavsiyalari va toʻliq statistika', route: '/(screens)/weekly-review' },
+  { icon: Leaf, title: 'Fokus rejimi', body: 'Fokus ekranida yoqiladi', route: '/(tabs)/study' },
 ]
 
 const STEPS = [

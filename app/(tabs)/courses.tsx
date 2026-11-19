@@ -29,6 +29,7 @@ import { FeaturedCourse } from '../../src/features/courses/FeaturedCourse'
 import { ContinueRow } from '../../src/features/courses/ContinueRow'
 import { categoriesWithCourses, pickFeatured, showBrowseTools } from '../../src/features/courses/courses'
 import { usePendingStore } from '../../src/features/courses/purchase'
+import { hideInFocusMode } from '../../src/features/focusMode/hideInFocusMode'
 
 const PAGE_SIZE = 30
 
@@ -79,7 +80,7 @@ function fromCache(key: string): Page | null {
   return hit ? { key, ...hit } : null
 }
 
-export default function CoursesTab() {
+function CoursesTab() {
   const { colors } = useTheme()
   const { theme } = useLegacyTheme()
   const router = useRouter()
@@ -306,3 +307,5 @@ const styles = StyleSheet.create({
   chips: { paddingHorizontal: layout.gutter, gap: space.xs },
   listHead: { flexDirection: 'row', alignItems: 'center', marginTop: space.xs, minHeight: layout.minTouch },
 })
+
+export default hideInFocusMode(CoursesTab, 'courses')

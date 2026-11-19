@@ -21,8 +21,9 @@ import { useMinuteClock } from '../../src/features/today/useMinuteClock'
 import { endedCompetitions, otherCompetitions, pickMainCompetition } from '../../src/features/bellashuv/bellashuv'
 import { CompetitionsCard } from '../../src/features/bellashuv/CompetitionsCard'
 import { QuizTodayCard } from '../../src/features/bellashuv/QuizTodayCard'
+import { hideInFocusMode } from '../../src/features/focusMode/hideInFocusMode'
 
-export default function BellashuvScreen() {
+function BellashuvScreen() {
   const { colors } = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -146,3 +147,5 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: layout.gutter, paddingTop: space.xs, gap: layout.sectionGap },
   section: { gap: space.sm },
 })
+
+export default hideInFocusMode(BellashuvScreen, 'musobaqalar')

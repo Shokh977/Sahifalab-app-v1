@@ -16,7 +16,7 @@
  * they are not tab buttons; the pill index is clamped for them.
  */
 import React, { useEffect, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
+import { BackHandler, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {
   Extrapolation, interpolate, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring,
@@ -73,6 +73,24 @@ export function AnimatedTabBar({ state, navigation }: BottomTabBarProps) {
     if (!on || !activeName || !TAB_META.some(t => t.name === activeName)) return
     if (!keep.includes(activeName) && activeName !== allowOnce) navigation.navigate('study')
   }, [on, keep, activeName, allowOnce, navigation])
+
+  // ── Fokus rejimi: Android back ──
+  // Tabs go "back" to their first tab, Bugun, which the mode hides: the bar
+  // then bounced to Fokus and Bugun flashed in between. While the mode is
+  // on, back from a tab goes to Fokus, and back on Fokus leaves the app.
+  // Re-registered on every tab change so it runs before react-navigation's
+  // own listener (the newest listener is asked first); a screen pushed over
+  // the tabs (navigator not focused) is left to react-navigation.
+  useEffect(() => {
+    if (!on || Platform.OS !== 'android') return
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!navigation.isFocused()) return false
+      if (activeName !== 'study') { navigation.navigate('study'); return true }
+      BackHandler.exitApp()
+      return true
+    })
+    return () => sub.remove()
+  }, [on, activeName, navigation])
 
   // ── Shared values ──
   const p = useSharedValue(on ? 1 : 0)

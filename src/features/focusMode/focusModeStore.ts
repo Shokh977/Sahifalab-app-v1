@@ -2,8 +2,8 @@
  * Fokus rejimi (focus mode): the app hides every tab but the ones the user
  * keeps (Fokus always; Bellashuv by default) until they turn it off.
  *
- * Pro feature with one free trial. The trial (design notes, "Bepul sinov"):
- * it starts when a free user turns the mode on and lasts 24 h; turning it
+ * Pro feature with one free trial of the whole feature, choosing tabs
+ * included. The trial (design notes, "Bepul sinov"): it starts when a free user turns the mode on and lasts 24 h; turning it
  * off in the first 10 minutes doesn't spend it, so someone who was only
  * curious keeps their try.
  *

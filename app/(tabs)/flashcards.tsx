@@ -31,6 +31,7 @@ import { IconButton, SegmentedControl } from '../../src/components/ui'
 import { EXTRA_NEW } from '../../src/features/flashcards/queueMath'
 import { Plus as PlusIcon, Search } from 'lucide-react-native'
 import { moveSpring, moveTiming } from '../../src/design/rnMotion'
+import { hideInFocusMode } from '../../src/features/focusMode/hideInFocusMode'
 
 // Eight distinct deck colours (the old list had two oranges and two greens).
 // Decks saved with an older colour keep it.
@@ -208,7 +209,7 @@ function DeckSheet({ visible, editing, onClose, onSaved }: DeckSheetProps) {
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
-export default function FlashcardsScreen() {
+function FlashcardsScreen() {
   const { colors } = useDesignTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -343,3 +344,5 @@ const styles = StyleSheet.create({
   },
   saveBtnText: { fontSize: typography.size.base },
 })
+
+export default hideInFocusMode(FlashcardsScreen, 'flashcards')
