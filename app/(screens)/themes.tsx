@@ -7,8 +7,8 @@
  * with a larger preview and how it opens — it is never applied. Pro themes
  * need Pro; seasonal themes are free for everyone in their season.
  */
-import React, { useEffect, useState } from 'react'
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import React, { memo, useEffect, useState } from 'react'
+import { InteractionManager, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { Check, Home, Layers, Lock, Timer, Trophy, GraduationCap } from 'lucide-react-native'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { profile as profileApi, type MyLook } from '../../lib/api'
@@ -38,8 +38,12 @@ function subtitle(id: ThemeId) {
   return 'Pro bilan ochiladi'
 }
 
-/** A mini Bugun in the surrounding ThemeProvider's theme. */
-function MiniBugun({ width }: { width: number }) {
+/**
+ * A mini Bugun in the surrounding ThemeProvider's theme. Memoised: each one
+ * is a full SVG tree plus decor, and the screen's own state (busy, the
+ * selected check, the sheet) must not redraw all six.
+ */
+const MiniBugun = memo(function MiniBugun({ width }: { width: number }) {
   const { colors, treeTile, progressFill, scheme } = useTheme()
   const tile = width * 0.28
   const gid = `mini${Math.round(width)}`
@@ -93,6 +97,13 @@ function MiniBugun({ width }: { width: number }) {
       </View>
     </View>
   )
+})
+
+/** Same size as a MiniBugun, drawn while the previews wait for the screen to open. */
+function MiniPlaceholder({ width }: { width: number }) {
+  const { colors } = useTheme()
+  // MiniBugun's height: its fixed rows (≈91 px) plus the tree tile (0.28 × width).
+  return <View style={{ width, height: 91 + width * 0.28, backgroundColor: colors.surfaceRaised }} />
 }
 
 export default function ThemesScreen() {
@@ -105,9 +116,13 @@ export default function ThemesScreen() {
   const [offline, setOffline] = useState(false)
   const [busy, setBusy] = useState<ThemeId | null>(null)
   const [locked, setLocked] = useState<ThemeId | null>(null)
+  // The six previews mount after the push animation, not during it.
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     profileApi.getMyLook().then(setLook).catch(() => setOffline(true))
+    const task = InteractionManager.runAfterInteractions(() => setReady(true))
+    return () => task.cancel()
   }, [])
 
   const unlocked = (id: ThemeId) => id === 'standart' || !!look?.unlocked.theme?.[id]
@@ -116,18 +131,27 @@ export default function ThemesScreen() {
   const choose = async (id: ThemeId) => {
     if (id === themeId) return
     if (!unlocked(id)) { setLocked(id); return }
+    // Optimistic: the card shows it's picked on this frame, the app re-themes
+    // on the next one (every mounted screen redraws, so it must not block the
+    // press), and the server saves in the background. A refusal puts the
+    // previous theme back.
+    const previous = themeId
     setBusy(id)
-    try {
-      if (!offline) await profileApi.updateMyLook({ theme: id })
+    requestAnimationFrame(() => {
       setThemeId(id)
+      setBusy(null)
+    })
+    if (offline) return
+    try {
+      await profileApi.updateMyLook({ theme: id })
     } catch (e: any) {
+      setThemeId(previous)
       showToast('error', e?.message ?? 'Mavzu saqlanmadi')
     }
-    setBusy(null)
   }
 
   const card = (id: ThemeId) => {
-    const on = id === themeId
+    const on = (busy ?? themeId) === id
     const open = unlocked(id)
     const pro = THEME_ITEMS[id].unlock.kind === 'pro'
     return (
@@ -140,9 +164,11 @@ export default function ThemesScreen() {
         style={[styles.card, { width: cardW, borderColor: on ? colors.accent : colors.border, borderWidth: on ? 2 : 1, backgroundColor: colors.surface }]}
       >
         <View style={styles.previewWrap}>
-          <ThemeProvider themeId={id}>
-            <MiniBugun width={cardW - 14} />
-          </ThemeProvider>
+          {ready ? (
+            <ThemeProvider themeId={id}>
+              <MiniBugun width={cardW - 14} />
+            </ThemeProvider>
+          ) : <MiniPlaceholder width={cardW - 14} />}
           {on && (
             <View style={[styles.badge, { backgroundColor: colors.accent }]}>
               <Check size={13} color={colors.onAccent} strokeWidth={3} />

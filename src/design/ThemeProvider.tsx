@@ -40,40 +40,55 @@ export function useTheme() {
   const storeScheme = useThemeStore(s => s.theme)
   const storeId = useThemeStore(s => s.themeId)
   const themeId: ThemeId = pinnedId ?? storeId
-  const userScheme: Scheme = pinned ?? storeScheme
-  return useMemo(() => {
-    const scheme = themeScheme(themeId, userScheme)
-    const colors = themePalette(themeId, userScheme)
-    const fills = themeFills(themeId)
-    return {
-      themeId,
-      scheme,
-      colors,
-      badgeColors: badgeColors[scheme],
-      deckColors,
-      type,
-      tabular,
-      space,
-      layout,
-      radius,
-      iconSize,
-      iconStroke,
-      // Depth: a lighter surface in dark mode, the soft card shadow in light mode.
-      elevation: scheme === 'light' ? shadow : null,
-      /** Under accent fills (buttons, the "next" tile): light mode only. */
-      accentShadow: scheme === 'light' ? accentShadow : null,
-      accentFill: fills.accentFill,
-      accentFillDeep: fills.accentFillDeep,
-      progressFill: fills.progressFill,
-      /** The "next" Bugungi reja tile. */
-      planNext: themePlanNext(themeId, userScheme),
-      /** The Bugun tree tile gradient (null: none). */
-      treeTile: themeTreeTile(themeId, userScheme),
-      /** A hue's ink / soft background / line for icon tiles and badges. */
-      tint: (name: TintName) => tintOf(colors, name, scheme),
-      motion: { springs, easing, durations, press, stagger },
-    }
-  }, [themeId, userScheme])
+  // Everything below depends only on the theme and the scheme it renders in
+  // (a non-Standart theme has a fixed one), so a pinned preview doesn't
+  // change when the user's own setting does.
+  const scheme = themeScheme(themeId, pinned ?? storeScheme)
+  return useMemo(() => themeFor(themeId, scheme), [themeId, scheme])
+}
+
+// One shared object per (theme, scheme): every useTheme() caller gets the
+// same reference, built once per app run instead of once per component.
+const cache = new Map<string, ReturnType<typeof buildTheme>>()
+function themeFor(themeId: ThemeId, scheme: Scheme) {
+  const key = `${themeId}:${scheme}`
+  let t = cache.get(key)
+  if (!t) { t = buildTheme(themeId, scheme); cache.set(key, t) }
+  return t
+}
+
+function buildTheme(themeId: ThemeId, userScheme: Scheme) {
+  const scheme = themeScheme(themeId, userScheme)
+  const colors = themePalette(themeId, userScheme)
+  const fills = themeFills(themeId)
+  return {
+    themeId,
+    scheme,
+    colors,
+    badgeColors: badgeColors[scheme],
+    deckColors,
+    type,
+    tabular,
+    space,
+    layout,
+    radius,
+    iconSize,
+    iconStroke,
+    // Depth: a lighter surface in dark mode, the soft card shadow in light mode.
+    elevation: scheme === 'light' ? shadow : null,
+    /** Under accent fills (buttons, the "next" tile): light mode only. */
+    accentShadow: scheme === 'light' ? accentShadow : null,
+    accentFill: fills.accentFill,
+    accentFillDeep: fills.accentFillDeep,
+    progressFill: fills.progressFill,
+    /** The "next" Bugungi reja tile. */
+    planNext: themePlanNext(themeId, userScheme),
+    /** The Bugun tree tile gradient (null: none). */
+    treeTile: themeTreeTile(themeId, userScheme),
+    /** A hue's ink / soft background / line for icon tiles and badges. */
+    tint: (name: TintName) => tintOf(colors, name, scheme),
+    motion: { springs, easing, durations, press, stagger },
+  }
 }
 
 export type Theme = ReturnType<typeof useTheme>

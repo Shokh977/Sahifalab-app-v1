@@ -8,7 +8,7 @@
  *   border — Navro'z only: the 7 px patterned top edge of the hero card
  * Standart draws nothing.
  */
-import React, { useState } from 'react'
+import React, { memo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Svg, { Circle, Defs, Ellipse, G, Line, LinearGradient, Path, Pattern, Rect, Stop } from 'react-native-svg'
 import { THEMES } from '../../design/themes'
@@ -34,7 +34,7 @@ function Tulip({ x, y, s }: { x: number; y: number; s: number }) {
   )
 }
 
-export function ThemeDecor({ variant, radius = 0 }: { variant: Variant; radius?: number }) {
+export const ThemeDecor = memo(function ThemeDecor({ variant, radius = 0 }: { variant: Variant; radius?: number }) {
   const { themeId } = useTheme()
   const [size, setSize] = useState({ width: 0, height: 0 })
   if (themeId === 'standart') return null
@@ -45,14 +45,18 @@ export function ThemeDecor({ variant, radius = 0 }: { variant: Variant; radius?:
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      onLayout={e => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+      onLayout={e => {
+        const { width, height } = e.nativeEvent.layout
+        // Only a real size change redraws the art.
+        setSize(s => (s.width === width && s.height === height ? s : { width, height }))
+      }}
     >
       {size.width > 0 && <DecorArt themeId={themeId} variant={variant} width={size.width} height={size.height} />}
     </View>
   )
-}
+})
 
-function DecorArt({ themeId, variant, width, height }: { themeId: string; variant: Variant; width: number; height: number }) {
+const DecorArt = memo(function DecorArt({ themeId, variant, width, height }: { themeId: string; variant: Variant; width: number; height: number }) {
   // The podium layer stays in the top band, above the avatars' labels.
   const h = variant === 'podium' ? Math.min(height, 70) : height
   const w = width
@@ -134,4 +138,4 @@ function DecorArt({ themeId, variant, width, height }: { themeId: string; varian
   }
   if (!art) return null
   return <Svg width={w} height={variant === 'border' ? 7 : h}>{art}</Svg>
-}
+})

@@ -10,6 +10,8 @@ import { useFrameCallback, useReducedMotion, useSharedValue, type SharedValue } 
 
 export type Clock = SharedValue<number>
 export const TAU = Math.PI * 2
+/** Minimum ms between clock ticks (~30 fps; a little under 33.3 to absorb frame jitter). */
+const FRAME_MS = 30
 
 /** Seconds since the clock started. */
 export function secs(clock: Clock) {
@@ -74,8 +76,14 @@ export function WithClock({ animated, paused = false, render }: { animated: bool
   const frame = useFrameCallback(info => {
     'worklet'
     // Advance by the real time between frames, so a resume continues smoothly.
+    // The clock only ticks at ~30 fps: every tick redraws the whole canvas,
+    // and these loops are slow enough that 60 / 120 fps looks the same while
+    // costing 2–4× the UI-thread time (felt on low-end Android).
     const t = info.timestamp
-    if (last.value >= 0) clock.value += Math.min(t - last.value, 100)
+    if (last.value < 0) { last.value = t; return }
+    const dt = t - last.value
+    if (dt < FRAME_MS) return
+    clock.value += Math.min(dt, 100)
     last.value = t
   }, false)
   useEffect(() => {
