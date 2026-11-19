@@ -32,6 +32,7 @@ import { focusHours } from '../../src/features/profile/profileFormat'
 import { ProfileStat } from '../../src/features/profile/ProfileStat'
 import { ProfileHeader, useHeaderOnScreen } from '../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../src/features/profile/TreeHeroCard'
+import { usePauseDecorWhileScrolling } from '../../src/design/decorPause'
 import { ForestStrip } from '../../src/features/forest/ForestStrip'
 import { ProPill } from '../../src/features/pro/ProPill'
 import { ProName } from '../../src/features/profile/names/ProName'
@@ -77,6 +78,7 @@ export default function ProfileTab() {
   const router = useRouter()
   const focused = useIsFocused()
   const header = useHeaderOnScreen()
+  const pauseWhileScrolling = usePauseDecorWhileScrolling()
   // Dev builds: Settings → DEV can try a banner / ring here before it can be saved.
   const devBanner = useDevLookStore(s => (__DEV__ ? s.banner : null))
   const devRing = useDevLookStore(s => (__DEV__ ? s.ring : null))
@@ -135,6 +137,7 @@ export default function ProfileTab() {
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <ScrollView
         {...header.scrollProps}
+        {...pauseWhileScrolling}
         contentContainerStyle={{ paddingBottom: insets.bottom + space.xxl }}
         showsVerticalScrollIndicator={false}
         refreshControl={

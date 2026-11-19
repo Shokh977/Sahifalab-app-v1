@@ -7,6 +7,7 @@
  */
 import React, { useEffect } from 'react'
 import { useFrameCallback, useReducedMotion, useSharedValue, type SharedValue } from 'react-native-reanimated'
+import { decorPaused } from '../../../design/decorPause'
 
 export type Clock = SharedValue<number>
 export const TAU = Math.PI * 2
@@ -81,6 +82,8 @@ export function WithClock({ animated, paused = false, render }: { animated: bool
     // costing 2–4× the UI-thread time (felt on low-end Android).
     const t = info.timestamp
     if (last.value < 0) { last.value = t; return }
+    // Held still while a page scrolls; resumes where it was.
+    if (decorPaused.value > 0) { last.value = t; return }
     const dt = t - last.value
     if (dt < FRAME_MS) return
     clock.value += Math.min(dt, 100)

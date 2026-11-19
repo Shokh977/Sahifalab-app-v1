@@ -10,7 +10,7 @@
  * screen renders in its owner's app theme (Mavzu), whatever yours is.
  */
 import React, { useCallback, useEffect, useState } from 'react'
-import { Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Linking, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router'
 import {
@@ -42,10 +42,11 @@ import { allBadges, topEarned, type ProfileBadge } from '../../../src/features/p
 import { badgeVisual, stageArt } from '../../../src/features/profile/BadgeCell'
 import { BadgeSheet } from '../../../src/features/profile/BadgeSheet'
 import { FollowListSheet, type FollowKind } from '../../../src/features/profile/FollowListSheet'
-import { LevelHeroCard } from '../../../src/features/profile/LevelHeroCard'
 import { ProfileStat } from '../../../src/features/profile/ProfileStat'
 import { ProfileHeader, useHeaderOnScreen } from '../../../src/features/profile/ProfileHeader'
 import { TreeHeroCard } from '../../../src/features/profile/TreeHeroCard'
+import { useInView } from '../../../src/features/profile/useInView'
+import { usePauseDecorWhileScrolling } from '../../../src/design/decorPause'
 import { ForestStrip } from '../../../src/features/forest/ForestStrip'
 import { ProPill } from '../../../src/features/pro/ProPill'
 import { ProName } from '../../../src/features/profile/names/ProName'
@@ -132,6 +133,13 @@ function PublicProfileBody() {
   const insets = useSafeAreaInsets()
   const focused = useIsFocused()
   const header = useHeaderOnScreen()
+  // The tree animates while it's on screen (and this screen is focused).
+  const treeView = useInView()
+  const pauseWhileScrolling = usePauseDecorWhileScrolling()
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    header.scrollProps.onScroll(e)
+    treeView.onScroll(e)
+  }, [header.scrollProps, treeView])
   const { id } = useLocalSearchParams<{ id: string }>()
   const authUser = useAuthStore(s => s.user)
   const { loadPublicProfile, loadOwnProfile, patchCachedStatus, cache, ownProfile } = useProfileStore()
@@ -323,6 +331,8 @@ function PublicProfileBody() {
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <ScrollView
         {...header.scrollProps}
+        {...pauseWhileScrolling}
+        onScroll={onScroll}
         contentContainerStyle={{ paddingBottom: insets.bottom + space.xxl }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -353,7 +363,7 @@ function PublicProfileBody() {
           onRingPress={() => openLook({ slot: 'ring', id: ringKind(p.look?.ring) })}
         />
 
-        <View style={styles.content}>
+        <View style={styles.content} onLayout={treeView.onContainerLayout}>
         {blocked && (
           <View style={[styles.blocked, { backgroundColor: colors.surfaceRaised }]}>
             <Text style={[typeScale.callout, { color: colors.textMuted }]}>Siz bu foydalanuvchini bloklagansiz.</Text>
@@ -411,12 +421,16 @@ function PublicProfileBody() {
           )}
         </View>
 
-        <TreeHeroCard
-          streak={p.streak_days ?? 0}
-          uid={`profile-${p.telegram_id}`}
-          look={treeLookKind(p.look?.tree)}
-          onLookPress={() => openLook({ slot: 'tree', id: treeLookKind(p.look?.tree) })}
-        />
+        <View onLayout={treeView.onLayout}>
+          <TreeHeroCard
+            streak={p.streak_days ?? 0}
+            uid={`profile-${p.telegram_id}`}
+            look={treeLookKind(p.look?.tree)}
+            animate
+            paused={!focused || !treeView.visible}
+            onLookPress={() => openLook({ slot: 'tree', id: treeLookKind(p.look?.tree) })}
+          />
+        </View>
 
         <ForestStrip
           trees={p.forest ?? []}
@@ -436,8 +450,6 @@ function PublicProfileBody() {
             <ProfileStat icon={Award} tint="green" value={String(p.courses_completed ?? 0)} label="tugatilgan kurslar" />
           </View>
         </View>
-
-        <LevelHeroCard level={level} xp={p.total_xp ?? 0} nextXp={p.next_level_xp ?? 0} />
 
         {/* Nishonlar */}
         <View style={styles.section}>

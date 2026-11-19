@@ -13,11 +13,11 @@ import Svg, {
   Filter, FeColorMatrix,
 } from 'react-native-svg'
 import Animated, {
-  useSharedValue, useAnimatedProps,
-  withRepeat, withTiming,
-  cancelAnimation, Easing, useReducedMotion,
+  useSharedValue, useAnimatedProps, useFrameCallback, useReducedMotion,
+  type SharedValue,
 } from 'react-native-reanimated'
 import { treeLookColors, treeLookPalette, type TreeLook, type TreeLookColors } from '../../lib/treeLooks'
+import { decorPaused } from '../../src/design/decorPause'
 import type { StageNumber, TreeState, SkyMood, TreeSize, StagePalette } from '../../lib/treeTheme'
 
 // ── Animated SVG primitives ────────────────────────────────────────────────────
@@ -420,33 +420,88 @@ function leafParams(seed: number, n: number) {
   })
 }
 
+// ── One clock per tree ───────────────────────────────────────────────────────
+// react-native-svg redraws the whole tree whenever any animated prop changes,
+// so the cost is redraws per second, not how many things move. Every layer
+// used to run its own withRepeat at the display rate (60–120 redraws/s, each
+// at its own moment). Now one frame callback ticks a shared clock at ~25 fps
+// and every layer derives its pose from it: all layers change in the same
+// frame, one redraw per tick. The motions are slow (4–48 s loops), so 25 fps
+// looks the same.
+const TICK_MS = 40
+const TreeClock = React.createContext<SharedValue<number> | null>(null)
+
+function useTreeClockValue(enabled: boolean) {
+  const clock = useSharedValue(0)
+  const last = useSharedValue(-1)
+  const frame = useFrameCallback(info => {
+    'worklet'
+    const t = info.timestamp
+    if (last.value < 0) { last.value = t; return }
+    // Held still while a page scrolls (src/design/decorPause).
+    if (decorPaused.value > 0) { last.value = t; return }
+    const dt = t - last.value
+    if (dt < TICK_MS) return
+    clock.value += Math.min(dt, 100)
+    last.value = t
+  }, false)
+  useEffect(() => {
+    if (!enabled) last.value = -1
+    frame.setActive(enabled)
+  }, [enabled, frame, last])
+  return clock
+}
+
+/** The clock for an animated tree; a still tree (animate={false}) gets none. */
+function ClockFor({ still, enabled, children }: { still: boolean; enabled: boolean; children: React.ReactNode }) {
+  if (still) return <>{children}</>
+  return <TickingClock enabled={enabled}>{children}</TickingClock>
+}
+function TickingClock({ enabled, children }: { enabled: boolean; children: React.ReactNode }) {
+  const clock = useTreeClockValue(enabled)
+  return <TreeClock.Provider value={clock}>{children}</TreeClock.Provider>
+}
+
+function useClock() {
+  const clock = React.useContext(TreeClock)
+  if (!clock) throw new Error('MagicTree layer outside its clock')
+  return clock
+}
+
+/** Ease-in-out on 0–1 (the curve the loops used). */
+function easeInOut(x: number) {
+  'worklet'
+  return -(Math.cos(Math.PI * x) - 1) / 2
+}
+/** 0 → 1 → 0 over 2·dur ms, eased (what withRepeat(withTiming, -1, true) did). */
+function pingPong(ms: number, dur: number) {
+  'worklet'
+  const u = (ms / dur) % 2
+  return easeInOut(u < 1 ? u : 2 - u)
+}
+/** Fractional part, always 0–1. */
+function frac(x: number) {
+  'worklet'
+  return ((x % 1) + 1) % 1
+}
+
 // Wraps trunk+canopy+decorations; rotates whole tree around ground pivot
 function SwayGroup({ dur, amt, enabled, children }: {
   dur: number; amt: number; enabled: boolean; children: React.ReactNode
 }) {
-  const angle = useSharedValue(0)
-
-  useEffect(() => {
-    cancelAnimation(angle)
-    if (!enabled) { angle.value = 0; return }
-    angle.value = -amt
-    angle.value = withRepeat(
-      withTiming(amt, { duration: dur * 1000, easing: Easing.inOut(Easing.sin) }),
-      -1, true
-    )
-    return () => cancelAnimation(angle)
-  }, [enabled, amt, dur])
-
-  const aProps = useAnimatedProps(() => ({
-    transform: [
-      { translateX: CX },
-      { translateY: GY },
-      { rotate: angle.value + 'deg' },
-      { translateX: -CX },
-      { translateY: -GY },
-    ],
-  }))
-
+  const clock = useClock()
+  const aProps = useAnimatedProps(() => {
+    const angle = enabled ? -amt + 2 * amt * pingPong(clock.value, dur * 1000) : 0
+    return {
+      transform: [
+        { translateX: CX },
+        { translateY: GY },
+        { rotate: angle + 'deg' },
+        { translateX: -CX },
+        { translateY: -GY },
+      ],
+    }
+  })
   return <AnimatedG animatedProps={aProps}>{children}</AnimatedG>
 }
 
@@ -455,50 +510,24 @@ function BreathingAura({ cx, cy, r, fill, glowMin, glowMax, enabled }: {
   cx: number; cy: number; r: number; fill: string
   glowMin: number; glowMax: number; enabled: boolean
 }) {
-  const animR   = useSharedValue(r * 0.96)
-  const opacity = useSharedValue(glowMin)
-
-  useEffect(() => {
-    cancelAnimation(animR); cancelAnimation(opacity)
-    if (!enabled) {
-      animR.value   = r
-      opacity.value = (glowMin + glowMax) / 2
-      return
-    }
-    animR.value   = withRepeat(withTiming(r * 1.06, { duration: 5000, easing: Easing.inOut(Easing.ease) }), -1, true)
-    opacity.value = withRepeat(withTiming(glowMax,   { duration: 5000, easing: Easing.inOut(Easing.ease) }), -1, true)
-    return () => { cancelAnimation(animR); cancelAnimation(opacity) }
-  }, [enabled, r, glowMin, glowMax])
-
-  const aProps = useAnimatedProps(() => ({
-    r:       animR.value,
-    opacity: opacity.value,
-  }))
-
+  const clock = useClock()
+  const aProps = useAnimatedProps(() => {
+    if (!enabled) return { r, opacity: (glowMin + glowMax) / 2 }
+    const k = pingPong(clock.value, 5000)
+    return { r: r * (0.96 + 0.1 * k), opacity: glowMin + (glowMax - glowMin) * k }
+  })
   return <AnimatedCircle animatedProps={aProps} cx={cx} cy={cy} fill={fill} />
 }
 
-// Single rising particle (hooks per instance — always mounted)
+// Single rising particle
 function AnimatedParticle({ x, y, r, fill, maxOp, dur, delay, dy, enabled }: {
   x: number; y: number; r: number; fill: string; maxOp: number
   dur: number; delay: number; dy: number; enabled: boolean
 }) {
+  const clock = useClock()
   const startPhase = (delay / dur) % 1
-  const phase = useSharedValue(startPhase)
-
-  useEffect(() => {
-    cancelAnimation(phase)
-    if (!enabled) { phase.value = 0.5; return }
-    phase.value = startPhase
-    phase.value = withRepeat(
-      withTiming(startPhase + 1, { duration: dur * 1000, easing: Easing.linear }),
-      -1, false
-    )
-    return () => cancelAnimation(phase)
-  }, [enabled, dur, startPhase])
-
   const aProps = useAnimatedProps(() => {
-    const p  = (phase.value % 1 + 1) % 1
+    const p  = enabled ? frac(startPhase + clock.value / (dur * 1000)) : 0.5
     const op = p < 0.15 ? (p / 0.15) * maxOp
              : p < 0.80 ? maxOp
              : Math.max(0, (1 - p) / 0.20) * maxOp
@@ -507,7 +536,6 @@ function AnimatedParticle({ x, y, r, fill, maxOp, dur, delay, dy, enabled }: {
       opacity:    op,
     }
   })
-
   return <AnimatedCircle animatedProps={aProps} cx={f(x)} cy={f(y)} r={f(r)} fill={fill} />
 }
 
@@ -535,22 +563,10 @@ function AnimatedLeaf({ x, y, s, lDur, lDel, ldx, ldy, lrot, fill, enabled }: {
   lDur: number; lDel: number; ldx: number; ldy: number; lrot: number
   fill: string; enabled: boolean
 }) {
+  const clock = useClock()
   const startPhase = (lDel / lDur) % 1
-  const phase = useSharedValue(startPhase)
-
-  useEffect(() => {
-    cancelAnimation(phase)
-    if (!enabled) { phase.value = 0.5; return }
-    phase.value = startPhase
-    phase.value = withRepeat(
-      withTiming(startPhase + 1, { duration: lDur * 1000, easing: Easing.linear }),
-      -1, false
-    )
-    return () => cancelAnimation(phase)
-  }, [enabled, lDur, startPhase])
-
   const aProps = useAnimatedProps(() => {
-    const p  = (phase.value % 1 + 1) % 1
+    const p  = enabled ? frac(startPhase + clock.value / (lDur * 1000)) : 0.5
     const op = p < 0.10 ? p / 0.10 : p < 0.90 ? 1 : Math.max(0, (1 - p) / 0.10)
     return {
       transform: [
@@ -563,7 +579,6 @@ function AnimatedLeaf({ x, y, s, lDur, lDel, ldx, ldy, lrot, fill, enabled }: {
       opacity:    op,
     }
   })
-
   return <AnimatedPath animatedProps={aProps} d={mkLeaf(x, y, s)} fill={fill} />
 }
 
@@ -585,27 +600,14 @@ function AnimatedLeaves({ seed, n, fill, enabled }: {
 function AnimatedButterfly({ x, y, fill, delay, dur, enabled }: {
   x: number; y: number; fill: string; delay: number; dur: number; enabled: boolean
 }) {
+  const clock = useClock()
   const startPhase = (delay / dur) % 1
-  const phase = useSharedValue(startPhase)
-
-  useEffect(() => {
-    cancelAnimation(phase)
-    if (!enabled) { phase.value = 0; return }
-    phase.value = startPhase
-    phase.value = withRepeat(
-      withTiming(startPhase + 1, { duration: dur * 1000, easing: Easing.inOut(Easing.ease) }),
-      -1, false
-    )
-    return () => cancelAnimation(phase)
-  }, [enabled, dur, startPhase])
-
   const aProps = useAnimatedProps(() => {
-    const p = (phase.value % 1 + 1) % 1
+    // Each loop eases in and out, starting from where this butterfly was put.
+    const p = enabled ? frac(startPhase + easeInOut(frac(clock.value / (dur * 1000)))) : 0
     const t = p * Math.PI * 2
-    const tx = 13 * (1 - Math.cos(t))
-    const ty = -9 * Math.sin(t)
     return {
-      transform: [{ translateX: tx }, { translateY: ty }],
+      transform: [{ translateX: 13 * (1 - Math.cos(t)) }, { translateY: -9 * Math.sin(t) }],
     }
   })
 
@@ -624,27 +626,14 @@ function AnimatedButterfly({ x, y, fill, delay, dur, enabled }: {
 function SpinHalo({ id, enabled, children }: {
   id: number; enabled: boolean; children: React.ReactNode
 }) {
-  const angle = useSharedValue(0)
+  const clock = useClock()
   const dur   = id === 10 ? 38000 : 48000
-
-  useEffect(() => {
-    cancelAnimation(angle)
-    if (!enabled) return
-    angle.value = withRepeat(
-      withTiming(360, { duration: dur, easing: Easing.linear }),
-      -1, false
-    )
-    return () => cancelAnimation(angle)
-  }, [enabled, dur])
-
   const originY = id === 10 ? GY - 200 : GY - 170
-
   const aProps = useAnimatedProps(() => ({
-    rotation: angle.value,
+    rotation: enabled ? 360 * frac(clock.value / dur) : 0,
     originX:  CX,
     originY:  originY,
   }))
-
   return <AnimatedG animatedProps={aProps}>{children}</AnimatedG>
 }
 
@@ -724,6 +713,8 @@ export interface MagicTreeProps {
   size?:      TreeSize | 'auto'  // 'auto' scales with stage
   uid?:       string
   animate?:   boolean
+  /** Animated tree that holds its pose (scrolled off screen): the clock stops, nothing is rebuilt. */
+  paused?:    boolean
   /**
    * Badge-mode rendering (step-24 amendment) — silhouette + palette only,
    * with every particle/glow/decoration layer dropped. Naively shrinking
@@ -742,7 +733,7 @@ function autoSize(stage: number): { w: number; h: number } {
   return { w, h: Math.round(w * 1.25) }
 }
 
-export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp, animate = true, simplified = false, look = 'tabiiy' }: MagicTreeProps) {
+export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive', size = 'card', uid: uidProp, animate = true, paused = false, simplified = false, look = 'tabiiy' }: MagicTreeProps) {
   const uid     = `${uidProp ?? `${stage}_${state}`}${look}`
   const id      = Math.max(1, Math.min(10, stage)) as StageNumber
   const pal     = treeLookPalette(look, id)
@@ -773,6 +764,7 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
   const stateFilter = frozen ? `url(#sfFrozen${uid})` : dead ? `url(#sfDead${uid})` : atRisk ? `url(#sfAtRisk${uid})` : undefined
 
   return (
+    <ClockFor still={still} enabled={animEnabled && !paused}>
     <Svg width={dims.w} height={dims.h} viewBox="0 0 320 400" preserveAspectRatio="xMidYMax meet">
       <Gdefs uid={uid} pal={pal} lk={lk} />
 
@@ -911,5 +903,6 @@ export const MagicTree = React.memo(function MagicTree({ stage, state = 'alive',
       {dead   && <WitherOverlay uid={uid} />}
       {atRisk && <WiltOverlay id={id} />}
     </Svg>
+    </ClockFor>
   )
 })
