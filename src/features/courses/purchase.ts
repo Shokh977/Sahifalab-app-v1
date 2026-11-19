@@ -28,13 +28,24 @@ export function isActive(p: Pick<PendingEnrollment, 'expires_at'>, now = Date.no
 /** The pay bot (backend PAYMENT_BOT_URL default); a code response carries the live URL. */
 export const PAY_BOT_URL = 'https://t.me/sahifalab_pay_bot'
 
+/**
+ * The pay bot with the PAY code in its start link (t.me/<bot>?start=PAY-…):
+ * Telegram opens the chat, the user taps START and the bot already has the
+ * code, so there's nothing to copy and no need to come back to the app for
+ * it (pay bot, start.py).
+ */
+export function payBotLink(code: string, botUrl: string = PAY_BOT_URL): string {
+  const base = (botUrl || PAY_BOT_URL).split('?')[0]
+  return `${base}?start=${encodeURIComponent(code)}`
+}
+
 /** Chip text on cards and the detail ("Tekshirilmoqda" for any open request). */
 export const PENDING_CHIP = 'Tekshirilmoqda'
 
 export function statusCopy(status: PendingStatus): { title: string; body: string } {
   return status === 'paid'
     ? { title: 'Chek tekshirilmoqda', body: 'Odatda 5–30 daqiqa. Tasdiqlangach kurs ochiladi va xabar keladi.' }
-    : { title: 'Toʻlov kutilmoqda', body: 'Kodni botga yuboring, toʻlab, chek rasmini joʻnating.' }
+    : { title: 'Toʻlov kutilmoqda', body: 'Telegramda START ni bosing — kod oʻzi yuboriladi. Toʻlab, chek rasmini joʻnating.' }
 }
 
 interface PendingStore {

@@ -20,7 +20,7 @@ import { tabular, type as typeScale } from '../../../src/design/typography'
 import { Button, Card, EmptyState, ListRow, ScreenHeader, SkeletonRow, showToast } from '../../../src/components/ui'
 import { uzText } from '../../../src/features/today/today'
 import { priceLabel } from '../../../src/features/courses/courses'
-import { PAY_BOT_URL, settlePurchase, statusCopy, usePendingStore } from '../../../src/features/courses/purchase'
+import { payBotLink, settlePurchase, statusCopy, usePendingStore } from '../../../src/features/courses/purchase'
 
 type View_ = 'loading' | 'pending' | 'approved' | 'closed'
 
@@ -136,7 +136,7 @@ export default function PurchaseStatusScreen() {
                 icon={Send}
                 size="lg"
                 fullWidth
-                onPress={() => { copy(pending.code); Linking.openURL(PAY_BOT_URL).catch(() => {}) }}
+                onPress={() => { Linking.openURL(payBotLink(pending.code)).catch(() => {}) }}
               />
               <Button label="Kursga qaytish" variant="ghost" fullWidth onPress={openCourse} />
             </View>

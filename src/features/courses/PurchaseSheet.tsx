@@ -19,11 +19,11 @@ import { tabular, type as typeScale } from '../../design/typography'
 import { Button, ListRow, Sheet, showToast } from '../../components/ui'
 import { uzText } from '../today/today'
 import { priceLabel } from './courses'
-import { rememberPurchase } from './purchase'
+import { payBotLink, rememberPurchase } from './purchase'
 
 export const PURCHASE_STEPS = [
-  'Ilova sizga toʻlov kodini beradi',
-  'Telegram botda toʻlab, chek rasmini yuborasiz',
+  'Telegram ochiladi — START ni bosing, kod oʻzi yuboriladi',
+  'Botda toʻlab, chek rasmini yuborasiz',
   'Tasdiqlangach kurs ochiladi va xabar keladi',
 ] as const
 
@@ -56,8 +56,8 @@ export function PurchaseSheet({ visible, course, onClose, onStarted }: {
       await Clipboard.setStringAsync(code.reference_code).catch(() => {})
       track('purchase_start', { course_id: course.id, price: course.price }, course.id)
       onStarted(code)
-      showToast('info', `${code.reference_code} nusxalandi — botga yuboring`)
-      Linking.openURL(code.telegram_bot_url).catch(() => {})
+      showToast('info', 'Telegramda START ni bosing — kod oʻzi yuboriladi')
+      Linking.openURL(payBotLink(code.reference_code, code.telegram_bot_url)).catch(() => {})
     } catch (e) {
       setError(friendlyError(e))
     } finally {

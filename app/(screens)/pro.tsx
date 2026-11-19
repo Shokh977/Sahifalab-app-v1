@@ -20,6 +20,7 @@ import { useTheme } from '../../src/design/ThemeProvider'
 import { layout, radius, space } from '../../src/design/spacing'
 import { fonts, tabular, type as typeScale } from '../../src/design/typography'
 import { Button, Pressable, ScreenHeader, SkeletonBlock, ToastHost, showToast } from '../../src/components/ui'
+import { payBotLink } from '../../src/features/courses/purchase'
 import { BannerScene } from '../../src/features/profile/cosmetics/BannerScene'
 import { AvatarRing } from '../../src/features/profile/cosmetics/AvatarRing'
 import { groupDigits } from '../../src/features/courses/courses'
@@ -48,8 +49,8 @@ const MANAGE: { icon: LucideIcon; title: string; body: string; route: string }[]
 ]
 
 const STEPS = [
-  'Ilova sizga toʻlov kodini beradi',
-  'Telegram botda toʻlab, chek rasmini yuborasiz',
+  'Telegram ochiladi — START ni bosing, kod oʻzi yuboriladi',
+  'Botda toʻlab, chek rasmini yuborasiz',
   'Tasdiqlangach Pro ochiladi va xabar keladi',
 ] as const
 
@@ -100,8 +101,8 @@ export default function ProScreen() {
       const code = await proApi.requestCode(months)
       await Clipboard.setStringAsync(code.reference_code).catch(() => {})
       track('purchase_start', { product: 'pro', months, price: code.amount })
-      showToast('info', `${code.reference_code} nusxalandi — botga yuboring`)
-      Linking.openURL(code.telegram_bot_url).catch(() => {})
+      showToast('info', 'Telegramda START ni bosing — kod oʻzi yuboriladi')
+      Linking.openURL(payBotLink(code.reference_code, code.telegram_bot_url)).catch(() => {})
       load()
     } catch (e) {
       showToast('error', friendlyError(e))
@@ -242,12 +243,21 @@ export default function ProScreen() {
               <Text style={[typeScale.callout, { color: colors.textMuted }]}>
                 {pending.status === 'paid'
                   ? 'Odatda 5–30 daqiqa. Tasdiqlangach Pro ochiladi va xabar keladi.'
-                  : `Kodni botga yuboring, ${groupDigits(pending.amount)} soʻm toʻlab, chek rasmini joʻnating.`}
+                  : `Telegramda START ni bosing — kod oʻzi yuboriladi. ${groupDigits(pending.amount)} soʻm toʻlab, chek rasmini joʻnating.`}
               </Text>
               <Pressable onPress={copyCode} accessibilityLabel={`Kodni nusxalash: ${pending.reference_code}`} style={[styles.code, { backgroundColor: colors.surfaceRaised }]}>
                 <Text style={[styles.codeText, tabular, { color: colors.text }]}>{pending.reference_code}</Text>
                 <Copy size={16} color={colors.textMuted} />
               </Pressable>
+              {pending.status !== 'paid' && (
+                <Button
+                  label="Telegramda davom etish"
+                  icon={Send}
+                  variant="secondary"
+                  size="sm"
+                  onPress={() => Linking.openURL(payBotLink(pending.reference_code)).catch(() => {})}
+                />
+              )}
             </View>
           </View>
         )}
