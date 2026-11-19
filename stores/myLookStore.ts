@@ -16,7 +16,9 @@ interface MyLookState {
   /** Name colour and badge (110); "none" = no badge. */
   nameStyle: string
   badge:  string
-  set:    (look: Partial<{ banner: string; ring: string; tree: string; isPro: boolean; nameStyle: string; badge: string }>) => void
+  /** The server answered at least once this session (isPro is real, not the default). */
+  loaded: boolean
+  set:    (look: Partial<{ banner: string; ring: string; tree: string; isPro: boolean; nameStyle: string; badge: string; loaded: boolean }>) => void
 }
 
 export const useMyLookStore = create<MyLookState>(set => ({
@@ -26,5 +28,6 @@ export const useMyLookStore = create<MyLookState>(set => ({
   isPro:  false,
   nameStyle: 'oddiy',
   badge:  'none',
+  loaded: false,
   set:    look => set(look),
 }))

@@ -258,6 +258,9 @@ export const trophy = { cup: ['#FFD66B', '#E9A21A'], handle: '#E9A21A' } as cons
 
 /** The live dot on a running competition (CompetitionHero). */
 export const liveDot = '#4ADE80'
+
+/** The PRO chip and Pro call-to-action: gold with dark ink (both themes). */
+export const proGold = { fill: '#E4BE68', ink: '#3A2A00' } as const
 /** Competition cover band: dark scrim over the blurred cover, 15 % → 72 %. */
 export const coverScrim = ['rgba(10,8,6,0.15)', 'rgba(10,8,6,0.72)'] as const
 export const coverBandFallback = '#1B1410'

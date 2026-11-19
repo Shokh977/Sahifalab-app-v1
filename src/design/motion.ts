@@ -10,6 +10,7 @@ export const springs = {
   nav: { duration: 500, dampingRatio: 1 },    // push/pop, sheets, tab indicator: no bounce
   ui:  { duration: 350, dampingRatio: 0.85 }, // toggles, chips, press release, cards settling
   pop: { duration: 450, dampingRatio: 0.6 },  // celebrations only
+  morph: { duration: 340, dampingRatio: 1 },  // a layout changing shape (Fokus rejimi tab bar): no bounce
 }
 
 /** Control points of the curves below, for animation APIs outside

@@ -28,6 +28,8 @@ import { useThemeStore } from '../stores/themeStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { useNotifToastStore } from '../stores/notifToastStore'
 import { useThemeSync } from '../src/features/themes/useThemeSync'
+import { hiddenSectionOf, openGuarded, useFocusModeStore } from '../src/features/focusMode/focusModeStore'
+import { FocusBlockedSheet, useFocusModeEnforce } from '../src/features/focusMode/FocusBlockedSheet'
 import { usePendingDeepLinkStore } from '../stores/pendingDeepLinkStore'
 import { parseDeepLink } from '../lib/deepLinks'
 import { useOfflineQueueStore } from '../stores/offlineQueueStore'
@@ -180,6 +182,45 @@ async function registerTimezone() {
   } catch {}
 }
 
+/**
+ * The screen a push opens, from its data (`screen` plus ids). Shared by the
+ * tap handler and the foreground toast (Fokus rejimi mutes pushes for
+ * hidden sections).
+ */
+function routeForPush(data: any): string | null {
+  const routeMap: Record<string, string> = {
+    study_timer:      '/(tabs)/study',
+    streak_reminder:  '/(tabs)/study',
+    profile:          '/(tabs)/profile',
+    home:             '/(tabs)',
+    leaderboard:      '/(screens)/leaderboard',
+    // weekly_report: sent by the Monday-08:00 cron push (cron.py's
+    // send_weekly_reports) — the standalone weekly-report screen it
+    // used to open was retired (merged into weekly_review, which now
+    // shows the same numbers plus the AI narrative), so both notif
+    // types land on the same screen.
+    weekly_report:    '/(screens)/weekly-review',
+    weekly_review:    '/(screens)/weekly-review',
+    daily_quiz:       '/(screens)/daily-quiz',   // 090_daily_quiz — publish + reminder pushes
+    teacher_dashboard:'/(screens)/teacher-dashboard',
+    notifications:    '/(tabs)/notifications',
+    streak:           '/(screens)/streak-detail',   // tree stage-ups
+    pro:              '/(screens)/pro',             // Sahifalab Pro activated
+    competitions:     '/(tabs)/musobaqalar',
+  }
+  let route: string | null = null
+  // Dynamic routes first (actor profile, course, test, certificate)
+  if (data.screen === 'profile'     && data.actor_id)  route = `/(screens)/profile/${data.actor_id}`
+  if (data.screen === 'course'      && data.course_id) route = `/(screens)/course/${data.course_id}`
+  if (data.screen === 'test'        && data.test_id)   route = `/(screens)/test/${data.test_id}`
+  if (data.screen === 'certificate' && data.code)      route = `/(screens)/certificate/${data.code}`
+  // Bellashuv "Eslatma qoʻyish" (local) — opens the competition.
+  if (data.screen === 'challenge'   && data.slug)      route = `/(screens)/challenge/${data.slug}`
+  // Static routes
+  if (!route) route = routeMap[data.screen] ?? null
+  return route
+}
+
 export default function RootLayout() {
   const reduceMotion = useReducedMotion()
   useEffect(() => { startPerfProbe() }, [])  // preview builds only
@@ -242,6 +283,10 @@ export default function RootLayout() {
         const data    = content.data ?? {}
         trackCourseGranted(data)
         refreshCourseAccess(data)
+        // Fokus rejimi: a notification for a hidden section stays quiet
+        // (it still counts as unread and waits in Bildirishnomalar).
+        const target = routeForPush(data)
+        if (target && hiddenSectionOf(target)) { fetchUnreadCount(); return }
         // Show in-app toast with the notification content
         showToast({
           id:         Date.now(),
@@ -267,46 +312,17 @@ export default function RootLayout() {
       (response: any) => {
         const data = response?.notification?.request?.content?.data ?? {}
         trackCourseGranted(data)
-        // Resolve route from data
-        const routeMap: Record<string, string> = {
-          study_timer:      '/(tabs)/study',
-          streak_reminder:  '/(tabs)/study',
-          profile:          '/(tabs)/profile',
-          home:             '/(tabs)',
-          leaderboard:      '/(screens)/leaderboard',
-          // weekly_report: sent by the Monday-08:00 cron push (cron.py's
-          // send_weekly_reports) — the standalone weekly-report screen it
-          // used to open was retired (merged into weekly_review, which now
-          // shows the same numbers plus the AI narrative), so both notif
-          // types land on the same screen.
-          weekly_report:    '/(screens)/weekly-review',
-          weekly_review:    '/(screens)/weekly-review',
-          daily_quiz:       '/(screens)/daily-quiz',   // 090_daily_quiz — publish + reminder pushes
-          teacher_dashboard:'/(screens)/teacher-dashboard',
-          notifications:    '/(tabs)/notifications',
-          streak:           '/(screens)/streak-detail',   // tree stage-ups
-          pro:              '/(screens)/pro',             // Sahifalab Pro activated
-          competitions:     '/(tabs)/musobaqalar',
-        }
-        let route: string | null = null
-        // Dynamic routes first (actor profile, course, test, certificate)
-        if (data.screen === 'profile'     && data.actor_id)  route = `/(screens)/profile/${data.actor_id}`
-        if (data.screen === 'course'      && data.course_id) route = `/(screens)/course/${data.course_id}`
-        if (data.screen === 'test'        && data.test_id)   route = `/(screens)/test/${data.test_id}`
-        if (data.screen === 'certificate' && data.code)      route = `/(screens)/certificate/${data.code}`
-        // Bellashuv "Eslatma qoʻyish" (local) — opens the competition.
-        if (data.screen === 'challenge'   && data.slug)      route = `/(screens)/challenge/${data.slug}`
-        // Static routes
-        if (!route) route = routeMap[data.screen] ?? null
-        if (route) router.push(route as any)
+        const route = routeForPush(data)
+        if (route) openGuarded(route, r => router.push(r as any))
       },
     )
     return () => { responseListenerRef.current?.remove?.() }
   }, [])
 
   useEffect(() => {
-    Promise.all([loadTheme(), initAuth()])
+    Promise.all([loadTheme(), initAuth(), useFocusModeStore.getState().load()])
   }, [])
+  useFocusModeEnforce()
 
   useEffect(() => {
     if (fontsLoaded && !isLoading) SplashScreen.hideAsync()
@@ -438,7 +454,7 @@ export default function RootLayout() {
       if (!url) return
       if (isAuthenticated && !isLoading) {
         const route = parseDeepLink(url)
-        if (route) setTimeout(() => router.push(route as any), 600)
+        if (route) setTimeout(() => openGuarded(route, r => router.push(r as any)), 600)
       } else if (!isLoading) {
         usePendingDeepLinkStore.getState().setPending(url)
       }
@@ -449,7 +465,7 @@ export default function RootLayout() {
     const sub = Linking.addEventListener('url', ({ url }) => {
       if (isAuthenticated) {
         const route = parseDeepLink(url)
-        if (route) router.push(route as any)
+        if (route) openGuarded(route, r => router.push(r as any))
       } else {
         usePendingDeepLinkStore.getState().setPending(url)
       }
@@ -463,7 +479,7 @@ export default function RootLayout() {
     usePendingDeepLinkStore.getState().consume().then(url => {
       if (!url) return
       const route = parseDeepLink(url)
-      if (route) setTimeout(() => router.push(route as any), 600)
+      if (route) setTimeout(() => openGuarded(route, r => router.push(r as any)), 600)
     }).catch(() => {})
   }, [isAuthenticated, isLoading, fontsLoaded])
 
@@ -492,6 +508,7 @@ export default function RootLayout() {
         </Stack>
         <OfflineBanner />
         <NotifToast />
+        <FocusBlockedSheet />
         <AppIntroModal visible={showAppIntro} onFinish={dismissAppIntro} />
         {hasAnnouncement && <AnnouncementModal />}
         <RewardModal visible={rewardModalVisible} rewards={pendingRewards} onClose={dismissRewards} />

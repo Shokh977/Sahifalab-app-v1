@@ -26,6 +26,7 @@ import { durations } from '../../src/design/motion'
 import { SegmentedControl, Sheet } from '../../src/components/ui'
 import { FocusTimer } from '../../src/features/focus/FocusTimer'
 import { displayXp } from '../../src/features/focus/timerMath'
+import { FocusModeControls } from '../../src/features/focusMode/FocusModeControls'
 
 // ── Stats screen ──────────────────────────────────────────────────────────────
 
@@ -240,6 +241,8 @@ export default function StudyTab() {
           )}
         </View>
       </View>
+
+      <FocusModeControls />
 
       <SegmentedControl
         size="md"
